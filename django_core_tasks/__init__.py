@@ -19,7 +19,7 @@ class TasksHandler(BaseConnectionHandler):
         backend = params["BACKEND"]
         options = params.get("OPTIONS", {})
         backend_cls = import_string(backend)
-        return backend_cls(**options)
+        return backend_cls(options)
 
 tasks = TasksHandler()
 

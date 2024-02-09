@@ -2,7 +2,7 @@ from asgiref.sync import sync_to_async
 
 
 class BaseTaskBackend:
-    def __init__(self, **kwargs):
+    def __init__(self, options):
         pass
 
     def supports_defer(self):
