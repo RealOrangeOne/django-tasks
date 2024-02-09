@@ -45,6 +45,17 @@ class BaseTaskBackend:
       """
       raise NotImplementedError("This backend does not support `defer`.")
 
+    def get_task(self, task_id):
+      """
+      Get the handle to a task which has already been scheduled
+      """
+      raise NotImplementedError("This backend does not support retrieving existing tasks.")
+
+    async def aget_task(self, task_id):
+      """
+      Get the handle to a task which has already been scheduled
+      """
+      return await sync_to_async(self.get_task, thread_sensitive=True)(task_id)
 
     def close(self, **kwargs):
         """
