@@ -5,7 +5,9 @@ export PATH := "./env/bin:" + env_var('PATH')
   just --list
 
 test:
-    python3 manage.py test
+    coverage run --source=django_core_tasks manage.py test
+    coverage report
+    coverage html
 
 format:
     ruff check django_core_tasks tests --fix
