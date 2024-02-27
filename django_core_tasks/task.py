@@ -1,10 +1,10 @@
-from enum import Enum
+from django.db.models.enums import StrEnum
 from typing import Any, Callable
 from datetime import datetime
 from asgiref.sync import sync_to_async
 
 
-class TaskStatus(Enum, str):
+class TaskStatus(StrEnum):
     NEW = "NEW"
     RUNNING = "RUNNING"
     FAILED = "FAILED"
@@ -42,11 +42,8 @@ class BaseTask:
     kwargs: dict
     """The keyword arguments to pass to the task function"""
 
-    def __init__(self, **kwargs):
-        pass
-
     def refresh(self):
         raise NotImplementedError("This task cannot be refreshed")
 
     async def arefresh(self):
-        sync_to_async(self.refresh, thread_sensitive=True)()
+        return await sync_to_async(self.refresh, thread_sensitive=True)()

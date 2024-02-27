@@ -8,8 +8,10 @@ import sqlite3
 def module_level_task_function():
     pass
 
+
 async def module_level_task_coroutine():
     pass
+
 
 class IsValidTaskFunctionTestCase(SimpleTestCase):
     def setUp(self):
@@ -46,7 +48,9 @@ class IsValidTaskFunctionTestCase(SimpleTestCase):
 
     def test_module_function(self):
         self.assertTrue(self.backend.is_valid_task_function(module_level_task_function))
-        self.assertTrue(self.backend.is_valid_task_function(module_level_task_coroutine))
+        self.assertTrue(
+            self.backend.is_valid_task_function(module_level_task_coroutine)
+        )
 
     def test_class_function(self):
         self.assertFalse(self.backend.is_valid_task_function(self.setUp))

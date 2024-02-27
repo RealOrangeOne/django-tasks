@@ -11,13 +11,13 @@ class BaseTaskBackend:
         """
         Does this backend support `defer`?
         """
-        return getattr(self, "defer") != BaseTaskBackend.defer
+        return getattr(type(self), "defer") != BaseTaskBackend.defer
 
     def supports_enqueue(self):
         """
         Does this backend support `enqueue`?
         """
-        return getattr(self, "enqueue") != BaseTaskBackend.enqueue
+        return getattr(type(self), "enqueue") != BaseTaskBackend.enqueue
 
     def is_valid_task_function(self, func):
         """
@@ -36,29 +36,29 @@ class BaseTaskBackend:
 
         return True
 
-    async def aenqueue(self, func, *, priority, args=None, kwargs=None):
+    async def aenqueue(self, func, *, priority=None, args=None, kwargs=None):
         """
         Queue up a task function (or coroutine) to be executed
         """
         return await sync_to_async(self.enqueue, thread_sensitive=True)(
-            func, priority, args, kwargs
+            func, priority=priority, args=args, kwargs=kwargs
         )
 
-    async def adefer(self, func, *, priority, when, args=None, kwargs=None):
+    async def adefer(self, func, *, when, priority=None, args=None, kwargs=None):
         """
         Add a task function (or coroutine) to be completed at a specific time
         """
         return await sync_to_async(self.defer, thread_sensitive=True)(
-            func, priority, when, args, kwargs
+            func, when=when, priority=priority, args=args, kwargs=kwargs
         )
 
-    def enqueue(self, func, *, priority, args=None, kwargs=None):
+    def enqueue(self, func, *, priority=None, args=None, kwargs=None):
         """
         Queue up a task function to be executed
         """
         raise NotImplementedError("This backend does not support `enqueue`.")
 
-    def defer(self, func, *, priority, when, args=None, kwargs=None):
+    def defer(self, func, *, when, priority=None, args=None, kwargs=None):
         """
         Add a task to be completed at a specific time
         """

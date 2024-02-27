@@ -2,8 +2,9 @@ from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
 from django.core import signals
 from .backends.base import BaseTaskBackend
+from .task import TaskStatus
 
-__all__ = ["tasks", "DEFAULT_TASK_BACKEND_ALIAS", "BaseTaskBackend"]
+__all__ = ["tasks", "DEFAULT_TASK_BACKEND_ALIAS", "BaseTaskBackend", "TaskStatus"]
 
 DEFAULT_TASK_BACKEND_ALIAS = "default"
 
