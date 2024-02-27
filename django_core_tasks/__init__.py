@@ -3,13 +3,10 @@ from django.utils.module_loading import import_string
 from django.core import signals
 from .backends.base import BaseTaskBackend
 
-__all__ = [
-    "tasks",
-    "DEFAULT_TASK_BACKEND_ALIAS",
-    "BaseTaskBackend"
-]
+__all__ = ["tasks", "DEFAULT_TASK_BACKEND_ALIAS", "BaseTaskBackend"]
 
 DEFAULT_TASK_BACKEND_ALIAS = "default"
+
 
 class TasksHandler(BaseConnectionHandler):
     settings_name = "TASKS"
@@ -21,6 +18,7 @@ class TasksHandler(BaseConnectionHandler):
         backend_cls = import_string(backend)
         return backend_cls(options)
 
+
 tasks = TasksHandler()
 
 default_task_backend = ConnectionProxy(tasks, DEFAULT_TASK_BACKEND_ALIAS)
@@ -28,6 +26,7 @@ default_task_backend = ConnectionProxy(tasks, DEFAULT_TASK_BACKEND_ALIAS)
 
 def close_task_backends(**kwargs):
     tasks.close_all()
+
 
 signals.request_finished.connect(close_task_backends)
 

@@ -49,7 +49,9 @@ class BaseTaskBackend:
         """
         Get the handle to a task which has already been scheduled
         """
-        raise NotImplementedError("This backend does not support retrieving existing tasks.")
+        raise NotImplementedError(
+            "This backend does not support retrieving existing tasks."
+        )
 
     async def aget_task(self, task_id):
         """
