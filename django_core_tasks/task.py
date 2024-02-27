@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any
+from typing import Any, Callable
 from datetime import datetime
 from asgiref.sync import sync_to_async
 
@@ -29,6 +29,18 @@ class BaseTask:
 
     raw: Any | None
     """Return the underlying runner's task handle"""
+
+    priority: int | None
+    """The priority of the task"""
+
+    func: Callable
+    """The task function"""
+
+    args: list
+    """The arguments to pass to the task function"""
+
+    kwargs: dict
+    """The keyword arguments to pass to the task function"""
 
     def __init__(self, **kwargs):
         pass
