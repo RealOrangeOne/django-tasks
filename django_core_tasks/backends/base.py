@@ -1,4 +1,6 @@
 from asgiref.sync import sync_to_async
+from django.utils.module_loading import import_string
+import inspect
 
 
 class BaseTaskBackend:
@@ -16,6 +18,23 @@ class BaseTaskBackend:
         Does this backend support `enqueue`?
         """
         return getattr(self, "enqueue") != BaseTaskBackend.enqueue
+
+    def is_valid_task_function(self, func):
+        """
+        Is the provided callable valid as a task function
+        """
+        if not inspect.isfunction(func) and not inspect.isbuiltin(func):
+            return False
+
+        try:
+            imported_func = import_string(f"{func.__module__}.{func.__qualname__}")
+        except (AttributeError, ModuleNotFoundError):
+            return False
+
+        if imported_func != func:
+            return False
+
+        return True
 
     async def aenqueue(self, func, *, priority, args=None, kwargs=None):
         """
