@@ -2,15 +2,9 @@ from django.test import SimpleTestCase
 
 from django_core_tasks.backends.base import BaseTaskBackend
 import subprocess
-import sqlite3
-
-
-def module_level_task_function():
-    pass
-
-
-async def module_level_task_coroutine():
-    pass
+from . import tasks as test_tasks
+from django_core_tasks import task_function
+from django_core_tasks.exceptions import InvalidTask
 
 
 class IsValidTaskFunctionTestCase(SimpleTestCase):
@@ -25,35 +19,40 @@ class IsValidTaskFunctionTestCase(SimpleTestCase):
     def test_builtin(self):
         for example in [any, isinstance]:
             with self.subTest(example):
-                self.assertTrue(self.backend.is_valid_task_function(example))
+                self.assertFalse(self.backend.is_valid_task_function(example))
 
     def test_from_module(self):
         for example in [
             subprocess.run,
             subprocess.check_output,
-            # `sqlite3.connect` is pure C in CPython
-            sqlite3.connect,
         ]:
             with self.subTest(example):
-                self.assertTrue(self.backend.is_valid_task_function(example))
+                self.assertTrue(
+                    self.backend.is_valid_task_function(task_function(example))
+                )
 
     def test_lambda(self):
         self.assertFalse(self.backend.is_valid_task_function(lambda: True))
+        self.assertFalse(
+            self.backend.is_valid_task_function(task_function(lambda: True))
+        )
 
     def test_private_function(self):
+        @task_function
         def private_task_function():
             pass
 
         self.assertFalse(self.backend.is_valid_task_function(private_task_function))
 
     def test_module_function(self):
-        self.assertTrue(self.backend.is_valid_task_function(module_level_task_function))
-        self.assertTrue(
-            self.backend.is_valid_task_function(module_level_task_coroutine)
-        )
+        self.assertTrue(self.backend.is_valid_task_function(test_tasks.noop_task))
+        self.assertTrue(self.backend.is_valid_task_function(test_tasks.noop_task_async))
 
     def test_class_function(self):
         self.assertFalse(self.backend.is_valid_task_function(self.setUp))
+
+        with self.assertRaises(InvalidTask):
+            task_function(self.setUp)
 
     def test_class(self):
         self.assertFalse(self.backend.is_valid_task_function(BaseTaskBackend))

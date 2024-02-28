@@ -4,8 +4,15 @@ from django.core import signals
 from .backends.base import BaseTaskBackend
 from .task import TaskStatus
 from .exceptions import InvalidTaskBackendError
+from .utils import task_function
 
-__all__ = ["tasks", "DEFAULT_TASK_BACKEND_ALIAS", "BaseTaskBackend", "TaskStatus"]
+__all__ = [
+    "tasks",
+    "DEFAULT_TASK_BACKEND_ALIAS",
+    "BaseTaskBackend",
+    "TaskStatus",
+    "task_function",
+]
 
 DEFAULT_TASK_BACKEND_ALIAS = "default"
 

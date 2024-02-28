@@ -1,6 +1,7 @@
 from asgiref.sync import sync_to_async
 from django.utils.module_loading import import_string
 import inspect
+from django_core_tasks.utils import is_marked_task_func
 
 
 class BaseTaskBackend:
@@ -24,6 +25,9 @@ class BaseTaskBackend:
         Is the provided callable valid as a task function
         """
         if not inspect.isfunction(func) and not inspect.isbuiltin(func):
+            return False
+
+        if not is_marked_task_func(func):
             return False
 
         try:
