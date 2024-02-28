@@ -1,8 +1,10 @@
 from django.test import SimpleTestCase, override_settings
 from django_core_tasks import tasks, TaskStatus, default_task_backend
 from django_core_tasks.backends.immediate import ImmediateBackend
+from django_core_tasks.backends.base import BaseTaskBackend
 from . import tasks as test_tasks
 from django.utils import timezone
+import inspect
 
 
 @override_settings(
@@ -102,3 +104,9 @@ class ImmediateBackendTestCase(SimpleTestCase):
             "This task cannot be refreshed",
         ):
             await task.arefresh()
+
+    def test_enqueue_signature(self):
+        self.assertEqual(
+            inspect.signature(ImmediateBackend.enqueue),
+            inspect.signature(BaseTaskBackend.enqueue),
+        )

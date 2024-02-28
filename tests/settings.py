@@ -37,3 +37,5 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
+
+TASKS = {}

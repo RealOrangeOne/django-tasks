@@ -4,8 +4,8 @@ export PATH := "./env/bin:" + env_var('PATH')
 @default:
   just --list
 
-test:
-    coverage run --source=django_core_tasks manage.py test
+test *ARGS:
+    coverage run --source=django_core_tasks manage.py test {{ ARGS }}
     coverage report
     coverage html
 
