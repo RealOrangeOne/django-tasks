@@ -10,20 +10,23 @@ from django.test import SimpleTestCase, override_settings
 from django_core_tasks.backends.base import BaseTaskBackend
 import inspect
 from django_core_tasks.backends.immediate import ImmediateBackend
+from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.exceptions import InvalidTaskBackendError
 
 
 class TasksTestCase(SimpleTestCase):
-    def test_using_correct_backend(self):
+    def test_uses_correct_backend(self):
         with override_settings(
             TASKS={
                 "default": {
                     "BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"
-                }
+                },
+                "other": {"BACKEND": "django_core_tasks.backends.dummy.DummyBackend"},
             }
         ):
             self.assertEqual(default_task_backend, tasks["default"])
             self.assertIsInstance(tasks["default"], ImmediateBackend)
+            self.assertIsInstance(tasks["other"], DummyBackend)
 
     def test_shortcut_signatures(self):
         base_backend = BaseTaskBackend(options={})
