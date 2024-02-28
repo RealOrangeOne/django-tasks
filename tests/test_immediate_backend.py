@@ -5,6 +5,7 @@ from django_core_tasks.backends.base import BaseTaskBackend
 from . import tasks as test_tasks
 from django.utils import timezone
 import inspect
+import dataclasses
 
 
 @override_settings(
@@ -90,20 +91,18 @@ class ImmediateBackendTestCase(SimpleTestCase):
         ):
             await default_task_backend.aget_task(123)
 
-    async def test_cannot_refresh_task(self):
+    async def test_refresh_task(self):
         task = default_task_backend.enqueue(test_tasks.noop_task)
 
-        with self.assertRaisesMessage(
-            NotImplementedError,
-            "This task cannot be refreshed",
-        ):
-            task.refresh()
+        original_task = dataclasses.asdict(task)
 
-        with self.assertRaisesMessage(
-            NotImplementedError,
-            "This task cannot be refreshed",
-        ):
-            await task.arefresh()
+        task.refresh()
+
+        self.assertEqual(dataclasses.asdict(task), original_task)
+
+        await task.arefresh()
+
+        self.assertEqual(dataclasses.asdict(task), original_task)
 
     def test_enqueue_signature(self):
         self.assertEqual(

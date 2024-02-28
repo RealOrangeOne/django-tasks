@@ -56,3 +56,14 @@ class BaseTask:
 
 class Task(BaseTask):
     pass
+
+
+class ImmutableTask(BaseTask):
+    """
+    A task which will not update after creation.
+
+    Notably, `refresh` becomes a no-op, rather than explicitly prevented.
+    """
+
+    def refresh(self):
+        pass

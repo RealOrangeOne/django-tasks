@@ -1,6 +1,6 @@
 from .base import BaseTaskBackend
 from django_core_tasks.exceptions import InvalidTask
-from django_core_tasks.task import Task, TaskStatus
+from django_core_tasks.task import ImmutableTask, TaskStatus
 from django.utils import timezone
 from inspect import iscoroutinefunction
 from asgiref.sync import async_to_sync
@@ -32,7 +32,7 @@ class ImmediateBackend(BaseTaskBackend):
 
         completed_at = timezone.now()
 
-        return Task(
+        return ImmutableTask(
             id=str(uuid.uuid4()),
             status=TaskStatus.FAILED
             if isinstance(result, BaseException)

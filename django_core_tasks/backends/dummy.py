@@ -1,6 +1,6 @@
 from .base import BaseTaskBackend
 from django_core_tasks.exceptions import InvalidTask, TaskDoesNotExist
-from django_core_tasks.task import Task, TaskStatus
+from django_core_tasks.task import ImmutableTask, TaskStatus
 from django.utils import timezone
 import uuid
 
@@ -24,7 +24,7 @@ class DummyBackend(BaseTaskBackend):
         if kwargs is None:
             kwargs = {}
 
-        task = Task(
+        task = ImmutableTask(
             id=str(uuid.uuid4()),
             status=TaskStatus.NEW,
             result=None,
@@ -51,7 +51,7 @@ class DummyBackend(BaseTaskBackend):
         if kwargs is None:
             kwargs = {}
 
-        task = Task(
+        task = ImmutableTask(
             id=str(uuid.uuid4()),
             status=TaskStatus.NEW,
             result=None,
