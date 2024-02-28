@@ -2,7 +2,7 @@ from .base import BaseTaskBackend
 from django_core_tasks.exceptions import InvalidTask, TaskDoesNotExist
 from django_core_tasks.task import Task, TaskStatus
 from django.utils import timezone
-from django.utils.crypto import get_random_string
+import uuid
 
 
 class DummyBackend(BaseTaskBackend):
@@ -25,7 +25,7 @@ class DummyBackend(BaseTaskBackend):
             kwargs = {}
 
         task = Task(
-            id=get_random_string(10),
+            id=str(uuid.uuid4()),
             status=TaskStatus.NEW,
             result=None,
             queued_at=timezone.now(),
@@ -52,7 +52,7 @@ class DummyBackend(BaseTaskBackend):
             kwargs = {}
 
         task = Task(
-            id=get_random_string(10),
+            id=str(uuid.uuid4()),
             status=TaskStatus.NEW,
             result=None,
             queued_at=timezone.now(),

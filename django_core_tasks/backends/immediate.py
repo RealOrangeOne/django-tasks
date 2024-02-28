@@ -2,9 +2,9 @@ from .base import BaseTaskBackend
 from django_core_tasks.exceptions import InvalidTask
 from django_core_tasks.task import Task, TaskStatus
 from django.utils import timezone
-from django.utils.crypto import get_random_string
 from inspect import iscoroutinefunction
 from asgiref.sync import async_to_sync
+import uuid
 
 
 class ImmediateBackend(BaseTaskBackend):
@@ -33,7 +33,7 @@ class ImmediateBackend(BaseTaskBackend):
         completed_at = timezone.now()
 
         return Task(
-            id=get_random_string(10),
+            id=str(uuid.uuid4()),
             status=TaskStatus.FAILED
             if isinstance(result, BaseException)
             else TaskStatus.COMPLETE,
