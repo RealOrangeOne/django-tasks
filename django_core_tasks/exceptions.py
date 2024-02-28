@@ -1,4 +1,4 @@
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 
 
 class InvalidTask(Exception):
@@ -11,4 +11,8 @@ class InvalidTask(Exception):
 
 
 class InvalidTaskBackendError(ImproperlyConfigured):
+    pass
+
+
+class TaskDoesNotExist(ObjectDoesNotExist):
     pass

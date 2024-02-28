@@ -42,6 +42,9 @@ class BaseTask:
     kwargs: dict
     """The keyword arguments to pass to the task function"""
 
+    when: datetime | None
+    """When the task is scheduled to run"""
+
     def refresh(self):
         raise NotImplementedError("This task cannot be refreshed")
 
