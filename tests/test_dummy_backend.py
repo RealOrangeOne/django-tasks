@@ -30,7 +30,7 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     async def test_enqueue_task_async(self):
         task = await default_task_backend.aenqueue(test_tasks.noop_task)
@@ -41,7 +41,7 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     def test_executes_async_task(self):
         task = default_task_backend.enqueue(test_tasks.noop_task_async)
@@ -52,7 +52,7 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     async def test_executes_async_task_async(self):
         task = await default_task_backend.aenqueue(test_tasks.noop_task_async)
@@ -63,7 +63,7 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     def test_defer_task(self):
         self.assertTrue(default_task_backend.supports_defer())
@@ -79,7 +79,7 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     async def test_defer_task_async(self):
         when = timezone.now()
@@ -93,7 +93,7 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     def test_defer_async_task(self):
         when = timezone.now()
@@ -107,7 +107,7 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     async def test_defer_async_task_async(self):
         when = timezone.now()
@@ -121,19 +121,19 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
-        self.assertEqual(default_task_backend.tasks, {task.task_id: task})
+        self.assertEqual(default_task_backend.tasks, [task])
 
     def test_get_task(self):
         task = default_task_backend.enqueue(test_tasks.noop_task)
 
-        new_task = default_task_backend.get_task(task.task_id)
+        new_task = default_task_backend.get_task(task.id)
 
         self.assertIs(task, new_task)
 
     async def test_get_task_async(self):
         task = await default_task_backend.aenqueue(test_tasks.noop_task)
 
-        new_task = await default_task_backend.aget_task(task.task_id)
+        new_task = await default_task_backend.aget_task(task.id)
 
         self.assertIs(task, new_task)
 

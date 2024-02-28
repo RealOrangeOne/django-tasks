@@ -1,27 +1,10 @@
 from .base import BaseTaskBackend
 from django_core_tasks.exceptions import InvalidTask
-from django_core_tasks.task import BaseTask, TaskStatus
+from django_core_tasks.task import Task, TaskStatus
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from inspect import iscoroutinefunction
 from asgiref.sync import async_to_sync
-
-
-class ImmediateTask(BaseTask):
-    def __init__(self, id, func, args, kwargs, result, queued_at, completed_at):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-        self.status = (
-            TaskStatus.FAILED
-            if isinstance(result, BaseException)
-            else TaskStatus.COMPLETE
-        )
-        self.result = result
-
-        self.queued_at = queued_at
-        self.completed_at = completed_at
 
 
 class ImmediateBackend(BaseTaskBackend):
@@ -33,7 +16,6 @@ class ImmediateBackend(BaseTaskBackend):
         if not self.is_valid_task_function(func):
             raise InvalidTask(func)
 
-        task_id = get_random_string(10)
         queued_at = timezone.now()
 
         task_func = async_to_sync(func) if iscoroutinefunction(func) else func
@@ -50,6 +32,18 @@ class ImmediateBackend(BaseTaskBackend):
 
         completed_at = timezone.now()
 
-        return ImmediateTask(
-            task_id, func, args, kwargs, result, queued_at, completed_at
+        return Task(
+            id=get_random_string(10),
+            status=TaskStatus.FAILED
+            if isinstance(result, BaseException)
+            else TaskStatus.COMPLETE,
+            result=result,
+            queued_at=queued_at,
+            completed_at=completed_at,
+            priority=priority,
+            func=func,
+            args=args,
+            kwargs=kwargs,
+            when=None,
+            raw=None,
         )

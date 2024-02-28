@@ -2,6 +2,7 @@ from django.db.models.enums import StrEnum
 from typing import Any, Callable
 from datetime import datetime
 from asgiref.sync import sync_to_async
+from dataclasses import dataclass
 
 
 class TaskStatus(StrEnum):
@@ -11,6 +12,7 @@ class TaskStatus(StrEnum):
     COMPLETE = "COMPLETE"
 
 
+@dataclass
 class BaseTask:
     id: str
     """A unique identifier for the task"""
@@ -50,3 +52,7 @@ class BaseTask:
 
     async def arefresh(self):
         return await sync_to_async(self.refresh, thread_sensitive=True)()
+
+
+class Task(BaseTask):
+    pass
