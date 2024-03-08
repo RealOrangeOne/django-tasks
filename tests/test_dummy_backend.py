@@ -6,6 +6,7 @@ from . import tasks as test_tasks
 import inspect
 from django.utils import timezone
 import dataclasses
+from datetime import datetime
 
 
 @override_settings(
@@ -162,3 +163,10 @@ class DummyBackendTestCase(SimpleTestCase):
             inspect.signature(DummyBackend.defer),
             inspect.signature(BaseTaskBackend.defer),
         )
+
+    async def test_naive_datetime(self):
+        with self.assertRaisesMessage(ValueError, "when must be an aware datetime"):
+            default_task_backend.defer(test_tasks.noop_task, when=datetime.now())
+
+        with self.assertRaisesMessage(ValueError, "when must be an aware datetime"):
+            await default_task_backend.adefer(test_tasks.noop_task, when=datetime.now())

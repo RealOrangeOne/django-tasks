@@ -46,6 +46,9 @@ class DummyBackend(BaseTaskBackend):
         if not self.is_valid_task_function(func):
             raise InvalidTask(func)
 
+        if timezone.is_naive(when):
+            raise ValueError("when must be an aware datetime")
+
         if args is None:
             args = []
         if kwargs is None:
