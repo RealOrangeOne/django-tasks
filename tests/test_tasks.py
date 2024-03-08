@@ -1,16 +1,18 @@
+import inspect
+
+from django.test import SimpleTestCase, override_settings
+
 from django_core_tasks import (
-    enqueue,
-    defer,
-    aenqueue,
     adefer,
+    aenqueue,
     default_task_backend,
+    defer,
+    enqueue,
     tasks,
 )
-from django.test import SimpleTestCase, override_settings
 from django_core_tasks.backends.base import BaseTaskBackend
-import inspect
-from django_core_tasks.backends.immediate import ImmediateBackend
 from django_core_tasks.backends.dummy import DummyBackend
+from django_core_tasks.backends.immediate import ImmediateBackend
 from django_core_tasks.exceptions import InvalidTaskBackendError
 
 

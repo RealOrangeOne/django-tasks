@@ -12,3 +12,7 @@ test *ARGS:
 format:
     ruff check django_core_tasks tests --fix
     ruff format django_core_tasks tests
+
+lint:
+    ruff check django_core_tasks tests
+    ruff format django_core_tasks tests --check

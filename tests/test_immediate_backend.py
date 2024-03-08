@@ -1,11 +1,14 @@
-from django.test import SimpleTestCase, override_settings
-from django_core_tasks import tasks, TaskStatus, default_task_backend
-from django_core_tasks.backends.immediate import ImmediateBackend
-from django_core_tasks.backends.base import BaseTaskBackend
-from . import tasks as test_tasks
-from django.utils import timezone
-import inspect
 import dataclasses
+import inspect
+
+from django.test import SimpleTestCase, override_settings
+from django.utils import timezone
+
+from django_core_tasks import TaskStatus, default_task_backend, tasks
+from django_core_tasks.backends.base import BaseTaskBackend
+from django_core_tasks.backends.immediate import ImmediateBackend
+
+from . import tasks as test_tasks
 
 
 @override_settings(
@@ -60,7 +63,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         task = default_task_backend.enqueue(test_tasks.erroring_task)
 
         self.assertEqual(task.status, TaskStatus.FAILED, task.result)
-        self.assertIsInstance(task.result, ZeroDivisionError)
+        self.assertIsInstance(task.result, ValueError)
         self.assertEqual(task.func, test_tasks.erroring_task)
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})

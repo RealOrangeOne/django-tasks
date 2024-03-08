@@ -1,8 +1,11 @@
-from .base import BaseTaskBackend
-from django_core_tasks.exceptions import InvalidTask, TaskDoesNotExist
-from django_core_tasks.task import ImmutableTask, TaskStatus
-from django.utils import timezone
 import uuid
+
+from django.utils import timezone
+
+from django_core_tasks.exceptions import InvalidTaskError, TaskDoesNotExist
+from django_core_tasks.task import ImmutableTask, TaskStatus
+
+from .base import BaseTaskBackend
 
 
 class DummyBackend(BaseTaskBackend):
@@ -17,7 +20,7 @@ class DummyBackend(BaseTaskBackend):
 
     def enqueue(self, func, *, priority=None, args=None, kwargs=None):
         if not self.is_valid_task_function(func):
-            raise InvalidTask(func)
+            raise InvalidTaskError(func)
 
         if args is None:
             args = []
@@ -44,7 +47,7 @@ class DummyBackend(BaseTaskBackend):
 
     def defer(self, func, *, when, priority=None, args=None, kwargs=None):
         if not self.is_valid_task_function(func):
-            raise InvalidTask(func)
+            raise InvalidTaskError(func)
 
         if timezone.is_naive(when):
             raise ValueError("when must be an aware datetime")
@@ -76,7 +79,7 @@ class DummyBackend(BaseTaskBackend):
         try:
             return next(task for task in self.tasks if task.id == task_id)
         except StopIteration:
-            raise TaskDoesNotExist()
+            raise TaskDoesNotExist() from None
 
     def clear(self):
         self.tasks.clear()

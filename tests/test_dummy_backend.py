@@ -1,12 +1,15 @@
-from django.test import SimpleTestCase, override_settings
-from django_core_tasks import tasks, default_task_backend, TaskStatus
-from django_core_tasks.backends.dummy import DummyBackend
-from django_core_tasks.backends.base import BaseTaskBackend
-from . import tasks as test_tasks
-import inspect
-from django.utils import timezone
 import dataclasses
+import inspect
 from datetime import datetime
+
+from django.test import SimpleTestCase, override_settings
+from django.utils import timezone
+
+from django_core_tasks import TaskStatus, default_task_backend, tasks
+from django_core_tasks.backends.base import BaseTaskBackend
+from django_core_tasks.backends.dummy import DummyBackend
+
+from . import tasks as test_tasks
 
 
 @override_settings(

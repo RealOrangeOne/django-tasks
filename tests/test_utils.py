@@ -1,7 +1,9 @@
 from django.test import SimpleTestCase
+
+from django_core_tasks.exceptions import InvalidTaskError
 from django_core_tasks.utils import is_marked_task_func, task_function
+
 from . import tasks as test_tasks
-from django_core_tasks.exceptions import InvalidTask
 
 
 class TaskFunctionDecoratorTestCase(SimpleTestCase):
@@ -12,13 +14,13 @@ class TaskFunctionDecoratorTestCase(SimpleTestCase):
     def test_decorate_builtin(self):
         for example in [any, isinstance]:
             with self.subTest(example):
-                with self.assertRaises(InvalidTask):
+                with self.assertRaises(InvalidTaskError):
                     task_function(example)
 
     def test_decorate_wrong_type(self):
         for example in [1, 1.5, "2"]:
             with self.subTest(example):
-                with self.assertRaises(InvalidTask):
+                with self.assertRaises(InvalidTaskError):
                     task_function(example)
 
     def test_marks_function(self):

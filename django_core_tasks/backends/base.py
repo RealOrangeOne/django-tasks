@@ -1,6 +1,8 @@
+import inspect
+
 from asgiref.sync import sync_to_async
 from django.utils.module_loading import import_string
-import inspect
+
 from django_core_tasks.utils import is_marked_task_func
 
 
@@ -12,13 +14,13 @@ class BaseTaskBackend:
         """
         Does this backend support `defer`?
         """
-        return getattr(type(self), "defer") != BaseTaskBackend.defer
+        return getattr(type(self), "defer", None) != BaseTaskBackend.defer
 
     def supports_enqueue(self):
         """
         Does this backend support `enqueue`?
         """
-        return getattr(type(self), "enqueue") != BaseTaskBackend.enqueue
+        return getattr(type(self), "enqueue", None) != BaseTaskBackend.enqueue
 
     def is_valid_task_function(self, func):
         """

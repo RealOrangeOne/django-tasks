@@ -1,7 +1,7 @@
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 
 
-class InvalidTask(Exception):
+class InvalidTaskError(Exception):
     """
     The provided task function is invalid.
     """

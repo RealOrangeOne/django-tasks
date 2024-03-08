@@ -1,9 +1,10 @@
+from django.core import signals
 from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
-from django.core import signals
+
 from .backends.base import BaseTaskBackend
-from .task import TaskStatus
 from .exceptions import InvalidTaskBackendError
+from .task import TaskStatus
 from .utils import task_function
 
 __all__ = [

@@ -1,10 +1,13 @@
-from .base import BaseTaskBackend
-from django_core_tasks.exceptions import InvalidTask
-from django_core_tasks.task import ImmutableTask, TaskStatus
-from django.utils import timezone
-from inspect import iscoroutinefunction
-from asgiref.sync import async_to_sync
 import uuid
+from inspect import iscoroutinefunction
+
+from asgiref.sync import async_to_sync
+from django.utils import timezone
+
+from django_core_tasks.exceptions import InvalidTaskError
+from django_core_tasks.task import ImmutableTask, TaskStatus
+
+from .base import BaseTaskBackend
 
 
 class ImmediateBackend(BaseTaskBackend):
@@ -14,7 +17,7 @@ class ImmediateBackend(BaseTaskBackend):
 
     def enqueue(self, func, *, priority=None, args=None, kwargs=None):
         if not self.is_valid_task_function(func):
-            raise InvalidTask(func)
+            raise InvalidTaskError(func)
 
         queued_at = timezone.now()
 

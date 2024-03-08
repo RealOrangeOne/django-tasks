@@ -1,10 +1,12 @@
+import subprocess
+
 from django.test import SimpleTestCase
 
-from django_core_tasks.backends.base import BaseTaskBackend
-import subprocess
-from . import tasks as test_tasks
 from django_core_tasks import task_function
-from django_core_tasks.exceptions import InvalidTask
+from django_core_tasks.backends.base import BaseTaskBackend
+from django_core_tasks.exceptions import InvalidTaskError
+
+from . import tasks as test_tasks
 
 
 class IsValidTaskFunctionTestCase(SimpleTestCase):
@@ -51,7 +53,7 @@ class IsValidTaskFunctionTestCase(SimpleTestCase):
     def test_class_function(self):
         self.assertFalse(self.backend.is_valid_task_function(self.setUp))
 
-        with self.assertRaises(InvalidTask):
+        with self.assertRaises(InvalidTaskError):
             task_function(self.setUp)
 
     def test_class(self):

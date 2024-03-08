@@ -16,4 +16,4 @@ async def noop_task_async(*args, **kwargs):
 
 @task_function
 def erroring_task():
-    1 / 0
+    raise ValueError("This task failed")

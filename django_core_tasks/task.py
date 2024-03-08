@@ -1,8 +1,9 @@
-from django.db.models.enums import StrEnum
-from typing import Any, Callable
-from datetime import datetime
-from asgiref.sync import sync_to_async
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Callable
+
+from asgiref.sync import sync_to_async
+from django.db.models.enums import StrEnum
 
 
 class TaskStatus(StrEnum):
