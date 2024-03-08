@@ -8,6 +8,7 @@ from django.utils import timezone
 from django_core_tasks import TaskStatus, default_task_backend, tasks
 from django_core_tasks.backends.base import BaseTaskBackend
 from django_core_tasks.backends.dummy import DummyBackend
+from django_core_tasks.exceptions import InvalidTaskError, TaskDoesNotExist
 
 from . import tasks as test_tasks
 
@@ -160,6 +161,13 @@ class DummyBackendTestCase(SimpleTestCase):
 
         self.assertIs(task, new_task)
 
+    async def test_get_invalid_task(self):
+        with self.assertRaises(TaskDoesNotExist):
+            default_task_backend.get_task("123")
+
+        with self.assertRaises(TaskDoesNotExist):
+            await default_task_backend.aget_task("123")
+
     async def test_refresh_task(self):
         task = default_task_backend.enqueue(test_tasks.noop_task)
 
@@ -191,3 +199,17 @@ class DummyBackendTestCase(SimpleTestCase):
 
         with self.assertRaisesMessage(ValueError, "when must be an aware datetime"):
             await default_task_backend.adefer(test_tasks.noop_task, when=datetime.now())
+
+    async def test_enqueue_invalid_task(self):
+        with self.assertRaises(InvalidTaskError):
+            default_task_backend.enqueue(lambda: True)
+
+        with self.assertRaises(InvalidTaskError):
+            await default_task_backend.aenqueue(lambda: True)
+
+    async def test_defer_invalid_task(self):
+        with self.assertRaises(InvalidTaskError):
+            default_task_backend.defer(lambda: True, when=timezone.now())
+
+        with self.assertRaises(InvalidTaskError):
+            await default_task_backend.adefer(lambda: True, when=timezone.now())

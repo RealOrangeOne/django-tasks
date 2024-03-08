@@ -7,6 +7,7 @@ from django.utils import timezone
 from django_core_tasks import TaskStatus, default_task_backend, tasks
 from django_core_tasks.backends.base import BaseTaskBackend
 from django_core_tasks.backends.immediate import ImmediateBackend
+from django_core_tasks.exceptions import InvalidTaskError
 
 from . import tasks as test_tasks
 
@@ -112,3 +113,10 @@ class ImmediateBackendTestCase(SimpleTestCase):
             inspect.signature(ImmediateBackend.enqueue),
             inspect.signature(BaseTaskBackend.enqueue),
         )
+
+    async def test_enqueue_invalid_task(self):
+        with self.assertRaises(InvalidTaskError):
+            default_task_backend.enqueue(lambda: True)
+
+        with self.assertRaises(InvalidTaskError):
+            await default_task_backend.aenqueue(lambda: True)

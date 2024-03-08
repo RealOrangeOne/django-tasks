@@ -76,7 +76,9 @@ def enqueue(func, *, priority=None, args=None, kwargs=None):
     """
     Queue up a task function (or coroutine) to be executed
     """
-    return default_task_backend.defer(func, priority=priority, args=args, kwargs=kwargs)
+    return default_task_backend.enqueue(
+        func, priority=priority, args=args, kwargs=kwargs
+    )
 
 
 def defer(func, *, when, priority=None, args=None, kwargs=None):

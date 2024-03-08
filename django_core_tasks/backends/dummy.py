@@ -77,7 +77,7 @@ class DummyBackend(BaseTaskBackend):
         try:
             return next(task for task in self.tasks if task.id == task_id)
         except StopIteration:
-            raise TaskDoesNotExist() from None
+            raise TaskDoesNotExist(task_id) from None
 
     def clear(self):
         self.tasks.clear()
