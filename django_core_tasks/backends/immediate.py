@@ -48,5 +48,4 @@ class ImmediateBackend(BaseTaskBackend):
             args=args,
             kwargs=kwargs,
             when=None,
-            raw=None,
         )

@@ -30,9 +30,6 @@ class BaseTask:
     completed_at: datetime | None
     """When the task was completed"""
 
-    raw: Any | None
-    """Return the underlying runner's task handle"""
-
     priority: int | None
     """The priority of the task"""
 
