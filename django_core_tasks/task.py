@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable
 
@@ -21,9 +21,6 @@ class BaseTask:
     status: TaskStatus
     """The status of the task"""
 
-    result: Any | None
-    """The return value from the task function"""
-
     queued_at: datetime
     """When the task was added to the queue"""
 
@@ -45,11 +42,21 @@ class BaseTask:
     when: datetime | None
     """When the task is scheduled to run"""
 
+    _result: Any = field(init=False)
+
     def refresh(self):
         raise NotImplementedError("This task cannot be refreshed")
 
     async def arefresh(self):
         return await sync_to_async(self.refresh, thread_sensitive=True)()
+
+    @property
+    def result(self):
+        """The return value or exception from the task function"""
+        if self.status not in [TaskStatus.COMPLETE, TaskStatus.FAILED]:
+            raise ValueError("Task has not finished yet")
+
+        return self._result
 
 
 class Task(BaseTask):

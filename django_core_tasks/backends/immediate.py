@@ -35,12 +35,11 @@ class ImmediateBackend(BaseTaskBackend):
 
         completed_at = timezone.now()
 
-        return ImmutableTask(
+        task = ImmutableTask(
             id=str(uuid.uuid4()),
             status=TaskStatus.FAILED
             if isinstance(result, BaseException)
             else TaskStatus.COMPLETE,
-            result=result,
             queued_at=queued_at,
             completed_at=completed_at,
             priority=priority,
@@ -49,3 +48,5 @@ class ImmediateBackend(BaseTaskBackend):
             kwargs=kwargs,
             when=None,
         )
+        task._result = result
+        return task

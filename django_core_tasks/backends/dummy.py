@@ -30,7 +30,6 @@ class DummyBackend(BaseTaskBackend):
         task = ImmutableTask(
             id=str(uuid.uuid4()),
             status=TaskStatus.NEW,
-            result=None,
             queued_at=timezone.now(),
             completed_at=None,
             priority=priority,
@@ -39,6 +38,7 @@ class DummyBackend(BaseTaskBackend):
             kwargs=kwargs,
             when=None,
         )
+        task._result = None
 
         self.tasks.append(task)
 
@@ -59,7 +59,6 @@ class DummyBackend(BaseTaskBackend):
         task = ImmutableTask(
             id=str(uuid.uuid4()),
             status=TaskStatus.NEW,
-            result=None,
             queued_at=timezone.now(),
             completed_at=None,
             priority=priority,
@@ -68,6 +67,7 @@ class DummyBackend(BaseTaskBackend):
             kwargs=kwargs,
             when=when,
         )
+        task._result = None
 
         self.tasks.append(task)
 

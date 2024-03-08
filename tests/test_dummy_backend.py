@@ -28,8 +28,9 @@ class DummyBackendTestCase(SimpleTestCase):
 
         task = default_task_backend.enqueue(test_tasks.noop_task)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
         self.assertIsNone(task.when)
         self.assertEqual(task.func, test_tasks.noop_task)
         self.assertEqual(task.args, [])
@@ -40,8 +41,9 @@ class DummyBackendTestCase(SimpleTestCase):
     async def test_enqueue_task_async(self):
         task = await default_task_backend.aenqueue(test_tasks.noop_task)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
         self.assertEqual(task.func, test_tasks.noop_task)
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
@@ -51,8 +53,9 @@ class DummyBackendTestCase(SimpleTestCase):
     def test_executes_async_task(self):
         task = default_task_backend.enqueue(test_tasks.noop_task_async)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
         self.assertEqual(task.func, test_tasks.noop_task_async)
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
@@ -62,8 +65,11 @@ class DummyBackendTestCase(SimpleTestCase):
     async def test_executes_async_task_async(self):
         task = await default_task_backend.aenqueue(test_tasks.noop_task_async)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
+
         self.assertEqual(task.func, test_tasks.noop_task_async)
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
@@ -77,8 +83,11 @@ class DummyBackendTestCase(SimpleTestCase):
 
         task = default_task_backend.defer(test_tasks.noop_task, when=when)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
+
         self.assertEqual(task.when, when)
         self.assertEqual(task.func, test_tasks.noop_task)
         self.assertEqual(task.args, [])
@@ -91,8 +100,11 @@ class DummyBackendTestCase(SimpleTestCase):
 
         task = await default_task_backend.adefer(test_tasks.noop_task, when=when)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
+
         self.assertEqual(task.func, test_tasks.noop_task)
         self.assertEqual(task.when, when)
         self.assertEqual(task.args, [])
@@ -105,8 +117,11 @@ class DummyBackendTestCase(SimpleTestCase):
 
         task = default_task_backend.defer(test_tasks.noop_task_async, when=when)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
+
         self.assertEqual(task.func, test_tasks.noop_task_async)
         self.assertEqual(task.when, when)
         self.assertEqual(task.args, [])
@@ -119,8 +134,11 @@ class DummyBackendTestCase(SimpleTestCase):
 
         task = await default_task_backend.adefer(test_tasks.noop_task_async, when=when)
 
-        self.assertEqual(task.status, TaskStatus.NEW, task.result)
-        self.assertIsNone(task.result)
+        self.assertEqual(task.status, TaskStatus.NEW)
+
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            task.result  # noqa:B018
+
         self.assertEqual(task.func, test_tasks.noop_task_async)
         self.assertEqual(task.when, when)
         self.assertEqual(task.args, [])
