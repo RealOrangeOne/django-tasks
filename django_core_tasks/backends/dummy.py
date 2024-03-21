@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 
 from django.utils import timezone
 
@@ -21,6 +22,9 @@ class DummyBackend(BaseTaskBackend):
     def enqueue(self, func, *, priority=None, args=None, kwargs=None):
         if not self.is_valid_task_function(func):
             raise InvalidTaskError(func)
+
+        if priority is not None and priority < 1:
+            raise ValueError("priority must be positive")
 
         if args is None:
             args = []
@@ -48,8 +52,11 @@ class DummyBackend(BaseTaskBackend):
         if not self.is_valid_task_function(func):
             raise InvalidTaskError(func)
 
-        if timezone.is_naive(when):
-            raise ValueError("when must be an aware datetime")
+        if priority is not None and priority < 1:
+            raise ValueError("priority must be positive")
+
+        if when < (timezone.now() - timedelta(seconds=1)):
+            raise ValueError("when must be in the future")
 
         if args is None:
             args = []

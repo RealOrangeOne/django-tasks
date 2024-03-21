@@ -120,3 +120,10 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
         with self.assertRaises(InvalidTaskError):
             await default_task_backend.aenqueue(lambda: True)
+
+    async def test_invalid_priority(self):
+        with self.assertRaisesMessage(ValueError, "priority must be positive"):
+            default_task_backend.enqueue(test_tasks.noop_task, priority=0)
+
+        with self.assertRaisesMessage(ValueError, "priority must be positive"):
+            await default_task_backend.aenqueue(test_tasks.noop_task, priority=0)

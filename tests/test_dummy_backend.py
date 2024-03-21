@@ -194,10 +194,14 @@ class DummyBackendTestCase(SimpleTestCase):
         )
 
     async def test_naive_datetime(self):
-        with self.assertRaisesMessage(ValueError, "when must be an aware datetime"):
+        with self.assertRaisesMessage(
+            TypeError, "can't compare offset-naive and offset-aware datetimes"
+        ):
             default_task_backend.defer(test_tasks.noop_task, when=datetime.now())
 
-        with self.assertRaisesMessage(ValueError, "when must be an aware datetime"):
+        with self.assertRaisesMessage(
+            TypeError, "can't compare offset-naive and offset-aware datetimes"
+        ):
             await default_task_backend.adefer(test_tasks.noop_task, when=datetime.now())
 
     async def test_enqueue_invalid_task(self):
@@ -213,3 +217,20 @@ class DummyBackendTestCase(SimpleTestCase):
 
         with self.assertRaises(InvalidTaskError):
             await default_task_backend.adefer(lambda: True, when=timezone.now())
+
+    async def test_invalid_priority(self):
+        with self.assertRaisesMessage(ValueError, "priority must be positive"):
+            default_task_backend.enqueue(test_tasks.noop_task, priority=0)
+
+        with self.assertRaisesMessage(ValueError, "priority must be positive"):
+            await default_task_backend.aenqueue(test_tasks.noop_task, priority=0)
+
+        with self.assertRaisesMessage(ValueError, "priority must be positive"):
+            default_task_backend.defer(
+                test_tasks.noop_task, when=timezone.now(), priority=0
+            )
+
+        with self.assertRaisesMessage(ValueError, "priority must be positive"):
+            await default_task_backend.adefer(
+                test_tasks.noop_task, when=timezone.now(), priority=0
+            )

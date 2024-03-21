@@ -19,6 +19,9 @@ class ImmediateBackend(BaseTaskBackend):
         if not self.is_valid_task_function(func):
             raise InvalidTaskError(func)
 
+        if priority is not None and priority < 1:
+            raise ValueError("priority must be positive")
+
         queued_at = timezone.now()
 
         task_func = async_to_sync(func) if iscoroutinefunction(func) else func
