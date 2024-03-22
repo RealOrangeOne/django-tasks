@@ -4,7 +4,7 @@ import inspect
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
-from django_core_tasks import TaskStatus, default_task_backend, tasks
+from django_core_tasks import TaskCandidate, TaskStatus, default_task_backend, tasks
 from django_core_tasks.backends.base import BaseTaskBackend
 from django_core_tasks.backends.immediate import ImmediateBackend
 from django_core_tasks.exceptions import InvalidTaskError
@@ -25,11 +25,11 @@ class ImmediateBackendTestCase(SimpleTestCase):
     def test_executes_task(self):
         self.assertTrue(default_task_backend.supports_enqueue())
 
-        task = default_task_backend.enqueue(test_tasks.noop_task)
+        task = default_task_backend.enqueue(test_tasks.calculate_meaning_of_life)
 
         self.assertEqual(task.status, TaskStatus.COMPLETE, task.result)
-        self.assertIsNone(task.result)
-        self.assertEqual(task.func, test_tasks.noop_task)
+        self.assertEqual(task.result, 42)
+        self.assertEqual(task.func, test_tasks.calculate_meaning_of_life)
         self.assertEqual(task.args, [])
         self.assertEqual(task.kwargs, {})
 
@@ -82,6 +82,20 @@ class ImmediateBackendTestCase(SimpleTestCase):
         ):
             await default_task_backend.adefer(test_tasks.noop_task, when=timezone.now())
 
+        with self.assertRaisesMessage(
+            NotImplementedError, "This backend does not support `bulk_defer`."
+        ):
+            default_task_backend.bulk_defer(
+                TaskCandidate(test_tasks.noop_task, when=timezone.now())
+            )
+
+        with self.assertRaisesMessage(
+            NotImplementedError, "This backend does not support `bulk_defer`."
+        ):
+            await default_task_backend.abulk_defer(
+                TaskCandidate(test_tasks.noop_task, when=timezone.now())
+            )
+
     async def test_cannot_get_task(self):
         with self.assertRaisesMessage(
             NotImplementedError,
@@ -127,3 +141,54 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
         with self.assertRaisesMessage(ValueError, "priority must be positive"):
             await default_task_backend.aenqueue(test_tasks.noop_task, priority=0)
+
+    def test_bulk_enqueue_tasks(self):
+        created_tasks = default_task_backend.bulk_enqueue(
+            [
+                TaskCandidate(test_tasks.calculate_meaning_of_life),
+                TaskCandidate(test_tasks.noop_task),
+            ]
+        )
+
+        self.assertEqual(len(created_tasks), 2)
+
+        self.assertEqual(created_tasks[0].func, test_tasks.calculate_meaning_of_life)
+        self.assertEqual(created_tasks[1].func, test_tasks.noop_task)
+
+        self.assertEqual(
+            created_tasks[0].status, TaskStatus.COMPLETE, created_tasks[0].result
+        )
+        self.assertEqual(
+            created_tasks[1].status, TaskStatus.COMPLETE, created_tasks[1].result
+        )
+
+    async def test_bulk_enqueue_tasks_async(self):
+        created_tasks = await default_task_backend.abulk_enqueue(
+            [
+                TaskCandidate(test_tasks.calculate_meaning_of_life),
+                TaskCandidate(test_tasks.noop_task),
+            ]
+        )
+
+        self.assertEqual(len(created_tasks), 2)
+
+        self.assertEqual(created_tasks[0].func, test_tasks.calculate_meaning_of_life)
+        self.assertEqual(created_tasks[1].func, test_tasks.noop_task)
+
+        self.assertEqual(
+            created_tasks[0].status, TaskStatus.COMPLETE, created_tasks[0].result
+        )
+        self.assertEqual(
+            created_tasks[1].status, TaskStatus.COMPLETE, created_tasks[1].result
+        )
+
+    async def test_cannot_bulk_defer(self):
+        with self.assertRaisesMessage(
+            NotImplementedError, "This backend does not support `bulk_defer`."
+        ):
+            default_task_backend.bulk_defer(TaskCandidate(test_tasks.noop_task))
+
+        with self.assertRaisesMessage(
+            NotImplementedError, "This backend does not support `bulk_defer`."
+        ):
+            await default_task_backend.abulk_defer(TaskCandidate(test_tasks.noop_task))

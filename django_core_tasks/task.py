@@ -72,3 +72,21 @@ class ImmutableTask(BaseTask):
 
     def refresh(self):
         pass
+
+
+@dataclass
+class TaskCandidate:
+    func: Callable
+    """The task function"""
+
+    args: list = field(default_factory=list)
+    """The arguments to pass to the task function"""
+
+    kwargs: dict = field(default_factory=dict)
+    """The keyword arguments to pass to the task function"""
+
+    priority: int | None = None
+    """The priority of the task"""
+
+    when: datetime | None = None
+    """When the task is scheduled to run"""

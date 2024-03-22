@@ -4,8 +4,7 @@ from inspect import iscoroutinefunction
 from asgiref.sync import async_to_sync
 from django.utils import timezone
 
-from django_core_tasks.exceptions import InvalidTaskError
-from django_core_tasks.task import ImmutableTask, TaskStatus
+from django_core_tasks.task import ImmutableTask, TaskCandidate, TaskStatus
 
 from .base import BaseTaskBackend
 
@@ -16,11 +15,9 @@ class ImmediateBackend(BaseTaskBackend):
     """
 
     def enqueue(self, func, *, priority=None, args=None, kwargs=None):
-        if not self.is_valid_task_function(func):
-            raise InvalidTaskError(func)
-
-        if priority is not None and priority < 1:
-            raise ValueError("priority must be positive")
+        self.validate_candidate(
+            TaskCandidate(func=func, priority=priority, args=args, kwargs=kwargs)
+        )
 
         queued_at = timezone.now()
 

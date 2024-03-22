@@ -4,7 +4,7 @@ from django.utils.module_loading import import_string
 
 from .backends.base import BaseTaskBackend
 from .exceptions import InvalidTaskBackendError
-from .task import TaskStatus
+from .task import TaskCandidate, TaskStatus
 from .utils import task_function
 
 __all__ = [
@@ -13,6 +13,7 @@ __all__ = [
     "BaseTaskBackend",
     "TaskStatus",
     "task_function",
+    "TaskCandidate",
 ]
 
 DEFAULT_TASK_BACKEND_ALIAS = "default"

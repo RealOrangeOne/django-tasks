@@ -5,7 +5,7 @@ from datetime import datetime
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
-from django_core_tasks import TaskStatus, default_task_backend, tasks
+from django_core_tasks import TaskCandidate, TaskStatus, default_task_backend, tasks
 from django_core_tasks.backends.base import BaseTaskBackend
 from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.exceptions import InvalidTaskError, TaskDoesNotExist
@@ -234,3 +234,90 @@ class DummyBackendTestCase(SimpleTestCase):
             await default_task_backend.adefer(
                 test_tasks.noop_task, when=timezone.now(), priority=0
             )
+
+    def test_bulk_enqueue_tasks(self):
+        created_tasks = default_task_backend.bulk_enqueue(
+            [
+                TaskCandidate(test_tasks.calculate_meaning_of_life),
+                TaskCandidate(test_tasks.noop_task),
+            ]
+        )
+
+        self.assertEqual(len(created_tasks), 2)
+        self.assertEqual(default_task_backend.tasks, created_tasks)
+
+        self.assertEqual(created_tasks[0].func, test_tasks.calculate_meaning_of_life)
+        self.assertEqual(created_tasks[1].func, test_tasks.noop_task)
+
+        self.assertEqual(
+            created_tasks[0].status,
+            TaskStatus.NEW,
+        )
+        self.assertEqual(
+            created_tasks[1].status,
+            TaskStatus.NEW,
+        )
+
+    async def test_bulk_enqueue_tasks_async(self):
+        created_tasks = await default_task_backend.abulk_enqueue(
+            [
+                TaskCandidate(test_tasks.calculate_meaning_of_life),
+                TaskCandidate(test_tasks.noop_task),
+            ]
+        )
+
+        self.assertEqual(len(created_tasks), 2)
+        self.assertEqual(default_task_backend.tasks, created_tasks)
+
+        self.assertEqual(created_tasks[0].func, test_tasks.calculate_meaning_of_life)
+        self.assertEqual(created_tasks[1].func, test_tasks.noop_task)
+
+        self.assertEqual(created_tasks[0].status, TaskStatus.NEW)
+        self.assertEqual(created_tasks[1].status, TaskStatus.NEW)
+
+    def test_bulk_defer_tasks(self):
+        created_tasks = default_task_backend.bulk_defer(
+            [
+                TaskCandidate(
+                    test_tasks.calculate_meaning_of_life, when=timezone.now()
+                ),
+                TaskCandidate(test_tasks.noop_task, when=timezone.now()),
+            ]
+        )
+
+        self.assertEqual(len(created_tasks), 2)
+        self.assertEqual(default_task_backend.tasks, created_tasks)
+
+        self.assertEqual(
+            created_tasks[0].func,
+            test_tasks.calculate_meaning_of_life,
+        )
+        self.assertEqual(created_tasks[1].func, test_tasks.noop_task)
+
+        self.assertEqual(
+            created_tasks[0].status,
+            TaskStatus.NEW,
+        )
+        self.assertEqual(
+            created_tasks[1].status,
+            TaskStatus.NEW,
+        )
+
+    async def test_bulk_defer_tasks_async(self):
+        created_tasks = await default_task_backend.abulk_defer(
+            [
+                TaskCandidate(
+                    test_tasks.calculate_meaning_of_life, when=timezone.now()
+                ),
+                TaskCandidate(test_tasks.noop_task, when=timezone.now()),
+            ]
+        )
+
+        self.assertEqual(len(created_tasks), 2)
+        self.assertEqual(default_task_backend.tasks, created_tasks)
+
+        self.assertEqual(created_tasks[0].func, test_tasks.calculate_meaning_of_life)
+        self.assertEqual(created_tasks[1].func, test_tasks.noop_task)
+
+        self.assertEqual(created_tasks[0].status, TaskStatus.NEW)
+        self.assertEqual(created_tasks[1].status, TaskStatus.NEW)

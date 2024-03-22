@@ -1,10 +1,9 @@
 import uuid
-from datetime import timedelta
 
 from django.utils import timezone
 
-from django_core_tasks.exceptions import InvalidTaskError, TaskDoesNotExist
-from django_core_tasks.task import ImmutableTask, TaskStatus
+from django_core_tasks.exceptions import TaskDoesNotExist
+from django_core_tasks.task import ImmutableTask, TaskCandidate, TaskStatus
 
 from .base import BaseTaskBackend
 
@@ -20,11 +19,9 @@ class DummyBackend(BaseTaskBackend):
         self.tasks = []
 
     def enqueue(self, func, *, priority=None, args=None, kwargs=None):
-        if not self.is_valid_task_function(func):
-            raise InvalidTaskError(func)
-
-        if priority is not None and priority < 1:
-            raise ValueError("priority must be positive")
+        self.validate_candidate(
+            TaskCandidate(func=func, priority=priority, args=args, kwargs=kwargs)
+        )
 
         if args is None:
             args = []
@@ -49,14 +46,11 @@ class DummyBackend(BaseTaskBackend):
         return task
 
     def defer(self, func, *, when, priority=None, args=None, kwargs=None):
-        if not self.is_valid_task_function(func):
-            raise InvalidTaskError(func)
-
-        if priority is not None and priority < 1:
-            raise ValueError("priority must be positive")
-
-        if when < (timezone.now() - timedelta(seconds=1)):
-            raise ValueError("when must be in the future")
+        self.validate_candidate(
+            TaskCandidate(
+                func=func, priority=priority, args=args, kwargs=kwargs, when=when
+            )
+        )
 
         if args is None:
             args = []
