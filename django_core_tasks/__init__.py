@@ -4,12 +4,13 @@ from django.utils.module_loading import import_string
 
 from .backends.base import BaseTaskBackend
 from .exceptions import InvalidTaskBackendError
-from .task import TaskStatus
+from .task import TaskStatus, task
 
 __all__ = [
     "tasks",
     "DEFAULT_TASK_BACKEND_ALIAS",
     "BaseTaskBackend",
+    "task",
     "TaskStatus",
 ]
 
@@ -23,12 +24,13 @@ class TasksHandler(BaseConnectionHandler):
     def create_connection(self, alias):
         params = self.settings[alias].copy()
 
+        # Added back to allow a backend to self-identify
+        params["ALIAS"] = alias
+
         backend = params.get("BACKEND")
 
         if backend is None:
             raise InvalidTaskBackendError(f"No backend specified for {alias}")
-
-        options = params.get("OPTIONS", {})
 
         try:
             backend_cls = import_string(backend)
@@ -37,7 +39,7 @@ class TasksHandler(BaseConnectionHandler):
                 f"Could not find backend '{backend}': {e}"
             ) from e
 
-        return backend_cls(options)
+        return backend_cls(params)
 
 
 tasks = TasksHandler()
