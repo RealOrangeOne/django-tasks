@@ -38,4 +38,4 @@ DATABASES = {
     }
 }
 
-TASKS = {}
+TASKS = {"default": {"BACKEND": "django_core_tasks.backends.dummy.DummyBackend"}}

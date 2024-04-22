@@ -10,11 +10,11 @@ class BaseTaskBackend:
         self.alias = options["ALIAS"]
 
     @classmethod
-    def is_valid_task(cls, task: Task) -> bool:
+    def validate_task(cls, task: Task) -> None:
         """
         Determine whether the provided task is one which can be executed by the backend.
         """
-        return True
+        pass
 
     def enqueue(self, task: Task, args, kwargs) -> TaskResult:
         """

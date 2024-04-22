@@ -6,9 +6,6 @@ class InvalidTaskError(Exception):
     The provided task function is invalid.
     """
 
-    def __init__(self, task):
-        self.task = task
-
 
 class InvalidTaskBackendError(ImproperlyConfigured):
     pass

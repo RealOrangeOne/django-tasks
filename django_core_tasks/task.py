@@ -5,8 +5,6 @@ from typing import Callable, Self
 
 from django.db.models.enums import StrEnum
 
-from .exceptions import InvalidTaskBackendError
-
 
 class TaskStatus(StrEnum):
     NEW = "NEW"
@@ -31,6 +29,11 @@ class Task:
 
     run_after: datetime | None = None
     """The earliest this task will run"""
+
+    def __post_init__(self):
+        from . import tasks
+
+        tasks[self.backend].validate_task(self)
 
     def using(
         self,
@@ -72,13 +75,8 @@ def task(
     """
     from . import tasks
 
-    try:
-        task_class = tasks[backend].task_class
-    except InvalidTaskBackendError:
-        task_class = Task
-
     def wrapper(f):
-        return task_class(
+        return tasks[backend].task_class(
             priority=priority, func=f, queue_name=queue_name, backend=backend
         )
 
