@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django_core_tasks.exceptions import ResultDoesNotExist
 from django_core_tasks.task import Task, TaskResult, TaskStatus
 
 from .base import BaseTaskBackend
@@ -26,6 +27,12 @@ class DummyBackend(BaseTaskBackend):
         self.results.append(result)
 
         return result
+
+    def get_result(self, result_id):
+        try:
+            return next(result for result in self.results if result.id == result_id)
+        except StopIteration:
+            raise ResultDoesNotExist(result_id) from None
 
     def clear(self):
         self.results.clear()
