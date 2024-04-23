@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
-from django_core_tasks import TaskStatus, default_task_backend, tasks
+from django_core_tasks import TaskStatus, default_task_backend, task, tasks
 from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 
@@ -128,3 +128,12 @@ class TaskTestCase(SimpleTestCase):
 
         with self.assertRaises(ResultDoesNotExist):
             await test_tasks.noop_task.aget_result(result.id)
+
+    def test_invalid_function(self):
+        for invalid_function in [any, self.test_invalid_function]:
+            with self.subTest(invalid_function):
+                with self.assertRaisesMessage(
+                    InvalidTaskError,
+                    "Task function must be a globally importable function",
+                ):
+                    task()(invalid_function)

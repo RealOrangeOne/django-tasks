@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from django_core_tasks.exceptions import InvalidTaskError
 from django_core_tasks.task import Task, TaskResult
+from django_core_tasks.utils import is_global_function
 
 
 class BaseTaskBackend:
@@ -18,6 +19,11 @@ class BaseTaskBackend:
         """
         Determine whether the provided task is one which can be executed by the backend.
         """
+        if not is_global_function(task.func):
+            raise InvalidTaskError(
+                "Task function must be a globally importable function"
+            )
+
         if task.priority is not None and task.priority < 1:
             raise InvalidTaskError("priority must be positive")
 
