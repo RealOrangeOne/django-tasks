@@ -28,7 +28,7 @@ class BaseTaskBackend:
         """
         Queue up a task to be executed
         """
-        self.validate_task(task)
+        raise NotImplementedError()  # pragma: no cover
 
     async def aenqueue(self, task: Task, args, kwargs):
         """
@@ -43,7 +43,7 @@ class BaseTaskBackend:
         Retrieve a result by its id (if one exists).
         If one doesn't, raises ResultDoesNotExist.
         """
-        ...
+        raise NotImplementedError("This backend does not support retrieving results.")
 
     async def aget_result(self, result_id: str):
         """

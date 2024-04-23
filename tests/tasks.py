@@ -14,3 +14,8 @@ async def noop_task_async(*args, **kwargs):
 @task()
 def calculate_meaning_of_life():
     return 42
+
+
+@task()
+def failing_task():
+    raise ValueError("This task failed")
