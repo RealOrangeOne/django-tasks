@@ -6,13 +6,19 @@ from django.utils import timezone
 
 from django_core_tasks import TaskStatus, default_task_backend, task, tasks
 from django_core_tasks.backends.dummy import DummyBackend
+from django_core_tasks.backends.immediate import ImmediateBackend
 from django_core_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 
 from . import tasks as test_tasks
 
 
 @override_settings(
-    TASKS={"default": {"BACKEND": "django_core_tasks.backends.dummy.DummyBackend"}}
+    TASKS={
+        "default": {"BACKEND": "django_core_tasks.backends.dummy.DummyBackend"},
+        "immediate": {
+            "BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"
+        },
+    }
 )
 class TaskTestCase(SimpleTestCase):
     def setUp(self):
@@ -137,3 +143,11 @@ class TaskTestCase(SimpleTestCase):
                     "Task function must be a globally importable function",
                 ):
                     task()(invalid_function)
+
+    def test_get_backend(self):
+        self.assertEqual(test_tasks.noop_task.backend, "default")
+        self.assertIsInstance(test_tasks.noop_task.get_backend(), DummyBackend)
+
+        immediate_task = test_tasks.noop_task.using(backend="immediate")
+        self.assertEqual(immediate_task.backend, "immediate")
+        self.assertIsInstance(immediate_task.get_backend(), ImmediateBackend)

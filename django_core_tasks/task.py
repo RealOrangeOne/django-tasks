@@ -35,20 +35,18 @@ class Task:
     """The earliest this task will run"""
 
     def __post_init__(self):
-        from . import tasks
-
-        tasks[self.backend].validate_task(self)
+        self.get_backend().validate_task(self)
 
     def using(
         self,
         priority: int | None = None,
         queue_name: str | None = None,
         run_after: datetime | timedelta | None = None,
+        backend: str | None = None,
     ) -> Self:
         """
         Create a new task with modified defaults
         """
-        from . import tasks
 
         task = deepcopy(self)
         if priority is not None:
@@ -60,8 +58,10 @@ class Task:
                 task.run_after = timezone.now() + run_after
             else:
                 task.run_after = run_after
+        if backend is not None:
+            task.backend = backend
 
-        tasks[self.backend].validate_task(self)
+        task.get_backend().validate_task(self)
 
         return task
 
@@ -69,26 +69,20 @@ class Task:
         """
         Queue up the task to be executed
         """
-        from . import tasks
-
-        return tasks[self.backend].enqueue(self, args, kwargs)
+        return self.get_backend().enqueue(self, args, kwargs)
 
     async def aenqueue(self, *args, **kwargs):
         """
         Queue up a task function (or coroutine) to be executed
         """
-        from . import tasks
-
-        return await tasks[self.backend].aenqueue(self, args, kwargs)
+        return await self.get_backend().aenqueue(self, args, kwargs)
 
     def get_result(self, result_id: str) -> Self:
         """
         Retrieve the result for a task of this type by its id (if one exists).
         If one doesn't, or is the wrong type, raises ResultDoesNotExist.
         """
-        from . import tasks
-
-        result = tasks[self.backend].get_result(result_id)
+        result = self.get_backend().get_result(result_id)
 
         if result.task.func != self.func:
             raise ResultDoesNotExist
@@ -100,9 +94,7 @@ class Task:
         Retrieve the result for a task of this type by its id (if one exists).
         If one doesn't, or is the wrong type, raises ResultDoesNotExist.
         """
-        from . import tasks
-
-        result = await tasks[self.backend].aget_result(result_id)
+        result = await self.get_backend().aget_result(result_id)
 
         if result.task.func != self.func:
             raise ResultDoesNotExist
@@ -111,6 +103,11 @@ class Task:
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)
+
+    def get_backend(self):
+        from . import tasks
+
+        return tasks[self.backend]
 
 
 def task(
