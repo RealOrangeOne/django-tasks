@@ -4,7 +4,6 @@ from uuid import uuid4
 
 from asgiref.sync import async_to_sync
 
-from django_core_tasks.exceptions import InvalidTaskError
 from django_core_tasks.task import Task, TaskResult, TaskStatus
 
 from .base import BaseTaskBackend
@@ -14,12 +13,6 @@ P = ParamSpec("P")
 
 
 class ImmediateBackend(BaseTaskBackend):
-    def validate_task(self, task: Task) -> None:
-        super().validate_task(task)
-
-        if task.run_after is not None:
-            raise InvalidTaskError("Immediate backend does not support run_after")
-
     def enqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
     ) -> TaskResult[T]:

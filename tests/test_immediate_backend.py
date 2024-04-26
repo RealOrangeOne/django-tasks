@@ -81,7 +81,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
     def test_cannot_pass_run_after(self) -> None:
         with self.assertRaisesMessage(
             InvalidTaskError,
-            "Immediate backend does not support run_after",
+            "Backend does not support run_after",
         ):
             default_task_backend.validate_task(
                 test_tasks.failing_task.using(run_after=timezone.now())

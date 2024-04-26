@@ -31,6 +31,9 @@ class BaseTaskBackend:
         if task.priority is not None and task.priority < 1:
             raise InvalidTaskError("priority must be positive")
 
+        if not self.supports_defer and task.run_after is not None:
+            raise InvalidTaskError("Backend does not support run_after")
+
         if task.run_after is not None and not timezone.is_aware(task.run_after):
             raise InvalidTaskError("run_after must be an aware datetime")
 

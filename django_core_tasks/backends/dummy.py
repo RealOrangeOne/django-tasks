@@ -11,6 +11,7 @@ P = ParamSpec("P")
 
 
 class DummyBackend(BaseTaskBackend):
+    supports_defer = True
     results: list[TaskResult]
 
     def __init__(self, options: dict) -> None:
