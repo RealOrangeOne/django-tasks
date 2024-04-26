@@ -4,7 +4,7 @@ from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from django_core_tasks import TaskStatus, default_task_backend, tasks
+from django_core_tasks import ResultStatus, default_task_backend, tasks
 from django_core_tasks.backends.immediate import ImmediateBackend
 from django_core_tasks.exceptions import InvalidTaskError
 from tests import tasks as test_tasks
@@ -25,7 +25,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = default_task_backend.enqueue(task, (1,), {"two": 3})
 
-                self.assertEqual(result.status, TaskStatus.COMPLETE)
+                self.assertEqual(result.status, ResultStatus.COMPLETE)
                 self.assertIsNone(result.result)
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, (1,))
@@ -36,7 +36,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = await default_task_backend.aenqueue(task, (), {})
 
-                self.assertEqual(result.status, TaskStatus.COMPLETE)
+                self.assertEqual(result.status, ResultStatus.COMPLETE)
                 self.assertIsNone(result.result)
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, ())
@@ -45,7 +45,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
     def test_catches_exception(self) -> None:
         result = default_task_backend.enqueue(test_tasks.failing_task, (), {})
 
-        self.assertEqual(result.status, TaskStatus.FAILED)
+        self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsInstance(result.result, ValueError)
         self.assertEqual(result.task, test_tasks.failing_task)
         self.assertEqual(result.args, ())
@@ -56,7 +56,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        self.assertEqual(result.status, TaskStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.COMPLETE)
         self.assertEqual(result.result, 42)
 
     async def test_result_async(self) -> None:
@@ -64,7 +64,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        self.assertEqual(result.status, TaskStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.COMPLETE)
         self.assertEqual(result.result, 42)
 
     async def test_cannot_get_result(self) -> None:
@@ -96,4 +96,4 @@ class ImmediateBackendTestCase(SimpleTestCase):
         data = json.loads(response.content)
 
         self.assertEqual(data["result"], 42)
-        self.assertEqual(data["status"], TaskStatus.COMPLETE)
+        self.assertEqual(data["status"], ResultStatus.COMPLETE)

@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from asgiref.sync import async_to_sync
 
-from django_core_tasks.task import Task, TaskResult, TaskStatus
+from django_core_tasks.task import ResultStatus, Task, TaskResult
 
 from .base import BaseTaskBackend
 
@@ -26,10 +26,10 @@ class ImmediateBackend(BaseTaskBackend):
 
         try:
             result = calling_task_func(*args, **kwargs)
-            status = TaskStatus.COMPLETE
+            status = ResultStatus.COMPLETE
         except Exception as e:
             result = e
-            status = TaskStatus.FAILED
+            status = ResultStatus.FAILED
 
         task_result = TaskResult[T](
             task=task,

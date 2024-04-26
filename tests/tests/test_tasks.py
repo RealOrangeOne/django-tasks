@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
-from django_core_tasks import TaskStatus, default_task_backend, task, tasks
+from django_core_tasks import ResultStatus, default_task_backend, task, tasks
 from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.backends.immediate import ImmediateBackend
 from django_core_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
@@ -30,7 +30,7 @@ class TaskTestCase(SimpleTestCase):
     def test_enqueue_task(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        self.assertEqual(result.status, TaskStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.NEW)
         self.assertIs(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, ())
         self.assertEqual(result.kwargs, {})
@@ -40,7 +40,7 @@ class TaskTestCase(SimpleTestCase):
     async def test_enqueue_task_async(self) -> None:
         result = await test_tasks.noop_task.aenqueue()
 
-        self.assertEqual(result.status, TaskStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.NEW)
         self.assertIs(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, ())
         self.assertEqual(result.kwargs, {})

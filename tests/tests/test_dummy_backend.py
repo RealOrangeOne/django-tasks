@@ -3,7 +3,7 @@ import json
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
-from django_core_tasks import TaskStatus, default_task_backend, tasks
+from django_core_tasks import ResultStatus, default_task_backend, tasks
 from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
@@ -25,7 +25,7 @@ class DummyBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = default_task_backend.enqueue(task, (1,), {"two": 3})
 
-                self.assertEqual(result.status, TaskStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.NEW)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
                 self.assertEqual(result.task, task)
@@ -39,7 +39,7 @@ class DummyBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = await default_task_backend.aenqueue(task, (), {})
 
-                self.assertEqual(result.status, TaskStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.NEW)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
                 self.assertEqual(result.task, task)
@@ -76,7 +76,7 @@ class DummyBackendTestCase(SimpleTestCase):
         data = json.loads(response.content)
 
         self.assertEqual(data["result"], None)
-        self.assertEqual(data["status"], TaskStatus.NEW)
+        self.assertEqual(data["status"], ResultStatus.NEW)
 
         result = default_task_backend.get_result(data["result_id"])
-        self.assertEqual(result.status, TaskStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.NEW)

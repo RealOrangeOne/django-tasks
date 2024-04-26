@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
 
 
-class TaskStatus(TextChoices):
+class ResultStatus(TextChoices):
     NEW = "NEW"
     RUNNING = "RUNNING"
     FAILED = "FAILED"
@@ -143,7 +143,7 @@ class TaskResult(Generic[T]):
     id: str
     """A unique identifier for the task result"""
 
-    status: TaskStatus
+    status: ResultStatus
     """The status of the running task"""
 
     args: list
@@ -159,7 +159,7 @@ class TaskResult(Generic[T]):
 
     @property
     def result(self) -> T:
-        if self.status not in [TaskStatus.COMPLETE, TaskStatus.FAILED]:
+        if self.status not in [ResultStatus.COMPLETE, ResultStatus.FAILED]:
             raise ValueError("Task has not finished yet")
 
         return self._result  # type:ignore

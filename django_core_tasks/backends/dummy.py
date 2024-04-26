@@ -2,7 +2,7 @@ from typing import ParamSpec, TypeVar
 from uuid import uuid4
 
 from django_core_tasks.exceptions import ResultDoesNotExist
-from django_core_tasks.task import Task, TaskResult, TaskStatus
+from django_core_tasks.task import ResultStatus, Task, TaskResult
 
 from .base import BaseTaskBackend
 
@@ -28,7 +28,7 @@ class DummyBackend(BaseTaskBackend):
         result = TaskResult[T](
             task=task,
             id=str(uuid4()),
-            status=TaskStatus.NEW,
+            status=ResultStatus.NEW,
             args=args,
             kwargs=kwargs,
             backend=self.alias,
