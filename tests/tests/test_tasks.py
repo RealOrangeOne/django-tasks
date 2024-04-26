@@ -70,6 +70,12 @@ class TaskTestCase(SimpleTestCase):
         )
         self.assertIsNone(test_tasks.noop_task.run_after)
 
+    def test_using_creates_new_instance(self) -> None:
+        new_task = test_tasks.noop_task.using()
+
+        self.assertEqual(new_task, test_tasks.noop_task)
+        self.assertIsNot(new_task, test_tasks.noop_task)
+
     async def test_refresh_result(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
