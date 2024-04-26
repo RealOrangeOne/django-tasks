@@ -8,8 +8,7 @@ from django_core_tasks import TaskStatus, default_task_backend, task, tasks
 from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.backends.immediate import ImmediateBackend
 from django_core_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
-
-from . import tasks as test_tasks
+from tests import tasks as test_tasks
 
 
 @override_settings(

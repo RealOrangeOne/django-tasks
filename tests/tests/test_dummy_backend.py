@@ -1,10 +1,12 @@
+import json
+
 from django.test import SimpleTestCase, override_settings
+from django.urls import reverse
 
 from django_core_tasks import TaskStatus, default_task_backend, tasks
 from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.exceptions import ResultDoesNotExist
-
-from . import tasks as test_tasks
+from tests import tasks as test_tasks
 
 
 @override_settings(
@@ -66,3 +68,15 @@ class DummyBackendTestCase(SimpleTestCase):
 
         with self.assertRaises(ResultDoesNotExist):
             await default_task_backend.aget_result("123")
+
+    def test_meaning_of_life_view(self) -> None:
+        response = self.client.get(reverse("meaning-of-life"))
+        self.assertEqual(response.status_code, 200)
+
+        data = json.loads(response.content)
+
+        self.assertEqual(data["result"], None)
+        self.assertEqual(data["status"], TaskStatus.NEW)
+
+        result = default_task_backend.get_result(data["result_id"])
+        self.assertEqual(result.status, TaskStatus.NEW)

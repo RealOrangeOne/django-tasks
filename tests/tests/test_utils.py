@@ -3,8 +3,7 @@ import subprocess
 from django.test import SimpleTestCase
 
 from django_core_tasks import utils
-
-from . import tasks as test_tasks
+from tests import tasks as test_tasks
 
 
 class IsGlobalFunctionTestCase(SimpleTestCase):
