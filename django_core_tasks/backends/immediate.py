@@ -13,6 +13,8 @@ P = ParamSpec("P")
 
 
 class ImmediateBackend(BaseTaskBackend):
+    supports_async_task = True
+
     def enqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
     ) -> TaskResult[T]:

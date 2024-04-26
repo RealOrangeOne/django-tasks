@@ -12,6 +12,7 @@ P = ParamSpec("P")
 
 class DummyBackend(BaseTaskBackend):
     supports_defer = True
+    supports_async_task = True
     results: list[TaskResult]
 
     def __init__(self, options: dict) -> None:
@@ -37,6 +38,7 @@ class DummyBackend(BaseTaskBackend):
 
         return result
 
+    # We don't set `supports_get_result` as the results are scoped to the current thread
     def get_result(self, result_id: str) -> TaskResult:
         try:
             return next(result for result in self.results if result.id == result_id)

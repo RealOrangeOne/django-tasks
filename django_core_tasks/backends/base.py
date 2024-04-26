@@ -1,3 +1,4 @@
+from inspect import iscoroutinefunction
 from typing import ParamSpec, TypeVar
 
 from asgiref.sync import sync_to_async
@@ -15,6 +16,13 @@ class BaseTaskBackend:
     task_class = Task
 
     supports_defer = False
+    """Can tasks be enqueued with the run_after attribute"""
+
+    supports_async_task = False
+    """Can coroutines be enqueued"""
+
+    supports_get_result = False
+    """Can results be retrieved after the fact (from **any** thread / process)"""
 
     def __init__(self, options: dict) -> None:
         self.alias = options["ALIAS"]
@@ -27,6 +35,9 @@ class BaseTaskBackend:
             raise InvalidTaskError(
                 "Task function must be a globally importable function"
             )
+
+        if not self.supports_async_task and iscoroutinefunction(task.func):
+            raise InvalidTaskError("Backend does not support async tasks")
 
         if task.priority is not None and task.priority < 1:
             raise InvalidTaskError("priority must be positive")
