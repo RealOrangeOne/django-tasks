@@ -70,15 +70,32 @@ class ImmediateBackendTestCase(SimpleTestCase):
     async def test_cannot_get_result(self) -> None:
         with self.assertRaisesMessage(
             NotImplementedError,
-            "This backend does not support retrieving results.",
+            "This backend does not support retrieving or refreshing results.",
         ):
             default_task_backend.get_result("123")
 
         with self.assertRaisesMessage(
             NotImplementedError,
-            "This backend does not support retrieving results.",
+            "This backend does not support retrieving or refreshing results.",
         ):
             await default_task_backend.get_result(123)
+
+    async def test_cannot_refresh_result(self) -> None:
+        result = default_task_backend.enqueue(
+            test_tasks.calculate_meaning_of_life, (), {}
+        )
+
+        with self.assertRaisesMessage(
+            NotImplementedError,
+            "This backend does not support retrieving or refreshing results.",
+        ):
+            await result.arefresh()
+
+        with self.assertRaisesMessage(
+            NotImplementedError,
+            "This backend does not support retrieving or refreshing results.",
+        ):
+            result.refresh()
 
     def test_cannot_pass_run_after(self) -> None:
         with self.assertRaisesMessage(

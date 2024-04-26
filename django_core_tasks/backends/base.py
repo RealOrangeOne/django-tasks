@@ -71,7 +71,9 @@ class BaseTaskBackend:
         Retrieve a result by its id (if one exists).
         If one doesn't, raises ResultDoesNotExist.
         """
-        raise NotImplementedError("This backend does not support retrieving results.")
+        raise NotImplementedError(
+            "This backend does not support retrieving or refreshing results."
+        )
 
     async def aget_result(self, result_id: str) -> TaskResult:
         """

@@ -109,14 +109,14 @@ class TaskTestCase(SimpleTestCase):
 
         new_result = test_tasks.noop_task.get_result(result.id)
 
-        self.assertIs(result, new_result)
+        self.assertEqual(result, new_result)
 
     async def test_get_result_async(self) -> None:
         result = await default_task_backend.aenqueue(test_tasks.noop_task, (), {})
 
         new_result = await test_tasks.noop_task.aget_result(result.id)
 
-        self.assertIs(result, new_result)
+        self.assertEqual(result, new_result)
 
     async def test_get_missing_result(self) -> None:
         with self.assertRaises(ResultDoesNotExist):

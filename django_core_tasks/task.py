@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Callable, Generic, ParamSpec, Self, TypeVar
 
-from asgiref.sync import sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils import timezone
 
@@ -168,10 +167,18 @@ class TaskResult(Generic[T]):
         """
         Reload the cached task data from the task store
         """
-        ...
+        refreshed_task = self.task.get_backend().get_result(self.id)
+
+        # status and result are the only refreshable attributes
+        self.status = refreshed_task.status
+        self._result = refreshed_task._result
 
     async def arefresh(self) -> None:
         """
         Reload the cached task data from the task store
         """
-        return await sync_to_async(self.refresh, thread_sensitive=True)()
+        refreshed_task = await self.task.get_backend().aget_result(self.id)
+
+        # status and result are the only refreshable attributes
+        self.status = refreshed_task.status
+        self._result = refreshed_task._result

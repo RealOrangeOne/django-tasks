@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import ParamSpec, TypeVar
 from uuid import uuid4
 
@@ -34,7 +35,8 @@ class DummyBackend(BaseTaskBackend):
             backend=self.alias,
         )
 
-        self.results.append(result)
+        # Copy the task to prevent mutation issues
+        self.results.append(deepcopy(result))
 
         return result
 

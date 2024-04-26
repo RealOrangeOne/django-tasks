@@ -53,14 +53,36 @@ class DummyBackendTestCase(SimpleTestCase):
 
         new_result = default_task_backend.get_result(result.id)
 
-        self.assertIs(result, new_result)
+        self.assertEqual(result, new_result)
 
     async def test_get_result_async(self) -> None:
         result = await default_task_backend.aenqueue(test_tasks.noop_task, (), {})
 
         new_result = await default_task_backend.aget_result(result.id)
 
-        self.assertIs(result, new_result)
+        self.assertEqual(result, new_result)
+
+    def test_refresh_result(self) -> None:
+        result = default_task_backend.enqueue(
+            test_tasks.calculate_meaning_of_life, (), {}
+        )
+
+        default_task_backend.results[0].status = ResultStatus.COMPLETE
+
+        self.assertEqual(result.status, ResultStatus.NEW)
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+    async def test_refresh_result_async(self) -> None:
+        result = await default_task_backend.aenqueue(
+            test_tasks.calculate_meaning_of_life, (), {}
+        )
+
+        default_task_backend.results[0].status = ResultStatus.COMPLETE
+
+        self.assertEqual(result.status, ResultStatus.NEW)
+        await result.arefresh()
+        self.assertEqual(result.status, ResultStatus.COMPLETE)
 
     async def test_get_missing_result(self) -> None:
         with self.assertRaises(ResultDoesNotExist):
