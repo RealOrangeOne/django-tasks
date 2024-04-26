@@ -1,3 +1,5 @@
+from typing import ParamSpec, TypeVar
+
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
@@ -5,17 +7,19 @@ from django_core_tasks.exceptions import InvalidTaskError
 from django_core_tasks.task import Task, TaskResult
 from django_core_tasks.utils import is_global_function
 
+T = TypeVar("T")
+P = ParamSpec("P")
+
 
 class BaseTaskBackend:
     task_class = Task
 
     supports_defer = False
 
-    def __init__(self, options):
+    def __init__(self, options: dict) -> None:
         self.alias = options["ALIAS"]
 
-    @classmethod
-    def validate_task(cls, task: Task) -> None:
+    def validate_task(self, task: Task) -> None:
         """
         Determine whether the provided task is one which can be executed by the backend.
         """
@@ -30,13 +34,17 @@ class BaseTaskBackend:
         if task.run_after is not None and not timezone.is_aware(task.run_after):
             raise InvalidTaskError("run_after must be an aware datetime")
 
-    def enqueue(self, task: Task, args, kwargs) -> TaskResult:
+    def enqueue(
+        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+    ) -> TaskResult[T]:
         """
         Queue up a task to be executed
         """
         raise NotImplementedError()  # pragma: no cover
 
-    async def aenqueue(self, task: Task, args, kwargs):
+    async def aenqueue(
+        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+    ) -> TaskResult[T]:
         """
         Queue up a task function (or coroutine) to be executed
         """
@@ -51,7 +59,7 @@ class BaseTaskBackend:
         """
         raise NotImplementedError("This backend does not support retrieving results.")
 
-    async def aget_result(self, result_id: str):
+    async def aget_result(self, result_id: str) -> TaskResult:
         """
         Queue up a task function (or coroutine) to be executed
         """

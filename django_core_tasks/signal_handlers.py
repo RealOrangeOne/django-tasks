@@ -4,7 +4,7 @@ from django.dispatch import receiver
 
 
 @receiver(setting_changed)
-def clear_tasks_handlers(*, setting, **kwargs):
+def clear_tasks_handlers(*, setting: str, **kwargs: dict) -> None:
     """
     Reset the connection handler whenever the settings change
     """
@@ -12,5 +12,5 @@ def clear_tasks_handlers(*, setting, **kwargs):
         from django_core_tasks import close_task_backends, tasks
 
         close_task_backends()
-        tasks._settings = tasks.settings = tasks.configure_settings(None)
-        tasks._connections = Local()
+        tasks._settings = tasks.settings = tasks.configure_settings(None)  # type:ignore[attr-defined]
+        tasks._connections = Local()  # type:ignore[attr-defined]

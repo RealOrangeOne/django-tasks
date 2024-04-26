@@ -7,18 +7,18 @@ from django_core_tasks.utils import is_global_function
 
 
 @is_global_function
-def really_global_function():
+def really_global_function() -> None:
     pass
 
 
 inner_func_is_global_function = None
 
 
-def main():
+def main() -> None:
     global inner_func_is_global_function
 
     @is_global_function
-    def inner_func():
+    def inner_func() -> None:
         pass
 
     inner_func_is_global_function = inner_func

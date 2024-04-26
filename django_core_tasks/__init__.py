@@ -1,10 +1,12 @@
+from typing import Mapping, cast
+
 from django.core import signals
 from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
 
 from .backends.base import BaseTaskBackend
 from .exceptions import InvalidTaskBackendError
-from .task import TaskStatus, task
+from .task import Task, TaskStatus, task
 
 __all__ = [
     "tasks",
@@ -12,16 +14,17 @@ __all__ = [
     "BaseTaskBackend",
     "task",
     "TaskStatus",
+    "Task",
 ]
 
 DEFAULT_TASK_BACKEND_ALIAS = "default"
 
 
-class TasksHandler(BaseConnectionHandler):
+class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
     settings_name = "TASKS"
     exception_class = InvalidTaskBackendError
 
-    def create_connection(self, alias):
+    def create_connection(self, alias: str) -> BaseTaskBackend:
         params = self.settings[alias].copy()
 
         # Added back to allow a backend to self-identify
@@ -39,15 +42,15 @@ class TasksHandler(BaseConnectionHandler):
                 f"Could not find backend '{backend}': {e}"
             ) from e
 
-        return backend_cls(params)
+        return backend_cls(params)  # type:ignore[no-any-return]
 
 
 tasks = TasksHandler()
 
-default_task_backend = ConnectionProxy(tasks, DEFAULT_TASK_BACKEND_ALIAS)
+default_task_backend = ConnectionProxy(cast(Mapping, tasks), DEFAULT_TASK_BACKEND_ALIAS)
 
 
-def close_task_backends(**kwargs):
+def close_task_backends(**kwargs: dict) -> None:
     tasks.close_all()
 
 

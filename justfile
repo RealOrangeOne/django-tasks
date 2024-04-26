@@ -16,3 +16,4 @@ format:
 lint:
     ruff check django_core_tasks tests
     ruff format django_core_tasks tests --check
+    mypy django_core_tasks tests

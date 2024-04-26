@@ -14,11 +14,11 @@ from . import tasks as test_tasks
     }
 )
 class ImmediateBackendTestCase(SimpleTestCase):
-    def test_using_correct_backend(self):
+    def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
         self.assertIsInstance(tasks["default"], ImmediateBackend)
 
-    def test_enqueue_task(self):
+    def test_enqueue_task(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
                 result = default_task_backend.enqueue(task, (1,), {"two": 3})
@@ -29,7 +29,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, (1,))
                 self.assertEqual(result.kwargs, {"two": 3})
 
-    async def test_enqueue_task_async(self):
+    async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
                 result = await default_task_backend.aenqueue(task, (), {})
@@ -40,7 +40,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, ())
                 self.assertEqual(result.kwargs, {})
 
-    def test_catches_exception(self):
+    def test_catches_exception(self) -> None:
         result = default_task_backend.enqueue(test_tasks.failing_task, (), {})
 
         self.assertEqual(result.status, TaskStatus.FAILED)
@@ -49,7 +49,23 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertEqual(result.args, ())
         self.assertEqual(result.kwargs, {})
 
-    async def test_cannot_get_result(self):
+    def test_result(self) -> None:
+        result = default_task_backend.enqueue(
+            test_tasks.calculate_meaning_of_life, (), {}
+        )
+
+        self.assertEqual(result.status, TaskStatus.COMPLETE)
+        self.assertEqual(result.result, 42)
+
+    async def test_result_async(self) -> None:
+        result = await default_task_backend.aenqueue(
+            test_tasks.calculate_meaning_of_life, (), {}
+        )
+
+        self.assertEqual(result.status, TaskStatus.COMPLETE)
+        self.assertEqual(result.result, 42)
+
+    async def test_cannot_get_result(self) -> None:
         with self.assertRaisesMessage(
             NotImplementedError,
             "This backend does not support retrieving results.",
@@ -62,7 +78,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         ):
             await default_task_backend.get_result(123)
 
-    def test_cannot_pass_run_after(self):
+    def test_cannot_pass_run_after(self) -> None:
         with self.assertRaisesMessage(
             InvalidTaskError,
             "Immediate backend does not support run_after",

@@ -1,3 +1,4 @@
 django
 ruff
 coverage
+django-stubs[compatible-mypy]
