@@ -41,5 +41,3 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
-
-TASKS = {"default": {"BACKEND": "django_core_tasks.backends.dummy.DummyBackend"}}

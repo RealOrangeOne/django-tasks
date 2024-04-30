@@ -23,6 +23,18 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
     settings_name = "TASKS"
     exception_class = InvalidTaskBackendError
 
+    def configure_settings(self, settings: dict | None) -> dict:
+        try:
+            return super().configure_settings(settings)
+        except AttributeError:
+            # HACK: Force a default task backend.
+            # Can be replaced with `django.conf.global_settings` once vendored.
+            return {
+                "default": {
+                    "BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"
+                }
+            }
+
     def create_connection(self, alias: str) -> BaseTaskBackend:
         params = self.settings[alias].copy()
 
