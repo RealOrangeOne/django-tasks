@@ -107,10 +107,28 @@ class ImmediateBackendTestCase(SimpleTestCase):
             )
 
     def test_meaning_of_life_view(self) -> None:
+        for url in [
+            reverse("meaning-of-life"),
+            reverse("meaning-of-life-async"),
+        ]:
+            with self.subTest(url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+
+                data = json.loads(response.content)
+
+                self.assertEqual(data["result"], 42)
+                self.assertEqual(data["status"], ResultStatus.COMPLETE)
+
+    def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
         self.assertEqual(response.status_code, 200)
 
         data = json.loads(response.content)
+        result_id = data["result_id"]
 
-        self.assertEqual(data["result"], 42)
-        self.assertEqual(data["status"], ResultStatus.COMPLETE)
+        with self.assertRaisesMessage(
+            NotImplementedError,
+            "This backend does not support retrieving or refreshing results.",
+        ):
+            response = self.client.get(reverse("result", args=[result_id]))

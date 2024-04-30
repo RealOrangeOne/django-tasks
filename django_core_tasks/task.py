@@ -163,6 +163,12 @@ class TaskResult(Generic[T]):
 
         return self._result  # type:ignore
 
+    def get_result(self) -> T | None:
+        """
+        A convenience method to get the result, or None if it's not ready yet.
+        """
+        return self._result
+
     def refresh(self) -> None:
         """
         Reload the cached task data from the task store
