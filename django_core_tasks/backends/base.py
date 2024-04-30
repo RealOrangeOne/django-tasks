@@ -1,3 +1,4 @@
+from abc import ABCMeta, abstractmethod
 from inspect import iscoroutinefunction
 from typing import ParamSpec, TypeVar
 
@@ -12,7 +13,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-class BaseTaskBackend:
+class BaseTaskBackend(metaclass=ABCMeta):
     task_class = Task
 
     supports_defer = False
@@ -48,13 +49,14 @@ class BaseTaskBackend:
         if task.run_after is not None and not timezone.is_aware(task.run_after):
             raise InvalidTaskError("run_after must be an aware datetime")
 
+    @abstractmethod
     def enqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
     ) -> TaskResult[T]:
         """
         Queue up a task to be executed
         """
-        raise NotImplementedError()  # pragma: no cover
+        ...
 
     async def aenqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
@@ -87,4 +89,5 @@ class BaseTaskBackend:
         """
         Close any connections opened as part of the constructor
         """
-        ...
+        # HACK: `close` isn't abstract, but should do nothing by default
+        return None
