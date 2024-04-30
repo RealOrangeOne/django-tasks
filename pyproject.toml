@@ -22,8 +22,6 @@ django_settings_module = "tests.settings"
 
 [tool.coverage.run]
 branch = true
-parallel = true
-concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 show_missing = true
