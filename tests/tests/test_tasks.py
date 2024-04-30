@@ -7,7 +7,11 @@ from django.utils import timezone
 from django_core_tasks import ResultStatus, default_task_backend, task, tasks
 from django_core_tasks.backends.dummy import DummyBackend
 from django_core_tasks.backends.immediate import ImmediateBackend
-from django_core_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
+from django_core_tasks.exceptions import (
+    InvalidTaskBackendError,
+    InvalidTaskError,
+    ResultDoesNotExist,
+)
 from tests import tasks as test_tasks
 
 
@@ -17,6 +21,7 @@ from tests import tasks as test_tasks
         "immediate": {
             "BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"
         },
+        "missing": {"BACKEND": "does.not.exist"},
     }
 )
 class TaskTestCase(SimpleTestCase):
@@ -69,6 +74,23 @@ class TaskTestCase(SimpleTestCase):
             datetime,
         )
         self.assertIsNone(test_tasks.noop_task.run_after)
+
+    def test_using_unknown_backend(self) -> None:
+        self.assertEqual(test_tasks.noop_task.backend, "default")
+
+        with self.assertRaisesMessage(
+            InvalidTaskBackendError, "The connection 'unknown' doesn't exist."
+        ):
+            test_tasks.noop_task.using(backend="unknown")
+
+    def test_using_missing_backend(self) -> None:
+        self.assertEqual(test_tasks.noop_task.backend, "default")
+
+        with self.assertRaisesMessage(
+            InvalidTaskBackendError,
+            "Could not find backend 'does.not.exist': No module named 'does'",
+        ):
+            test_tasks.noop_task.using(backend="missing")
 
     def test_using_creates_new_instance(self) -> None:
         new_task = test_tasks.noop_task.using()

@@ -41,10 +41,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
         # Added back to allow a backend to self-identify
         params["ALIAS"] = alias
 
-        backend = params.get("BACKEND")
-
-        if backend is None:
-            raise InvalidTaskBackendError(f"No backend specified for {alias}")
+        backend = params["BACKEND"]
 
         try:
             backend_cls = import_string(backend)
