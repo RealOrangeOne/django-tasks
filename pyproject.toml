@@ -19,3 +19,23 @@ ignore_missing_imports = true
 
 [tool.django-stubs]
 django_settings_module = "tests.settings"
+
+[tool.coverage.run]
+branch = true
+parallel = true
+concurrency = ["multiprocessing"]
+
+[tool.coverage.report]
+show_missing = true
+ignore_errors = true
+exclude_also = [
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc.)?abstractmethod",
+
+    # Nor complain about type checking
+    "if TYPE_CHECKING:",
+]
