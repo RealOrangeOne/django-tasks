@@ -43,6 +43,13 @@ class Task(Generic[P, T]):
     def __post_init__(self) -> None:
         self.get_backend().validate_task(self)
 
+    @property
+    def name(self):
+        """
+        An identifier for the task
+        """
+        return self.func.__name__
+
     def using(
         self,
         priority: int | None = None,

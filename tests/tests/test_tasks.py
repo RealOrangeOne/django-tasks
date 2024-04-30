@@ -178,3 +178,7 @@ class TaskTestCase(SimpleTestCase):
         immediate_task = test_tasks.noop_task.using(backend="immediate")
         self.assertEqual(immediate_task.backend, "immediate")
         self.assertIsInstance(immediate_task.get_backend(), ImmediateBackend)
+
+    def test_name(self) -> None:
+        self.assertEqual(test_tasks.noop_task.name, "noop_task")
+        self.assertEqual(test_tasks.noop_task_async.name, "noop_task_async")
