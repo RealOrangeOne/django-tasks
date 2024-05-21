@@ -1,10 +1,11 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Callable, Generic, ParamSpec, Self, TypeVar
+from typing import TYPE_CHECKING, Callable, Generic, TypeVar
 
 from django.db.models.enums import TextChoices
 from django.utils import timezone
+from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
 

@@ -1,9 +1,10 @@
 from abc import ABCMeta, abstractmethod
 from inspect import iscoroutinefunction
-from typing import ParamSpec, TypeVar
+from typing import TypeVar
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
+from typing_extensions import ParamSpec
 
 from django_core_tasks.exceptions import InvalidTaskError
 from django_core_tasks.task import Task, TaskResult

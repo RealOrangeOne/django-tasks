@@ -1,8 +1,9 @@
 from inspect import iscoroutinefunction
-from typing import ParamSpec, TypeVar
+from typing import TypeVar
 from uuid import uuid4
 
 from asgiref.sync import async_to_sync
+from typing_extensions import ParamSpec
 
 from django_core_tasks.task import ResultStatus, Task, TaskResult
 

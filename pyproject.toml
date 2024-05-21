@@ -30,6 +30,7 @@ requires-python = ">=3.8"
 
 dependencies = [
     "Django>=4.2",
+    "typing_extensions"
 ]
 
 [project.urls]
