@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        django-version: ["3.2", "4.1", "4.2", "5.0"]
+        exclude:
+          - django-version: "5.0"
+            python-version: "3.8"
+          - django-version: "5.0"
+            python-version: "3.9"
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - uses: taiki-e/install-action@just
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e '.[dev]'
+          pip install Django~=${{ matrix.django-version }}
+      - name: Lint
+        run: just lint
+      - name: Run tests
+        run: just test
