@@ -44,7 +44,7 @@ class Task(Generic[P, T]):
         self.get_backend().validate_task(self)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         An identifier for the task
         """

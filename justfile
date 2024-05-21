@@ -1,5 +1,3 @@
-export PATH := "./env/bin:" + env_var('PATH')
-
 # Recipes
 @default:
   just --list
