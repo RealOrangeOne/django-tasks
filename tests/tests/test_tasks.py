@@ -4,7 +4,13 @@ from datetime import datetime, timedelta
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
-from django_tasks import ResultStatus, default_task_backend, task, tasks
+from django_tasks import (
+    DEFAULT_QUEUE_NAME,
+    ResultStatus,
+    default_task_backend,
+    task,
+    tasks,
+)
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.backends.immediate import ImmediateBackend
 from django_tasks.exceptions import (
@@ -56,11 +62,11 @@ class TaskTestCase(SimpleTestCase):
         self.assertIsNone(test_tasks.noop_task.priority)
 
     def test_using_queue_name(self) -> None:
-        self.assertIsNone(test_tasks.noop_task.queue_name)
+        self.assertEqual(test_tasks.noop_task.queue_name, DEFAULT_QUEUE_NAME)
         self.assertEqual(
             test_tasks.noop_task.using(queue_name="queue_1").queue_name, "queue_1"
         )
-        self.assertIsNone(test_tasks.noop_task.queue_name)
+        self.assertEqual(test_tasks.noop_task.queue_name, DEFAULT_QUEUE_NAME)
 
     def test_using_run_after(self) -> None:
         now = timezone.now()

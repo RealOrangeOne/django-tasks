@@ -23,6 +23,7 @@ class SMTPEmailBackend(BaseEmailBackend):
     """
     An email backend to send emails as background tasks
     """
+
     @staticmethod
     def serialize_message(message: EmailMessage) -> dict:
         data = {

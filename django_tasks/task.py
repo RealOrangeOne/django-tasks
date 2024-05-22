@@ -12,6 +12,8 @@ from .exceptions import ResultDoesNotExist
 if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
 
+DEFAULT_QUEUE_NAME = "default"
+
 
 class ResultStatus(TextChoices):
     NEW = "NEW"
@@ -32,11 +34,11 @@ class Task(Generic[P, T]):
     func: Callable[P, T]
     """The task function"""
 
-    queue_name: Optional[str]
-    """The name of the queue the task will run on """
-
     backend: str
     """The name of the backend the task will run on"""
+
+    queue_name: str = DEFAULT_QUEUE_NAME
+    """The name of the queue the task will run on """
 
     run_after: Optional[datetime] = None
     """The earliest this task will run"""
@@ -126,7 +128,7 @@ class Task(Generic[P, T]):
 
 def task(
     priority: Optional[int] = None,
-    queue_name: Optional[str] = None,
+    queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = "default",
 ) -> Callable[[Callable[P, T]], Task[P, T]]:
     """

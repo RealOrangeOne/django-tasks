@@ -6,11 +6,12 @@ from django.utils.module_loading import import_string
 
 from .backends.base import BaseTaskBackend
 from .exceptions import InvalidTaskBackendError
-from .task import ResultStatus, Task, task
+from .task import DEFAULT_QUEUE_NAME, ResultStatus, Task, task
 
 __all__ = [
     "tasks",
     "DEFAULT_TASK_BACKEND_ALIAS",
+    "DEFAULT_QUEUE_NAME",
     "task",
     "ResultStatus",
     "Task",
