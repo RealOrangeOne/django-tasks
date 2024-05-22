@@ -9,7 +9,7 @@ def clear_tasks_handlers(*, setting: str, **kwargs: dict) -> None:
     Reset the connection handler whenever the settings change
     """
     if setting == "TASKS":
-        from django_core_tasks import close_task_backends, tasks
+        from django_tasks import close_task_backends, tasks
 
         close_task_backends()
         tasks._settings = tasks.settings = tasks.configure_settings(None)  # type:ignore[attr-defined]

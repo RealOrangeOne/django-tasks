@@ -2,7 +2,7 @@ import subprocess
 
 from django.test import SimpleTestCase
 
-from django_core_tasks import utils
+from django_tasks import utils
 from tests import tasks as test_tasks
 
 

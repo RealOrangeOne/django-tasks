@@ -1,7 +1,7 @@
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 
-from django_core_tasks import default_task_backend
-from django_core_tasks.exceptions import ResultDoesNotExist
+from django_tasks import default_task_backend
+from django_tasks.exceptions import ResultDoesNotExist
 
 from . import tasks
 

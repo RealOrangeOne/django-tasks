@@ -5,7 +5,7 @@ from uuid import uuid4
 from asgiref.sync import async_to_sync
 from typing_extensions import ParamSpec
 
-from django_core_tasks.task import ResultStatus, Task, TaskResult
+from django_tasks.task import ResultStatus, Task, TaskResult
 
 from .base import BaseTaskBackend
 

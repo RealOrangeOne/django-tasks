@@ -3,15 +3,15 @@
   just --list
 
 test *ARGS:
-    coverage run --source=django_core_tasks manage.py test {{ ARGS }}
+    coverage run --source=django_tasks manage.py test {{ ARGS }}
     coverage report
     coverage html
 
 format:
-    ruff check django_core_tasks tests --fix
-    ruff format django_core_tasks tests
+    ruff check django_tasks tests --fix
+    ruff format django_tasks tests
 
 lint:
-    ruff check django_core_tasks tests
-    ruff format django_core_tasks tests --check
-    mypy django_core_tasks tests
+    ruff check django_tasks tests
+    ruff format django_tasks tests --check
+    mypy django_tasks tests

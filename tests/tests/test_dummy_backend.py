@@ -3,14 +3,14 @@ import json
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
-from django_core_tasks import ResultStatus, default_task_backend, tasks
-from django_core_tasks.backends.dummy import DummyBackend
-from django_core_tasks.exceptions import ResultDoesNotExist
+from django_tasks import ResultStatus, default_task_backend, tasks
+from django_tasks.backends.dummy import DummyBackend
+from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
 
 
 @override_settings(
-    TASKS={"default": {"BACKEND": "django_core_tasks.backends.dummy.DummyBackend"}}
+    TASKS={"default": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"}}
 )
 class DummyBackendTestCase(SimpleTestCase):
     def setUp(self) -> None:

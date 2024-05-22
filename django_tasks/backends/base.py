@@ -6,9 +6,9 @@ from asgiref.sync import sync_to_async
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
-from django_core_tasks.exceptions import InvalidTaskError
-from django_core_tasks.task import Task, TaskResult
-from django_core_tasks.utils import is_global_function
+from django_tasks.exceptions import InvalidTaskError
+from django_tasks.task import Task, TaskResult
+from django_tasks.utils import is_global_function
 
 T = TypeVar("T")
 P = ParamSpec("P")

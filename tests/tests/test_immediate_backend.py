@@ -4,16 +4,14 @@ from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from django_core_tasks import ResultStatus, default_task_backend, tasks
-from django_core_tasks.backends.immediate import ImmediateBackend
-from django_core_tasks.exceptions import InvalidTaskError
+from django_tasks import ResultStatus, default_task_backend, tasks
+from django_tasks.backends.immediate import ImmediateBackend
+from django_tasks.exceptions import InvalidTaskError
 from tests import tasks as test_tasks
 
 
 @override_settings(
-    TASKS={
-        "default": {"BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"}
-    }
+    TASKS={"default": {"BACKEND": "django_tasks.backends.immediate.ImmediateBackend"}}
 )
 class ImmediateBackendTestCase(SimpleTestCase):
     def test_using_correct_backend(self) -> None:

@@ -4,10 +4,10 @@ from datetime import datetime, timedelta
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
-from django_core_tasks import ResultStatus, default_task_backend, task, tasks
-from django_core_tasks.backends.dummy import DummyBackend
-from django_core_tasks.backends.immediate import ImmediateBackend
-from django_core_tasks.exceptions import (
+from django_tasks import ResultStatus, default_task_backend, task, tasks
+from django_tasks.backends.dummy import DummyBackend
+from django_tasks.backends.immediate import ImmediateBackend
+from django_tasks.exceptions import (
     InvalidTaskBackendError,
     InvalidTaskError,
     ResultDoesNotExist,
@@ -17,10 +17,8 @@ from tests import tasks as test_tasks
 
 @override_settings(
     TASKS={
-        "default": {"BACKEND": "django_core_tasks.backends.dummy.DummyBackend"},
-        "immediate": {
-            "BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"
-        },
+        "default": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
+        "immediate": {"BACKEND": "django_tasks.backends.immediate.ImmediateBackend"},
         "missing": {"BACKEND": "does.not.exist"},
     }
 )

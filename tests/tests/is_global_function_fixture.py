@@ -3,7 +3,7 @@ This file is used to test function is considered global even if it's not defined
 because it's covered by a decorator.
 """
 
-from django_core_tasks.utils import is_global_function
+from django_tasks.utils import is_global_function
 
 
 @is_global_function

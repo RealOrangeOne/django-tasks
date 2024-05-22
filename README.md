@@ -29,7 +29,7 @@ If omitted, the following configuration is used:
 ```python
 TASKS = {
     "default": {
-        "BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"
+        "BACKEND": "django_tasks.backends.immediate.ImmediateBackend"
     }
 }
 ```
@@ -44,7 +44,7 @@ A few backends are included by default:
 A task is created with the `task` decorator.
 
 ```python
-from django_core_tasks import task
+from django_tasks import task
 
 
 @task()

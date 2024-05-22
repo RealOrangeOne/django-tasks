@@ -31,7 +31,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
             # Can be replaced with `django.conf.global_settings` once vendored.
             return {
                 "default": {
-                    "BACKEND": "django_core_tasks.backends.immediate.ImmediateBackend"
+                    "BACKEND": "django_tasks.backends.immediate.ImmediateBackend"
                 }
             }
 

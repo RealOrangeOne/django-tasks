@@ -4,8 +4,8 @@ from uuid import uuid4
 
 from typing_extensions import ParamSpec
 
-from django_core_tasks.exceptions import ResultDoesNotExist
-from django_core_tasks.task import ResultStatus, Task, TaskResult
+from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.task import ResultStatus, Task, TaskResult
 
 from .base import BaseTaskBackend
 
