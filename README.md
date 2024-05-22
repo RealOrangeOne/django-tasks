@@ -76,3 +76,13 @@ result = calculate_meaning_of_life.enqueue()
 The returned `TaskResult` can be interrogated to query the current state of the running task, as well as its return value.
 
 If the task takes arguments, these can be passed as-is to `enqueue`.
+
+### Sending emails
+
+To make sending emails simpler, a backend is provided to automatically create tasks for sending emails via SMTP:
+
+```python
+EMAIL_BACKEND = "django_tasks.mail.SMTPEmailBackend"
+```
+
+SMTP credentials are configured as usual.
