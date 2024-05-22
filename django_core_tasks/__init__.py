@@ -1,4 +1,4 @@
-from typing import Mapping, cast
+from typing import Mapping, Optional, cast
 
 from django.core import signals
 from django.utils.connection import BaseConnectionHandler, ConnectionProxy
@@ -23,7 +23,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
     settings_name = "TASKS"
     exception_class = InvalidTaskBackendError
 
-    def configure_settings(self, settings: dict | None) -> dict:
+    def configure_settings(self, settings: Optional[dict]) -> dict:
         try:
             return super().configure_settings(settings)
         except AttributeError:

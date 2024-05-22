@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import TypeVar
+from typing import List, TypeVar
 from uuid import uuid4
 
 from typing_extensions import ParamSpec
@@ -16,7 +16,7 @@ P = ParamSpec("P")
 class DummyBackend(BaseTaskBackend):
     supports_defer = True
     supports_async_task = True
-    results: list[TaskResult]
+    results: List[TaskResult]
 
     def __init__(self, options: dict) -> None:
         super().__init__(options)

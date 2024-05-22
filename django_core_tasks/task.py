@@ -1,7 +1,7 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Optional, TypeVar, Union
 
 from django.db.models.enums import TextChoices
 from django.utils import timezone
@@ -26,19 +26,19 @@ P = ParamSpec("P")
 
 @dataclass
 class Task(Generic[P, T]):
-    priority: int | None
+    priority: Optional[int]
     """The priority of the task"""
 
     func: Callable[P, T]
     """The task function"""
 
-    queue_name: str | None
+    queue_name: Optional[str]
     """The name of the queue the task will run on """
 
     backend: str
     """The name of the backend the task will run on"""
 
-    run_after: datetime | None = None
+    run_after: Optional[datetime] = None
     """The earliest this task will run"""
 
     def __post_init__(self) -> None:
@@ -53,10 +53,10 @@ class Task(Generic[P, T]):
 
     def using(
         self,
-        priority: int | None = None,
-        queue_name: str | None = None,
-        run_after: datetime | timedelta | None = None,
-        backend: str | None = None,
+        priority: Optional[int] = None,
+        queue_name: Optional[str] = None,
+        run_after: Optional[Union[datetime, timedelta]] = None,
+        backend: Optional[str] = None,
     ) -> Self:
         """
         Create a new task with modified defaults
@@ -125,8 +125,8 @@ class Task(Generic[P, T]):
 
 
 def task(
-    priority: int | None = None,
-    queue_name: str | None = None,
+    priority: Optional[int] = None,
+    queue_name: Optional[str] = None,
     backend: str = "default",
 ) -> Callable[[Callable[P, T]], Task[P, T]]:
     """
@@ -156,13 +156,13 @@ class TaskResult(Generic[T]):
     args: list
     """The arguments to pass to the task function"""
 
-    kwargs: dict
+    kwargs: Dict[str, Any]
     """The keyword arguments to pass to the task function"""
 
     backend: str
     """The name of the backend the task will run on"""
 
-    _result: T | None = field(init=False, default=None)
+    _result: Optional[T] = field(init=False, default=None)
 
     @property
     def result(self) -> T:
@@ -171,7 +171,7 @@ class TaskResult(Generic[T]):
 
         return self._result  # type:ignore
 
-    def get_result(self) -> T | None:
+    def get_result(self) -> Optional[T]:
         """
         A convenience method to get the result, or None if it's not ready yet.
         """
