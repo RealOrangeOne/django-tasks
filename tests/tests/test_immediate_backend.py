@@ -26,7 +26,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
                 self.assertIsNone(result.result)
                 self.assertEqual(result.task, task)
-                self.assertEqual(result.args, (1,))
+                self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
 
     async def test_enqueue_task_async(self) -> None:
@@ -37,21 +37,21 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
                 self.assertIsNone(result.result)
                 self.assertEqual(result.task, task)
-                self.assertEqual(result.args, ())
+                self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
 
     def test_catches_exception(self) -> None:
-        result = default_task_backend.enqueue(test_tasks.failing_task, (), {})
+        result = default_task_backend.enqueue(test_tasks.failing_task, [], {})
 
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsInstance(result.result, ValueError)
         self.assertEqual(result.task, test_tasks.failing_task)
-        self.assertEqual(result.args, ())
+        self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
     def test_result(self) -> None:
         result = default_task_backend.enqueue(
-            test_tasks.calculate_meaning_of_life, (), {}
+            test_tasks.calculate_meaning_of_life, [], {}
         )
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
@@ -59,7 +59,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
     async def test_result_async(self) -> None:
         result = await default_task_backend.aenqueue(
-            test_tasks.calculate_meaning_of_life, (), {}
+            test_tasks.calculate_meaning_of_life, [], {}
         )
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)

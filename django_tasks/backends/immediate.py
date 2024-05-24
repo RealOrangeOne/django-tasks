@@ -6,6 +6,7 @@ from asgiref.sync import async_to_sync
 from typing_extensions import ParamSpec
 
 from django_tasks.task import ResultStatus, Task, TaskResult
+from django_tasks.utils import json_normalize
 
 from .base import BaseTaskBackend
 
@@ -36,8 +37,8 @@ class ImmediateBackend(BaseTaskBackend):
             task=task,
             id=str(uuid4()),
             status=status,
-            args=args,
-            kwargs=kwargs,
+            args=json_normalize(args),
+            kwargs=json_normalize(kwargs),
             backend=self.alias,
         )
 

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
+from django.utils.module_loading import import_string
 
 from django_tasks import (
     DEFAULT_QUEUE_NAME,
@@ -41,7 +42,7 @@ class TaskTestCase(SimpleTestCase):
 
         self.assertEqual(result.status, ResultStatus.NEW)
         self.assertIs(result.task, test_tasks.noop_task)
-        self.assertEqual(result.args, ())
+        self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
         self.assertEqual(default_task_backend.results, [result])
@@ -51,7 +52,7 @@ class TaskTestCase(SimpleTestCase):
 
         self.assertEqual(result.status, ResultStatus.NEW)
         self.assertIs(result.task, test_tasks.noop_task)
-        self.assertEqual(result.args, ())
+        self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
         self.assertEqual(default_task_backend.results, [result])
@@ -195,3 +196,17 @@ class TaskTestCase(SimpleTestCase):
     def test_name(self) -> None:
         self.assertEqual(test_tasks.noop_task.name, "noop_task")
         self.assertEqual(test_tasks.noop_task_async.name, "noop_task_async")
+
+    def test_module_path(self) -> None:
+        self.assertEqual(test_tasks.noop_task.module_path, "tests.tasks.noop_task")
+        self.assertEqual(
+            test_tasks.noop_task_async.module_path, "tests.tasks.noop_task_async"
+        )
+
+        self.assertIs(
+            import_string(test_tasks.noop_task.module_path), test_tasks.noop_task
+        )
+        self.assertIs(
+            import_string(test_tasks.noop_task_async.module_path),
+            test_tasks.noop_task_async,
+        )

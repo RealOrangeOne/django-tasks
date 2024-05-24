@@ -24,3 +24,10 @@ def is_json_serializable(obj: Any) -> bool:
         return True
     except (TypeError, OverflowError):
         return False
+
+
+def json_normalize(obj: Any) -> Any:
+    """
+    Round-trip encode object as JSON to normalize types.
+    """
+    return json.loads(json.dumps(obj))
