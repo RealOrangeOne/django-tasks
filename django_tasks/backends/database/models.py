@@ -1,17 +1,20 @@
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from django.db import models
-from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
+from typing_extensions import ParamSpec
 
 from django_tasks.task import ResultStatus, Task
+
+T = TypeVar("T")
+P = ParamSpec("P")
 
 if TYPE_CHECKING:
     from .backend import TaskResult
 
 
-class DBTaskResult(models.Model):
+class DBTaskResult(Generic[P, T], models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     status = models.CharField(
@@ -33,8 +36,8 @@ class DBTaskResult(models.Model):
 
     result = models.JSONField(default=None, null=True)
 
-    @cached_property
-    def task(self) -> Task:
+    @property
+    def task(self) -> Task[P, T]:
         task = import_string(self.task_path)
 
         assert isinstance(task, Task)
@@ -46,10 +49,11 @@ class DBTaskResult(models.Model):
             backend=self.backend_name,
         )
 
-    def get_task_result(self) -> "TaskResult":
+    @property
+    def task_result(self) -> "TaskResult[T]":
         from .backend import TaskResult
 
-        result = TaskResult[Any](
+        result = TaskResult[T](
             db_result=self,
             task=self.task,
             id=str(self.id),

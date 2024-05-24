@@ -23,12 +23,12 @@ class TaskResult(BaseTaskResult[T]):
 
     def refresh(self) -> None:
         self.db_result.refresh_from_db()
-        for attr, value in asdict(self.db_result.get_task_result()).items():
+        for attr, value in asdict(self.db_result.task_result).items():
             setattr(self, attr, value)
 
     async def arefresh(self) -> None:
         await self.db_result.arefresh_from_db()
-        for attr, value in asdict(self.db_result.get_task_result()).items():
+        for attr, value in asdict(self.db_result.task_result).items():
             setattr(self, attr, value)
 
 
@@ -59,7 +59,7 @@ class DatabaseBackend(BaseTaskBackend):
 
         db_result.save()
 
-        return db_result.get_task_result()
+        return db_result.task_result
 
     async def aenqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
@@ -70,13 +70,13 @@ class DatabaseBackend(BaseTaskBackend):
 
         await db_result.asave()
 
-        return db_result.get_task_result()
+        return db_result.task_result
 
     def get_result(self, result_id: str) -> TaskResult:
         from .models import DBTaskResult
 
         try:
-            return DBTaskResult.objects.get(id=result_id).get_task_result()
+            return DBTaskResult.objects.get(id=result_id).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise ResultDoesNotExist(result_id) from e
 
@@ -84,6 +84,6 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         try:
-            return (await DBTaskResult.objects.aget(id=result_id)).get_task_result()
+            return (await DBTaskResult.objects.aget(id=result_id)).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise ResultDoesNotExist(result_id) from e
