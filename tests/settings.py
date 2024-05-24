@@ -10,6 +10,7 @@ ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "django_tasks",
+    "django_tasks.backends.database",
     "tests",
 ]
 

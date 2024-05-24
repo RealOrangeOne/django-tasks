@@ -28,10 +28,10 @@ DEFAULT_QUEUE_NAME = "default"
 
 
 class ResultStatus(TextChoices):
-    NEW = "NEW"
-    RUNNING = "RUNNING"
-    FAILED = "FAILED"
-    COMPLETE = "COMPLETE"
+    NEW = ("NEW", "New")
+    RUNNING = ("RUNNING", "Running")
+    FAILED = ("FAILED", "Failed")
+    COMPLETE = ("COMPLETE", "Complete")
 
 
 T = TypeVar("T")
@@ -148,6 +148,10 @@ class Task(Generic[P, T]):
         from . import tasks
 
         return tasks[self.backend]
+
+    @property
+    def module_path(self) -> str:
+        return f"{self.func.__module__}.{self.func.__qualname__}"
 
 
 def task(

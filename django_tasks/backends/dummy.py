@@ -6,6 +6,7 @@ from typing_extensions import ParamSpec
 
 from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.task import ResultStatus, Task, TaskResult
+from django_tasks.utils import json_normalize
 
 from .base import BaseTaskBackend
 
@@ -32,8 +33,8 @@ class DummyBackend(BaseTaskBackend):
             task=task,
             id=str(uuid4()),
             status=ResultStatus.NEW,
-            args=args,
-            kwargs=kwargs,
+            args=json_normalize(args),
+            kwargs=json_normalize(kwargs),
             backend=self.alias,
         )
 

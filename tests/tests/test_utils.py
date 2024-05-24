@@ -56,3 +56,17 @@ class IsJSONSerializableTestCase(SimpleTestCase):
         ]:
             with self.subTest(example):
                 self.assertFalse(utils.is_json_serializable(example))
+
+
+class JSONNormalizeTestCase(SimpleTestCase):
+    def test_round_trip(self) -> None:
+        self.assertEqual(utils.json_normalize({}), {})
+        self.assertEqual(utils.json_normalize([]), [])
+        self.assertEqual(utils.json_normalize(()), [])
+        self.assertEqual(utils.json_normalize({"foo": ()}), {"foo": []})
+
+    def test_encode_error(self) -> None:
+        for example in [self, any, datetime.datetime.now()]:
+            with self.subTest(example):
+                self.assertFalse(utils.is_json_serializable(example))
+                self.assertRaises(TypeError, utils.json_normalize, example)

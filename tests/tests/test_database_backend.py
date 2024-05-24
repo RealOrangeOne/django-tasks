@@ -1,28 +1,27 @@
 import json
+import uuid
 
-from django.test import SimpleTestCase, override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from django_tasks import ResultStatus, default_task_backend, tasks
-from django_tasks.backends.dummy import DummyBackend
+from django_tasks.backends.database import DatabaseBackend
+from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
 
 
 @override_settings(
-    TASKS={"default": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"}}
+    TASKS={"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
 )
-class DummyBackendTestCase(SimpleTestCase):
-    def setUp(self) -> None:
-        default_task_backend.clear()
-
+class DatabaseBackendTestCase(TestCase):
     def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
-        self.assertIsInstance(tasks["default"], DummyBackend)
+        self.assertIsInstance(tasks["default"], DatabaseBackend)
 
     def test_enqueue_task(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
-            with self.subTest(task):
+            with self.subTest(task), self.assertNumQueries(1):
                 result = default_task_backend.enqueue(task, (1,), {"two": 3})
 
                 self.assertEqual(result.status, ResultStatus.NEW)
@@ -32,12 +31,10 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
 
-                self.assertIn(result, default_task_backend.results)
-
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
-                result = await default_task_backend.aenqueue(task, (), {})
+                result = await default_task_backend.aenqueue(task, [], {})
 
                 self.assertEqual(result.status, ResultStatus.NEW)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
@@ -46,17 +43,17 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
 
-                self.assertIn(result, default_task_backend.results)
-
     def test_get_result(self) -> None:
-        result = default_task_backend.enqueue(test_tasks.noop_task, (), {})
+        with self.assertNumQueries(1):
+            result = default_task_backend.enqueue(test_tasks.noop_task, [], {})
 
-        new_result = default_task_backend.get_result(result.id)
+        with self.assertNumQueries(1):
+            new_result = default_task_backend.get_result(result.id)
 
         self.assertEqual(result, new_result)
 
     async def test_get_result_async(self) -> None:
-        result = await default_task_backend.aenqueue(test_tasks.noop_task, (), {})
+        result = await default_task_backend.aenqueue(test_tasks.noop_task, [], {})
 
         new_result = await default_task_backend.aget_result(result.id)
 
@@ -67,10 +64,11 @@ class DummyBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        default_task_backend.results[0].status = ResultStatus.COMPLETE
+        DBTaskResult.objects.all().update(status=ResultStatus.COMPLETE)
 
         self.assertEqual(result.status, ResultStatus.NEW)
-        result.refresh()
+        with self.assertNumQueries(1):
+            result.refresh()
         self.assertEqual(result.status, ResultStatus.COMPLETE)
 
     async def test_refresh_result_async(self) -> None:
@@ -78,16 +76,25 @@ class DummyBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        default_task_backend.results[0].status = ResultStatus.COMPLETE
+        await DBTaskResult.objects.all().aupdate(status=ResultStatus.COMPLETE)
 
         self.assertEqual(result.status, ResultStatus.NEW)
         await result.arefresh()
         self.assertEqual(result.status, ResultStatus.COMPLETE)
 
-    async def test_get_missing_result(self) -> None:
+    def test_get_missing_result(self) -> None:
+        with self.assertRaises(ResultDoesNotExist):
+            default_task_backend.get_result(uuid.uuid4())
+
+    async def test_async_get_missing_result(self) -> None:
+        with self.assertRaises(ResultDoesNotExist):
+            await default_task_backend.aget_result(uuid.uuid4())
+
+    def test_invalid_uuid(self) -> None:
         with self.assertRaises(ResultDoesNotExist):
             default_task_backend.get_result("123")
 
+    async def test_async_invalid_uuid(self) -> None:
         with self.assertRaises(ResultDoesNotExist):
             await default_task_backend.aget_result("123")
 
