@@ -1,11 +1,11 @@
 # Django Tasks
 
-[![CI](https://github.com/RealOrangeOne/django-core-tasks/actions/workflows/ci.yml/badge.svg)](https://github.com/RealOrangeOne/django-core-tasks/actions/workflows/ci.yml)![PyPI](https://img.shields.io/pypi/v/django-tasks.svg)
+[![CI](https://github.com/RealOrangeOne/django-tasks/actions/workflows/ci.yml/badge.svg)](https://github.com/RealOrangeOne/django-tasks/actions/workflows/ci.yml)![PyPI](https://img.shields.io/pypi/v/django-tasks.svg)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/django-tasks.svg)
 ![PyPI - Status](https://img.shields.io/pypi/status/django-tasks.svg)
 ![PyPI - License](https://img.shields.io/pypi/l/django-tasks.svg)
 
-A basic reference implementation of background workers and tasks in Django, intended to go along with [DEP 0014](https://github.com/django/deps/pull/86).
+A reference implementation and backport of background workers and tasks in Django, as defined in [DEP 0014](https://github.com/django/deps/pull/86).
 
 **Warning**: This code is not intended to be installed, let alone deployed to production!
 
@@ -17,7 +17,7 @@ pip install django-tasks
 
 ## Usage
 
-**Note**: This documentation is still work-in-progress. Further details can also be found on the [DEP](https://github.com/django/deps/pull/86).
+**Note**: This documentation is still work-in-progress. Further details can also be found on the [DEP](https://github.com/django/deps/pull/86). [The tests](./tests/tests/) are also a good exhaustive reference.
 
 ### Settings
 
