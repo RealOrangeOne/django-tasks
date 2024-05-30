@@ -1,8 +1,20 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Optional, TypeVar, Union
+from inspect import iscoroutinefunction
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Coroutine,
+    Dict,
+    Generic,
+    Optional,
+    TypeVar,
+    Union,
+)
 
+from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils import timezone
 from typing_extensions import ParamSpec, Self
@@ -117,8 +129,20 @@ class Task(Generic[P, T]):
 
         return result
 
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+    def __call__(
+        self, *args: P.args, **kwargs: P.kwargs
+    ) -> Union[T, Coroutine[T, None, None]]:
         return self.func(*args, **kwargs)
+
+    def call(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        if iscoroutinefunction(self.func):
+            return async_to_sync(self.func)(*args, **kwargs)  # type:ignore[no-any-return]
+        return self.func(*args, **kwargs)
+
+    async def acall(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        if iscoroutinefunction(self.func):
+            return await self.func(*args, **kwargs)  # type:ignore[no-any-return]
+        return await sync_to_async(self.func)(*args, **kwargs)
 
     def get_backend(self) -> "BaseTaskBackend":
         from . import tasks
