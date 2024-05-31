@@ -51,7 +51,8 @@ dev = [
     "coverage",
     "django-stubs[compatible-mypy]",
     "dj-database-url",
-    "psycopg"
+    "psycopg",
+    "mysqlclient"
 ]
 
 [tool.ruff.lint]
