@@ -1,8 +1,10 @@
 import json
 import uuid
+from contextlib import redirect_stderr
 from functools import partial
+from io import StringIO
 
-from django.core.management import call_command
+from django.core.management import call_command, execute_from_command_line
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
@@ -134,7 +136,10 @@ class DatabaseBackendTestCase(TestCase):
 
 
 @override_settings(
-    TASKS={"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
+    TASKS={
+        "default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"},
+        "dummy": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
+    }
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
     run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
@@ -219,3 +224,45 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(result.status, ResultStatus.FAILED)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+
+    def test_doesnt_process_different_backend(self) -> None:
+        result = test_tasks.failing_task.enqueue()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(3):
+            self.run_worker(backend_name="dummy")
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(8):
+            self.run_worker(backend_name=result.backend)
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+
+    def test_unknown_backend(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--backend", "unknown"]
+                )
+        self.assertIn("The connection 'unknown' doesn't exist.", output.getvalue())
+
+    def test_negative_interval(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--interval", "-1"]
+                )
+        self.assertIn("Must be a positive number", output.getvalue())
+
+    def test_infinite_interval(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--interval", "inf"]
+                )
+        self.assertIn("invalid valid_interval value: 'inf'", output.getvalue())
