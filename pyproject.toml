@@ -49,7 +49,9 @@ Changelog = "https://github.com/RealOrangeOne/django-tasks/releases"
 dev = [
     "ruff",
     "coverage",
-    "django-stubs[compatible-mypy]"
+    "django-stubs[compatible-mypy]",
+    "dj-database-url",
+    "psycopg"
 ]
 
 [tool.ruff.lint]
