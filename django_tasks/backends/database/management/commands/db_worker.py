@@ -1,0 +1,143 @@
+import logging
+import signal
+import time
+from argparse import ArgumentParser
+from types import FrameType
+from typing import List, Optional
+
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+
+from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus
+
+logger = logging.getLogger("django_tasks.backends.database.db_worker")
+
+
+class Worker:
+    def __init__(self, *, queue_names: List[str], interval: int, batch: bool):
+        self.queue_names = queue_names
+        self.process_all_queues = "*" in queue_names
+        self.interval = interval
+        self.batch = batch
+
+        self.running = True
+        self.running_task = False
+
+        signal.signal(signal.SIGINT, self.shutdown)
+        signal.signal(signal.SIGTERM, self.shutdown)
+        if hasattr(signal, "SIGQUIT"):
+            signal.signal(signal.SIGQUIT, self.shutdown)
+
+    def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
+        self.running = False
+
+        if not self.running_task:
+            # If we're not currently running a task, exit immediately.
+            # This is useful if we're currently in a `sleep`.
+            raise CommandError(returncode=0)
+
+    def start(self) -> None:
+        logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
+
+        while self.running:
+            tasks = DBTaskResult.objects.ready()
+            if not self.process_all_queues:
+                tasks = tasks.filter(queue_name__in=self.queue_names)
+
+            try:
+                self.running_task = True
+
+                # During this transaction, all "ready" tasks are locked. Therefore, it's important
+                # it be as efficient as possible.
+                with transaction.atomic():
+                    task_result = tasks.get_locked()
+
+                    if task_result is None:
+                        if self.batch:
+                            # If we're running in "batch" mode, terminate the loop (and thus the worker)
+                            return None
+                        else:
+                            # Otherwise, check for more jobs
+                            continue
+
+                    # "claim" the task, so it isn't run by another worker process
+                    task_result.claim()
+
+                self.run_task(task_result)
+            finally:
+                self.running_task = False
+
+            time.sleep(self.interval)
+
+    def run_task(self, db_task_result: DBTaskResult) -> None:
+        try:
+            task = db_task_result.task
+            task_result = db_task_result.task_result
+
+            logger.info("Task id=%s state=%s", db_task_result.id, ResultStatus.RUNNING)
+            return_value = task.call(*task_result.args, **task_result.kwargs)
+
+            # Setting the return and success value inside the error handling,
+            # So errors setting it (eg JSON encode) can still be recorded
+            db_task_result.set_result(return_value)
+            logger.info("Task id=%s state=%s", db_task_result.id, ResultStatus.COMPLETE)
+        except Exception:
+            # Use `.exception` to integrate with error monitoring tools (eg Sentry)
+            logger.exception(
+                "Task id=%s state=%s", db_task_result.id, ResultStatus.FAILED
+            )
+            db_task_result.set_failed()
+
+
+class Command(BaseCommand):
+    help = "Run a database background worker"
+
+    def add_arguments(self, parser: ArgumentParser) -> None:
+        parser.add_argument(
+            "--queue-name",
+            nargs="?",
+            default=DEFAULT_QUEUE_NAME,
+            type=str,
+            help="The queues to process. Separate multiple with a comma. To process all queuees, use '*' (default: %(default)r)",
+        )
+        parser.add_argument(
+            "--interval",
+            nargs="?",
+            default=1,
+            type=int,
+            help="The interval (in seconds) at which to check for tasks to process (default: %(default)r)",
+        )
+        parser.add_argument(
+            "--batch",
+            action="store_true",
+            help="Process all outstanding tasks, then exit",
+        )
+
+    def handle(
+        self,
+        verbosity: int,
+        queue_name: str,
+        interval: int,
+        batch: bool,
+        **options: dict,
+    ) -> None:
+        if verbosity == 0:
+            logger.setLevel(logging.CRITICAL)
+        elif verbosity == 1:
+            logger.setLevel(logging.WARNING)
+        elif verbosity == 2:
+            logger.setLevel(logging.INFO)
+        else:
+            logger.setLevel(logging.DEBUG)
+
+        worker = Worker(
+            queue_names=queue_name.split(","),
+            interval=interval,
+            batch=batch,
+        )
+
+        worker.start()
+
+        if batch:
+            logger.info("No more tasks to run - terminating.")
