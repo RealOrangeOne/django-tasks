@@ -1,6 +1,7 @@
 # Django Tasks
 
-[![CI](https://github.com/RealOrangeOne/django-tasks/actions/workflows/ci.yml/badge.svg)](https://github.com/RealOrangeOne/django-tasks/actions/workflows/ci.yml)![PyPI](https://img.shields.io/pypi/v/django-tasks.svg)
+[![CI](https://github.com/RealOrangeOne/django-tasks/actions/workflows/ci.yml/badge.svg)](https://github.com/RealOrangeOne/django-tasks/actions/workflows/ci.yml)
+![PyPI](https://img.shields.io/pypi/v/django-tasks.svg)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/django-tasks.svg)
 ![PyPI - Status](https://img.shields.io/pypi/status/django-tasks.svg)
 ![PyPI - License](https://img.shields.io/pypi/l/django-tasks.svg)
