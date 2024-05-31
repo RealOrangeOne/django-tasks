@@ -1,25 +1,30 @@
 import logging
 import signal
 import time
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
 from typing import List, Optional
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus
 
 logger = logging.getLogger("django_tasks.backends.database.db_worker")
 
 
 class Worker:
-    def __init__(self, *, queue_names: List[str], interval: int, batch: bool):
+    def __init__(
+        self, *, queue_names: List[str], interval: float, batch: bool, backend_name: str
+    ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
         self.interval = interval
         self.batch = batch
+        self.backend_name = backend_name
 
         self.running = True
         self.running_task = False
@@ -41,7 +46,7 @@ class Worker:
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
 
         while self.running:
-            tasks = DBTaskResult.objects.ready()
+            tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
             if not self.process_all_queues:
                 tasks = tasks.filter(queue_name__in=self.queue_names)
 
@@ -90,6 +95,24 @@ class Worker:
             db_task_result.set_failed()
 
 
+def valid_backend_name(val: str) -> str:
+    try:
+        tasks[val]
+    except InvalidTaskBackendError as e:
+        raise ArgumentTypeError(e.args[0]) from e
+    return val
+
+
+def valid_interval(val: str) -> float:
+    # Cast to an int first to catch invalid values like 'inf'
+    int(val)
+
+    num = float(val)
+    if num <= 0:
+        raise ArgumentTypeError("Must be a positive number")
+    return num
+
+
 class Command(BaseCommand):
     help = "Run a database background worker"
 
@@ -99,13 +122,13 @@ class Command(BaseCommand):
             nargs="?",
             default=DEFAULT_QUEUE_NAME,
             type=str,
-            help="The queues to process. Separate multiple with a comma. To process all queuees, use '*' (default: %(default)r)",
+            help="The queues to process. Separate multiple with a comma. To process all queues, use '*' (default: %(default)r)",
         )
         parser.add_argument(
             "--interval",
             nargs="?",
             default=1,
-            type=int,
+            type=valid_interval,
             help="The interval (in seconds) at which to check for tasks to process (default: %(default)r)",
         )
         parser.add_argument(
@@ -113,13 +136,23 @@ class Command(BaseCommand):
             action="store_true",
             help="Process all outstanding tasks, then exit",
         )
+        parser.add_argument(
+            "--backend",
+            nargs="?",
+            default=DEFAULT_TASK_BACKEND_ALIAS,
+            type=valid_backend_name,
+            dest="backend_name",
+            help="The backend to operate on (default: %(default)r)",
+        )
 
     def handle(
         self,
+        *,
         verbosity: int,
         queue_name: str,
-        interval: int,
+        interval: float,
         batch: bool,
+        backend_name: str,
         **options: dict,
     ) -> None:
         if verbosity == 0:
@@ -135,6 +168,7 @@ class Command(BaseCommand):
             queue_names=queue_name.split(","),
             interval=interval,
             batch=batch,
+            backend_name=backend_name,
         )
 
         worker.start()
