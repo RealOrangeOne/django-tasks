@@ -27,10 +27,10 @@ class ImmediateBackend(BaseTaskBackend):
         )
 
         try:
-            result = calling_task_func(*args, **kwargs)
+            result = json_normalize(calling_task_func(*args, **kwargs))
             status = ResultStatus.COMPLETE
-        except Exception as e:
-            result = e
+        except Exception:
+            result = None
             status = ResultStatus.FAILED
 
         task_result = TaskResult[T](

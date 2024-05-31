@@ -44,7 +44,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         result = default_task_backend.enqueue(test_tasks.failing_task, [], {})
 
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertIsInstance(result.result, ValueError)
+        self.assertIsNone(result.result)
         self.assertEqual(result.task, test_tasks.failing_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
