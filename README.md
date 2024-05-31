@@ -38,6 +38,7 @@ A few backends are included by default:
 
 - `DummyBackend`: Don't execute the tasks, just store them. This is especially useful for testing.
 - `ImmediateBackend`: Execute the task immediately in the current thread
+- `DatabaseBackend`: Store tasks in the database (via Django's ORM), and retrieve and execute them using the `db_worker` management command
 
 ### Defining tasks
 
@@ -66,7 +67,7 @@ modified_task = calculate_meaning_of_life.using(priority=10)
 
 In addition to the above attributes, `run_after` can be passed to specify a specific time the task should run. Both a timezone-aware `datetime` or `timedelta` may be passed.
 
-### Executing tasks
+### Enqueueing tasks
 
 To execute a task, call the `enqueue` method on it:
 
@@ -77,6 +78,22 @@ result = calculate_meaning_of_life.enqueue()
 The returned `TaskResult` can be interrogated to query the current state of the running task, as well as its return value.
 
 If the task takes arguments, these can be passed as-is to `enqueue`.
+
+### Executing tasks with the database backend
+
+First, you'll need to add `django_tasks.backends.database`  to `INSTALLED_APPS`, and run `manage.py migrate`.
+
+Next, configure the database backend:
+
+```python
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks.backends.database.DatabaseBackend"
+    }
+}
+```
+
+Finally, you can run `manage.py db_worker` to run tasks as they're created. Check the `--help` for more options.
 
 ### Sending emails
 
