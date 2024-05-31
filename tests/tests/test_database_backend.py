@@ -1,7 +1,9 @@
 import json
 import uuid
+from functools import partial
 
-from django.test import TestCase, override_settings
+from django.core.management import call_command
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
 from django_tasks import ResultStatus, default_task_backend, tasks
@@ -129,3 +131,91 @@ class DatabaseBackendTestCase(TestCase):
             json.loads(response.content),
             {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
         )
+
+
+@override_settings(
+    TASKS={"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
+)
+class DatabaseBackendWorkerTestCase(TransactionTestCase):
+    run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
+
+    def test_run_enqueued_task(self) -> None:
+        for task in [
+            test_tasks.noop_task,
+            test_tasks.noop_task_async,
+        ]:
+            with self.subTest(task):
+                result = default_task_backend.enqueue(task, [], {})
+                self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+                self.assertEqual(result.status, ResultStatus.NEW)
+
+                with self.assertNumQueries(8):
+                    self.run_worker()
+
+                self.assertEqual(result.status, ResultStatus.NEW)
+                result.refresh()
+                self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+                self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+
+    def test_batch_processes_all_tasks(self) -> None:
+        for _ in range(3):
+            test_tasks.noop_task.enqueue()
+        test_tasks.failing_task.enqueue()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 4)
+
+        with self.assertNumQueries(23):
+            self.run_worker()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskResult.objects.complete().count(), 3)
+        self.assertEqual(DBTaskResult.objects.failed().count(), 1)
+
+    def test_no_tasks(self) -> None:
+        with self.assertNumQueries(3):
+            self.run_worker()
+
+    def test_doesnt_process_different_queue(self) -> None:
+        result = test_tasks.noop_task.using(queue_name="queue-1").enqueue()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(3):
+            self.run_worker()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(8):
+            self.run_worker(queue_name=result.task.queue_name)
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+
+    def test_process_all_queues(self) -> None:
+        test_tasks.noop_task.using(queue_name="queue-1").enqueue()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(3):
+            self.run_worker()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(8):
+            self.run_worker(queue_name="*")
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+
+    def test_failing_task(self) -> None:
+        result = test_tasks.failing_task.enqueue()
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(8):
+            self.run_worker()
+
+        self.assertEqual(result.status, ResultStatus.NEW)
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
