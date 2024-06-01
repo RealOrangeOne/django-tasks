@@ -6,7 +6,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Coroutine,
     Dict,
     Generic,
     Optional,
@@ -128,11 +127,6 @@ class Task(Generic[P, T]):
             raise ResultDoesNotExist
 
         return result
-
-    def __call__(
-        self, *args: P.args, **kwargs: P.kwargs
-    ) -> Union[T, Coroutine[T, None, None]]:
-        return self.func(*args, **kwargs)
 
     def call(self, *args: P.args, **kwargs: P.kwargs) -> T:
         if iscoroutinefunction(self.func):

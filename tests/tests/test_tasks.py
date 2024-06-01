@@ -134,14 +134,12 @@ class TaskTestCase(SimpleTestCase):
             await test_tasks.noop_task.using(priority=0).aenqueue()
 
     def test_call_task(self) -> None:
-        self.assertEqual(test_tasks.calculate_meaning_of_life(), 42)
         self.assertEqual(test_tasks.calculate_meaning_of_life.call(), 42)
 
     async def test_call_task_async(self) -> None:
         self.assertEqual(await test_tasks.calculate_meaning_of_life.acall(), 42)
 
     async def test_call_async_task(self) -> None:
-        self.assertIsNone(await test_tasks.noop_task_async())  # type:ignore[func-returns-value]
         self.assertIsNone(await test_tasks.noop_task_async.acall())
 
     def test_call_async_task_sync(self) -> None:
