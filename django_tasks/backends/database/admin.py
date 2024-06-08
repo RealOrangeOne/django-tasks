@@ -8,7 +8,7 @@ from .models import DBTaskResult
 
 @admin.register(DBTaskResult)
 class DBTaskResultAdmin(admin.ModelAdmin):
-    list_display = ("id", "task_path", "status", "priority", "queue_name")
+    list_display = ("id", "get_task_name", "status", "priority", "queue_name")
     list_filter = ("status", "priority", "queue_name")
 
     def has_add_permission(
@@ -30,3 +30,7 @@ class DBTaskResultAdmin(admin.ModelAdmin):
         self, request: HttpRequest, obj: Optional[DBTaskResult] = None
     ) -> List[str]:
         return [f.name for f in self.model._meta.fields]
+
+    @admin.display(description="Task")
+    def get_task_name(self, obj: DBTaskResult) -> str:
+        return obj.task.name
