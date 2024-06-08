@@ -41,6 +41,9 @@ dependencies = [
     "django-stubs-ext",
 ]
 
+[tool.setuptools.dynamic]
+version = {attr = "django_tasks.__version__"}
+
 [project.urls]
 Source = "https://github.com/RealOrangeOne/django-tasks"
 Issues = "https://github.com/RealOrangeOne/django-tasks/issues"
