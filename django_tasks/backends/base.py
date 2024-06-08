@@ -92,3 +92,9 @@ class BaseTaskBackend(metaclass=ABCMeta):
         """
         # HACK: `close` isn't abstract, but should do nothing by default
         return None
+
+    def check(self, **kwargs):
+        raise NotImplementedError(
+            "subclasses may provide a check() method to verify that task "
+            "backend is configured correctly."
+        )
