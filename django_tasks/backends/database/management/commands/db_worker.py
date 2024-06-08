@@ -1,4 +1,5 @@
 import logging
+import random
 import signal
 import time
 from argparse import ArgumentParser, ArgumentTypeError
@@ -44,6 +45,9 @@ class Worker:
 
     def start(self) -> None:
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
+
+        # Add a small delay before starting the loop to avoid a thundering hurd
+        time.sleep(self.interval * random.random())
 
         while self.running:
             tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
