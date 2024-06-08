@@ -1,9 +1,13 @@
 import os
+import sys
 
 import dj_database_url
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEBUG = True
+
+if sys.argv[0] != "test":
+    DEBUG = True
+    TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
 
 ALLOWED_HOSTS = ["*"]
 
@@ -41,8 +45,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
-
-TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
 
 STATIC_URL = "/static/"
 
