@@ -41,8 +41,8 @@ class BaseTaskBackend(metaclass=ABCMeta):
         if not self.supports_async_task and iscoroutinefunction(task.func):
             raise InvalidTaskError("Backend does not support async tasks")
 
-        if task.priority is not None and task.priority < 1:
-            raise InvalidTaskError("priority must be positive")
+        if task.priority < 0:
+            raise InvalidTaskError("priority must be zero or greater")
 
         if not self.supports_defer and task.run_after is not None:
             raise InvalidTaskError("Backend does not support run_after")
