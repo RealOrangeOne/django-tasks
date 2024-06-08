@@ -33,13 +33,9 @@ class DBTaskResultQuerySet(models.QuerySet):
         """
         Return tasks which are ready to be processed.
         """
-        return (
-            self.filter(
-                status=ResultStatus.NEW,
-            )
-            .filter(models.Q(run_after=None) | models.Q(run_after__lte=timezone.now()))
-            .order_by("-priority", "run_after")
-        )
+        return self.filter(
+            status=ResultStatus.NEW,
+        ).filter(models.Q(run_after=None) | models.Q(run_after__lte=timezone.now()))
 
     def complete(self) -> "DBTaskResultQuerySet":
         return self.filter(status=ResultStatus.COMPLETE)
@@ -83,6 +79,9 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     result = models.JSONField(default=None, null=True)
 
     objects = DBTaskResultQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-priority", "run_after"]
 
     @property
     def task(self) -> Task[P, T]:

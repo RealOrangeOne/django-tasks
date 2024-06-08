@@ -35,6 +35,7 @@ class TaskResult(BaseTaskResult[T]):
 class DatabaseBackend(BaseTaskBackend):
     supports_async_task = True
     supports_get_result = True
+    supports_defer = True
 
     def _task_to_db_task(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
