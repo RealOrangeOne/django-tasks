@@ -23,6 +23,7 @@ from .exceptions import ResultDoesNotExist
 if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
 
+DEFAULT_TASK_BACKEND_ALIAS = "default"
 DEFAULT_QUEUE_NAME = "default"
 
 
@@ -151,7 +152,7 @@ class Task(Generic[P, T]):
 def task(
     priority: int = 0,
     queue_name: str = DEFAULT_QUEUE_NAME,
-    backend: str = "default",
+    backend: str = DEFAULT_TASK_BACKEND_ALIAS,
 ) -> Callable[[Callable[P, T]], Task[P, T]]:
     """
     A decorator used to create a task.
