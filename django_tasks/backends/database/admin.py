@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List, Optional
 
 from django.contrib import admin
 from django.http import HttpRequest
