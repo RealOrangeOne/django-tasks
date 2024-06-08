@@ -1,0 +1,36 @@
+from typing import List, Optional
+
+from django.contrib import admin
+from django.http import HttpRequest
+
+from .models import DBTaskResult
+
+
+@admin.register(DBTaskResult)
+class DBTaskResultAdmin(admin.ModelAdmin):
+    list_display = ("id", "get_task_name", "status", "priority", "queue_name")
+    list_filter = ("status", "priority", "queue_name")
+
+    def has_add_permission(
+        self, request: HttpRequest, obj: Optional[DBTaskResult] = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Optional[DBTaskResult] = None
+    ) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: Optional[DBTaskResult] = None
+    ) -> bool:
+        return False
+
+    def get_readonly_fields(
+        self, request: HttpRequest, obj: Optional[DBTaskResult] = None
+    ) -> List[str]:
+        return [f.name for f in self.model._meta.fields]
+
+    @admin.display(description="Task")
+    def get_task_name(self, obj: DBTaskResult) -> str:
+        return obj.task.name

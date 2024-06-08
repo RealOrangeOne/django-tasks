@@ -1,3 +1,4 @@
+from django.contrib import admin
 from django.urls import path
 
 from . import views
@@ -10,4 +11,5 @@ urlpatterns = [
         views.calculate_meaning_of_life_async,
         name="meaning-of-life-async",
     ),
+    path("admin/", admin.site.urls),
 ]

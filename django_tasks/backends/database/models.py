@@ -83,6 +83,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     class Meta:
         ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
+        verbose_name = "Task Result"
+        verbose_name_plural = "Task Results"
 
     @property
     def task(self) -> Task[P, T]:
