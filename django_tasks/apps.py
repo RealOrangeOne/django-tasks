@@ -1,4 +1,7 @@
 from django.apps import AppConfig
+from django.core import checks
+
+from django_tasks.checks import check_tasks
 
 
 class TasksAppConfig(AppConfig):
@@ -6,3 +9,5 @@ class TasksAppConfig(AppConfig):
 
     def ready(self) -> None:
         from . import signal_handlers  # noqa
+
+        checks.register(check_tasks)
