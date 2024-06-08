@@ -1,3 +1,8 @@
+# ruff: noqa: E402
+import django_stubs_ext
+
+django_stubs_ext.monkeypatch()
+
 from typing import Mapping, Optional, cast
 
 from django.core import signals

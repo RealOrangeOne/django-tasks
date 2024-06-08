@@ -37,7 +37,8 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "Django>=4.2",
-    "typing_extensions"
+    "typing_extensions",
+    "django-stubs-ext",
 ]
 
 [project.urls]

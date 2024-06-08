@@ -1,9 +1,6 @@
 import os
 
 import dj_database_url
-import django_stubs_ext
-
-django_stubs_ext.monkeypatch()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
