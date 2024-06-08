@@ -314,11 +314,11 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(
             [dbt.task_result for dbt in DBTaskResult.objects.all()],
             [
-                high_priority_result,
                 high_priority_far_future_result,
+                high_priority_result,
                 low_priority_result,
-                future_result,
                 far_future_result,
+                future_result,
             ],
         )
 

@@ -39,7 +39,7 @@ P = ParamSpec("P")
 
 @dataclass
 class Task(Generic[P, T]):
-    priority: Optional[int]
+    priority: int
     """The priority of the task"""
 
     func: Callable[P, T]
@@ -149,7 +149,7 @@ class Task(Generic[P, T]):
 
 
 def task(
-    priority: Optional[int] = None,
+    priority: int = 0,
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = "default",
 ) -> Callable[[Callable[P, T]], Task[P, T]]:

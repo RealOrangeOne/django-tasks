@@ -2,6 +2,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 from django.db import models
+from django.db.models import F
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
@@ -67,7 +68,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     args_kwargs = models.JSONField()
 
-    priority = models.PositiveSmallIntegerField(null=True)
+    priority = models.PositiveSmallIntegerField(default=0)
 
     task_path = models.TextField()
 
@@ -81,7 +82,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     objects = DBTaskResultQuerySet.as_manager()
 
     class Meta:
-        ordering = ["-priority", "run_after"]
+        ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
 
     @property
     def task(self) -> Task[P, T]:

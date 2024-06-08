@@ -58,9 +58,9 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(default_task_backend.results, [result])
 
     def test_using_priority(self) -> None:
-        self.assertIsNone(test_tasks.noop_task.priority)
+        self.assertEqual(test_tasks.noop_task.priority, 0)
         self.assertEqual(test_tasks.noop_task.using(priority=1).priority, 1)
-        self.assertIsNone(test_tasks.noop_task.priority)
+        self.assertEqual(test_tasks.noop_task.priority, 0)
 
     def test_using_queue_name(self) -> None:
         self.assertEqual(test_tasks.noop_task.queue_name, DEFAULT_QUEUE_NAME)
@@ -128,11 +128,15 @@ class TaskTestCase(SimpleTestCase):
             await test_tasks.noop_task.using(run_after=datetime.now()).aenqueue()
 
     async def test_invalid_priority(self) -> None:
-        with self.assertRaisesMessage(InvalidTaskError, "priority must be positive"):
-            test_tasks.noop_task.using(priority=0).enqueue()
+        with self.assertRaisesMessage(
+            InvalidTaskError, "priority must be zero or greater"
+        ):
+            test_tasks.noop_task.using(priority=-1).enqueue()
 
-        with self.assertRaisesMessage(InvalidTaskError, "priority must be positive"):
-            await test_tasks.noop_task.using(priority=0).aenqueue()
+        with self.assertRaisesMessage(
+            InvalidTaskError, "priority must be zero or greater"
+        ):
+            await test_tasks.noop_task.using(priority=-1).aenqueue()
 
     def test_call_task(self) -> None:
         self.assertEqual(test_tasks.calculate_meaning_of_life.call(), 42)
