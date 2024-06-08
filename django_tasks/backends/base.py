@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from inspect import iscoroutinefunction
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from asgiref.sync import sync_to_async
+from django.core.checks.messages import CheckMessage
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
@@ -93,7 +94,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
         # HACK: `close` isn't abstract, but should do nothing by default
         return None
 
-    def check(self, **kwargs):
+    def check(self, **kwargs: Any) -> list[CheckMessage]:
         raise NotImplementedError(
             "subclasses may provide a check() method to verify that task "
             "backend is configured correctly."
