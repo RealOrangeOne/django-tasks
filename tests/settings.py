@@ -42,11 +42,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
-TASKS = {
-    "default": {
-        "BACKEND": "django_tasks.backends.database.DatabaseBackend"
-    }
-}
+TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
 
 STATIC_URL = "/static/"
 
