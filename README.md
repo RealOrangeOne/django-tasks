@@ -104,3 +104,7 @@ EMAIL_BACKEND = "django_tasks.mail.SMTPEmailBackend"
 ```
 
 SMTP credentials are configured as usual.
+
+### Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to contribute.
