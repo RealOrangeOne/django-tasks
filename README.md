@@ -95,16 +95,6 @@ TASKS = {
 
 Finally, you can run `manage.py db_worker` to run tasks as they're created. Check the `--help` for more options.
 
-### Sending emails
-
-To make sending emails simpler, a backend is provided to automatically create tasks for sending emails via SMTP:
-
-```python
-EMAIL_BACKEND = "django_tasks.mail.SMTPEmailBackend"
-```
-
-SMTP credentials are configured as usual.
-
 ### Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to contribute.
