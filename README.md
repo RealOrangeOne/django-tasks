@@ -8,7 +8,7 @@
 
 A reference implementation and backport of background workers and tasks in Django, as defined in [DEP 0014](https://github.com/django/deps/pull/86).
 
-**Warning**: This code is not intended to be installed, let alone deployed to production!
+**Warning**: This package is under active development, and breaking changes may be released at any time. Be sure to pin to specific versions (even patch versions) if you're using this package in a production environment.
 
 ## Installation
 
