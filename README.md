@@ -95,6 +95,9 @@ TASKS = {
 
 Finally, you can run `manage.py db_worker` to run tasks as they're created. Check the `--help` for more options.
 
+> [!CAUTION]
+> The database backend does not work with SQLite when you are running multiple worker processes - tasks may be executed more than once. See [#33](https://github.com/RealOrangeOne/django-tasks/issues/33).
+
 ### Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to contribute.
