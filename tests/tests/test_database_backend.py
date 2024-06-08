@@ -1,12 +1,14 @@
 import json
 import uuid
 from contextlib import redirect_stderr
+from datetime import timedelta
 from functools import partial
 from io import StringIO
 
 from django.core.management import call_command, execute_from_command_line
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from django_tasks import ResultStatus, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
@@ -266,3 +268,64 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                     ["django-admin", "db_worker", "--interval", "inf"]
                 )
         self.assertIn("invalid valid_interval value: 'inf'", output.getvalue())
+
+    def test_run_after(self) -> None:
+        result = test_tasks.noop_task.using(
+            run_after=timezone.now() + timedelta(hours=10)
+        ).enqueue()
+
+        self.assertEqual(DBTaskResult.objects.count(), 1)
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+
+        with self.assertNumQueries(3):
+            self.run_worker()
+
+        self.assertEqual(DBTaskResult.objects.count(), 1)
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskResult.objects.complete().count(), 0)
+
+        DBTaskResult.objects.filter(id=result.id).update(run_after=timezone.now())
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(8):
+            self.run_worker()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskResult.objects.complete().count(), 1)
+
+    def test_run_after_priority(self) -> None:
+        far_future_result = test_tasks.noop_task.using(
+            run_after=timezone.now() + timedelta(hours=10)
+        ).enqueue()
+
+        high_priority_far_future_result = test_tasks.noop_task.using(
+            priority=10, run_after=timezone.now() + timedelta(hours=10)
+        ).enqueue()
+
+        future_result = test_tasks.noop_task.using(
+            run_after=timezone.now() + timedelta(hours=2)
+        ).enqueue()
+
+        high_priority_result = test_tasks.noop_task.using(priority=10).enqueue()
+
+        low_priority_result = test_tasks.noop_task.using(priority=2).enqueue()
+
+        self.assertEqual(
+            [dbt.task_result for dbt in DBTaskResult.objects.all()],
+            [
+                high_priority_result,
+                high_priority_far_future_result,
+                low_priority_result,
+                future_result,
+                far_future_result,
+            ],
+        )
+
+        self.assertEqual(
+            [dbt.task_result for dbt in DBTaskResult.objects.ready()],
+            [
+                high_priority_result,
+                low_priority_result,
+            ],
+        )
