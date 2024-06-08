@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from inspect import iscoroutinefunction
-from typing import Any, TypeVar, List
+from typing import Any, List, TypeVar
 
 from asgiref.sync import sync_to_async
 from django.core.checks.messages import CheckMessage
