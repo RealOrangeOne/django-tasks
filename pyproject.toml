@@ -55,8 +55,12 @@ dev = [
     "coverage",
     "django-stubs[compatible-mypy]",
     "dj-database-url",
-    "psycopg",
+]
+mysql = [
     "mysqlclient"
+]
+postgres = [
+    "psycopg[binary]",
 ]
 
 [tool.ruff.lint]
