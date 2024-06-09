@@ -72,7 +72,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -e '.[dev]'
+          pip install -e '.[dev,postgres]'
           pip install Django~=${{ matrix.django-version }}
       - name: Run tests
         run: just test
@@ -107,7 +107,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -e '.[dev]'
+          pip install -e '.[dev,mysql]'
           pip install Django~=${{ matrix.django-version }}
       - name: Run tests
         run: just test

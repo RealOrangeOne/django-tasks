@@ -13,7 +13,7 @@ A reference implementation and backport of background workers and tasks in Djang
 ## Installation
 
 ```
-pip install django-tasks
+python -m pip install django-tasks
 ```
 
 ## Usage
