@@ -3,16 +3,17 @@
   just --list
 
 test *ARGS:
-    ./manage.py makemigrations --check --noinput
-    coverage run --source=django_tasks manage.py test {{ ARGS }}
-    coverage report
-    coverage html
+    python -m manage check
+    python -m manage makemigrations --dry-run --check --noinput
+    python -m coverage run --source=django_tasks -m manage test --shuffle --noinput {{ ARGS }}
+    python -m coverage report
+    python -m coverage html
 
 format:
-    ruff check django_tasks tests --fix
-    ruff format django_tasks tests
+    python -m ruff check django_tasks tests --fix
+    python -m ruff format django_tasks tests
 
 lint:
-    ruff check django_tasks tests
-    ruff format django_tasks tests --check
-    mypy django_tasks tests
+    python -m ruff check django_tasks tests
+    python -m ruff format django_tasks tests --check
+    python -m mypy django_tasks tests
