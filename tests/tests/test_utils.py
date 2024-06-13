@@ -1,5 +1,6 @@
 import datetime
 import subprocess
+from unittest.mock import Mock
 
 from django.test import SimpleTestCase
 
@@ -70,3 +71,17 @@ class JSONNormalizeTestCase(SimpleTestCase):
             with self.subTest(example):
                 self.assertFalse(utils.is_json_serializable(example))
                 self.assertRaises(TypeError, utils.json_normalize, example)
+
+
+class RetryTestCase(SimpleTestCase):
+    def test_retry(self) -> None:
+        sentinel = Mock(side_effect=ValueError(""))
+
+        with self.assertRaises(ValueError):
+            utils.retry()(sentinel)()
+
+        self.assertEqual(sentinel.call_count, 3)
+
+    def test_keeps_return_value(self) -> None:
+        self.assertTrue(utils.retry()(lambda: True)())
+        self.assertFalse(utils.retry()(lambda: False)())

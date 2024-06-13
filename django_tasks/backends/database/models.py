@@ -8,6 +8,7 @@ from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
 
 from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus, Task
+from django_tasks.utils import retry
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -44,17 +45,12 @@ class DBTaskResultQuerySet(models.QuerySet):
     def failed(self) -> "DBTaskResultQuerySet":
         return self.filter(status=ResultStatus.FAILED)
 
-    def get_locked(self, retries: int = 3) -> Optional["DBTaskResult"]:
+    @retry()
+    def get_locked(self) -> Optional["DBTaskResult"]:
         """
         Get a job, locking the row and accounting for deadlocks.
         """
-        for attempt in range(1, retries + 1):
-            try:
-                return self.select_for_update().first()
-            except Exception:
-                if attempt == retries:
-                    raise
-        return None
+        return self.select_for_update().first()
 
 
 class DBTaskResult(GenericBase[P, T], models.Model):
@@ -117,6 +113,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
         return result
 
+    @retry(backoff_delay=0)
     def claim(self) -> None:
         """
         Mark as job as being run
@@ -124,11 +121,13 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.status = ResultStatus.RUNNING
         self.save(update_fields=["status"])
 
+    @retry()
     def set_result(self, result: Any) -> None:
         self.status = ResultStatus.COMPLETE
         self.result = result
         self.save(update_fields=["status", "result"])
 
+    @retry()
     def set_failed(self) -> None:
         self.status = ResultStatus.FAILED
         self.save(update_fields=["status"])
