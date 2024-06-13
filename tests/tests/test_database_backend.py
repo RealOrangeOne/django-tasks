@@ -292,7 +292,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 execute_from_command_line(
                     ["django-admin", "db_worker", "--interval", "-1"]
                 )
-        self.assertIn("Must be a positive number", output.getvalue())
+        self.assertIn("Must be greater than zero", output.getvalue())
 
     def test_infinite_interval(self) -> None:
         output = StringIO()

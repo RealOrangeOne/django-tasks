@@ -53,8 +53,9 @@ class Worker:
 
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
 
-        # Add a random small delay before starting the loop to avoid a thundering hurd
-        time.sleep(random.random())
+        if self.interval:
+            # Add a random small delay before starting the loop to avoid a thundering hurd
+            time.sleep(random.random())
 
         while self.running:
             tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
@@ -136,8 +137,8 @@ def valid_interval(val: str) -> float:
     int(val)
 
     num = float(val)
-    if num <= 0:
-        raise ArgumentTypeError("Must be a positive number")
+    if num < 0:
+        raise ArgumentTypeError("Must be greater than zero")
     return num
 
 
