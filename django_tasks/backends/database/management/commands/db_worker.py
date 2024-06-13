@@ -53,8 +53,8 @@ class Worker:
 
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
 
-        # Add a small delay before starting the loop to avoid a thundering hurd
-        time.sleep(self.interval * random.random())
+        # Add a random small delay before starting the loop to avoid a thundering hurd
+        time.sleep(random.random())
 
         while self.running:
             tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
