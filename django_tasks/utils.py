@@ -53,7 +53,10 @@ def retry(*, retries: int = 3, backoff_delay: float = 0.1) -> Callable:
             for attempt in range(1, retries + 1):
                 try:
                     return f(*args, **kwargs)
-                except Exception:
+                except KeyboardInterrupt:
+                    # Let the user ctrl-C out of the program without a retry
+                    raise
+                except BaseException:
                     if attempt == retries:
                         raise
                     time.sleep(backoff_delay)
