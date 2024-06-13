@@ -30,11 +30,6 @@ class Worker:
         self.running = True
         self.running_task = False
 
-        signal.signal(signal.SIGINT, self.shutdown)
-        signal.signal(signal.SIGTERM, self.shutdown)
-        if hasattr(signal, "SIGQUIT"):
-            signal.signal(signal.SIGQUIT, self.shutdown)
-
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
         logger.warning(
             "Received %s - shutting down gracefully.", signal.strsignal(signum)
@@ -47,7 +42,15 @@ class Worker:
             # This is useful if we're currently in a `sleep`.
             exit(0)
 
+    def configure_signals(self) -> None:
+        signal.signal(signal.SIGINT, self.shutdown)
+        signal.signal(signal.SIGTERM, self.shutdown)
+        if hasattr(signal, "SIGQUIT"):
+            signal.signal(signal.SIGQUIT, self.shutdown)
+
     def start(self) -> None:
+        self.configure_signals()
+
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
 
         # Add a small delay before starting the loop to avoid a thundering hurd
