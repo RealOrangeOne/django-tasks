@@ -374,8 +374,8 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             stdout.getvalue().splitlines(),
             [
                 "Starting worker for queues=default",
-                f"Task id={result.id} state=RUNNING",
-                f"Task id={result.id} state=COMPLETE",
+                f"Task id={result.id} path=tests.tasks.noop_task state=RUNNING",
+                f"Task id={result.id} path=tests.tasks.noop_task state=COMPLETE",
                 "No more tasks to run - exiting gracefully.",
             ],
         )

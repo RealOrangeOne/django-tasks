@@ -91,17 +91,30 @@ class Worker:
             task = db_task_result.task
             task_result = db_task_result.task_result
 
-            logger.info("Task id=%s state=%s", db_task_result.id, ResultStatus.RUNNING)
+            logger.info(
+                "Task id=%s path=%s state=%s",
+                db_task_result.id,
+                db_task_result.task_path,
+                ResultStatus.RUNNING,
+            )
             return_value = task.call(*task_result.args, **task_result.kwargs)
 
             # Setting the return and success value inside the error handling,
             # So errors setting it (eg JSON encode) can still be recorded
             db_task_result.set_result(return_value)
-            logger.info("Task id=%s state=%s", db_task_result.id, ResultStatus.COMPLETE)
+            logger.info(
+                "Task id=%s path=%s state=%s",
+                db_task_result.id,
+                db_task_result.task_path,
+                ResultStatus.COMPLETE,
+            )
         except BaseException as e:
             # Use `.exception` to integrate with error monitoring tools (eg Sentry)
             logger.exception(
-                "Task id=%s state=%s", db_task_result.id, ResultStatus.FAILED
+                "Task id=%s path=%s state=%s",
+                db_task_result.id,
+                db_task_result.task_path,
+                ResultStatus.FAILED,
             )
             db_task_result.set_failed()
 
