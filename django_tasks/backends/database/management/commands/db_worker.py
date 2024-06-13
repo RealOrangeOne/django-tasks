@@ -6,7 +6,7 @@ from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
 from typing import List, Optional
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
@@ -41,7 +41,7 @@ class Worker:
         if not self.running_task:
             # If we're not currently running a task, exit immediately.
             # This is useful if we're currently in a `sleep`.
-            raise CommandError(returncode=0)
+            exit(0)
 
     def start(self) -> None:
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
