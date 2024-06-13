@@ -19,3 +19,8 @@ def calculate_meaning_of_life() -> int:
 @task()
 def failing_task() -> None:
     raise ValueError("This task failed")
+
+
+@task()
+def exit_task() -> None:
+    exit(1)

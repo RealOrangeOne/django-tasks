@@ -405,3 +405,11 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         db_task_result.refresh_from_db()
 
         self.assertEqual(db_task_result.status, ResultStatus.FAILED)
+
+    def test_worker_doesnt_exit(self) -> None:
+        result = test_tasks.exit_task.enqueue()
+
+        self.run_worker()
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)

@@ -98,12 +98,16 @@ class Worker:
             # So errors setting it (eg JSON encode) can still be recorded
             db_task_result.set_result(return_value)
             logger.info("Task id=%s state=%s", db_task_result.id, ResultStatus.COMPLETE)
-        except Exception:
+        except BaseException as e:
             # Use `.exception` to integrate with error monitoring tools (eg Sentry)
             logger.exception(
                 "Task id=%s state=%s", db_task_result.id, ResultStatus.FAILED
             )
             db_task_result.set_failed()
+
+            # If the user tried to terminate, let them
+            if isinstance(e, KeyboardInterrupt):
+                raise
 
 
 def valid_backend_name(val: str) -> str:
