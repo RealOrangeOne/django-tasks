@@ -11,7 +11,13 @@ from django.utils.module_loading import import_string
 
 from .backends.base import BaseTaskBackend
 from .exceptions import InvalidTaskBackendError
-from .task import DEFAULT_QUEUE_NAME, ResultStatus, Task, task
+from .task import (
+    DEFAULT_QUEUE_NAME,
+    DEFAULT_TASK_BACKEND_ALIAS,
+    ResultStatus,
+    Task,
+    task,
+)
 
 __version__ = "0.1.1"
 
@@ -23,8 +29,6 @@ __all__ = [
     "ResultStatus",
     "Task",
 ]
-
-DEFAULT_TASK_BACKEND_ALIAS = "default"
 
 
 class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
@@ -38,7 +42,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
             # HACK: Force a default task backend.
             # Can be replaced with `django.conf.global_settings` once vendored.
             return {
-                "default": {
+                DEFAULT_TASK_BACKEND_ALIAS: {
                     "BACKEND": "django_tasks.backends.immediate.ImmediateBackend"
                 }
             }
