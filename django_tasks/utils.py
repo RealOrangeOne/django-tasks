@@ -57,5 +57,7 @@ def retry(*, retries: int = 3, backoff_delay: float = 0.1) -> Callable:
                     if attempt == retries:
                         raise
                     time.sleep(backoff_delay)
+
         return inner_wrapper
+
     return wrapper

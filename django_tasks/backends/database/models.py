@@ -1,6 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
+from django.core.exceptions import SuspiciousOperation
 from django.db import models
 from django.db.models import F
 from django.utils import timezone
@@ -86,7 +87,10 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     def task(self) -> Task[P, T]:
         task = import_string(self.task_path)
 
-        assert isinstance(task, Task)
+        if not isinstance(task, Task):
+            raise SuspiciousOperation(
+                f"Task {self.id} does not point to a Task ({self.task_path})"
+            )
 
         return task.using(
             priority=self.priority,

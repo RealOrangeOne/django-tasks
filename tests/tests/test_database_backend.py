@@ -5,6 +5,7 @@ from datetime import timedelta
 from functools import partial
 from io import StringIO
 
+from django.core.exceptions import SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
@@ -138,6 +139,31 @@ class DatabaseBackendTestCase(TestCase):
             json.loads(response.content),
             {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
         )
+
+    def test_invalid_task_path(self) -> None:
+        db_task_result = DBTaskResult.objects.create(
+            args_kwargs={"args": [["exit", "1"]], "kwargs": {}},
+            task_path="subprocess.check_output",
+            backend_name="default",
+        )
+
+        with self.assertRaisesMessage(
+            SuspiciousOperation,
+            f"Task {db_task_result.id} does not point to a Task ({db_task_result.task_path})",
+        ):
+            _ = db_task_result.task
+
+    def test_missing_task_path(self) -> None:
+        db_task_result = DBTaskResult.objects.create(
+            args_kwargs={"args": [], "kwargs": {}},
+            task_path="missing.func",
+            backend_name="default",
+        )
+
+        with self.assertRaises(
+            ImportError,
+        ):
+            _ = db_task_result.task
 
 
 @override_settings(
@@ -353,3 +379,29 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 "No more tasks to run - exiting gracefully.",
             ],
         )
+
+    def test_invalid_task_path(self) -> None:
+        db_task_result = DBTaskResult.objects.create(
+            args_kwargs={"args": [["exit", "1"]], "kwargs": {}},
+            task_path="subprocess.check_output",
+            backend_name="default",
+        )
+
+        self.run_worker()
+
+        db_task_result.refresh_from_db()
+
+        self.assertEqual(db_task_result.status, ResultStatus.FAILED)
+
+    def test_missing_task_path(self) -> None:
+        db_task_result = DBTaskResult.objects.create(
+            args_kwargs={"args": [], "kwargs": {}},
+            task_path="missing.func",
+            backend_name="default",
+        )
+
+        self.run_worker()
+
+        db_task_result.refresh_from_db()
+
+        self.assertEqual(db_task_result.status, ResultStatus.FAILED)
