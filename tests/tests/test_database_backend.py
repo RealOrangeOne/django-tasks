@@ -12,6 +12,9 @@ from django.utils import timezone
 
 from django_tasks import ResultStatus, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
+from django_tasks.backends.database.management.commands.db_worker import (
+    logger as db_worker_logger,
+)
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
@@ -145,6 +148,11 @@ class DatabaseBackendTestCase(TestCase):
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
     run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
+
+    def tearDown(self) -> None:
+        # Reset the logger after every run, to ensure the correct `stdout` is used
+        for handler in db_worker_logger.handlers:
+            db_worker_logger.removeHandler(handler)
 
     def test_run_enqueued_task(self) -> None:
         for task in [
@@ -327,5 +335,21 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             [
                 high_priority_result,
                 low_priority_result,
+            ],
+        )
+
+    def test_verbose_logging(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        stdout = StringIO()
+        self.run_worker(verbosity=3, stdout=stdout, stderr=stdout)
+
+        self.assertEqual(
+            stdout.getvalue().splitlines(),
+            [
+                "Starting worker for queues=default",
+                f"Task id={result.id} state=RUNNING",
+                f"Task id={result.id} state=COMPLETE",
+                "No more tasks to run - exiting gracefully.",
             ],
         )

@@ -36,6 +36,10 @@ class Worker:
             signal.signal(signal.SIGQUIT, self.shutdown)
 
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
+        logger.warning(
+            "Received %s - shutting down gracefully.", signal.strsignal(signum)
+        )
+
         self.running = False
 
         if not self.running_task:
@@ -149,6 +153,21 @@ class Command(BaseCommand):
             help="The backend to operate on (default: %(default)r)",
         )
 
+    def configure_logging(self, verbosity: int) -> None:
+        if verbosity == 0:
+            logger.setLevel(logging.CRITICAL)
+        elif verbosity == 1:
+            logger.setLevel(logging.WARNING)
+        elif verbosity == 2:
+            logger.setLevel(logging.INFO)
+        else:
+            logger.setLevel(logging.DEBUG)
+
+        # If no handler is configured, the logs won't show,
+        # regardless of the set level.
+        if not logger.hasHandlers():
+            logger.addHandler(logging.StreamHandler(self.stdout))
+
     def handle(
         self,
         *,
@@ -159,14 +178,7 @@ class Command(BaseCommand):
         backend_name: str,
         **options: dict,
     ) -> None:
-        if verbosity == 0:
-            logger.setLevel(logging.CRITICAL)
-        elif verbosity == 1:
-            logger.setLevel(logging.WARNING)
-        elif verbosity == 2:
-            logger.setLevel(logging.INFO)
-        else:
-            logger.setLevel(logging.DEBUG)
+        self.configure_logging(verbosity)
 
         worker = Worker(
             queue_names=queue_name.split(","),
@@ -178,4 +190,4 @@ class Command(BaseCommand):
         worker.start()
 
         if batch:
-            logger.info("No more tasks to run - terminating.")
+            logger.info("No more tasks to run - exiting gracefully.")
