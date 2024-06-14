@@ -1,6 +1,8 @@
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, List, TypeVar
 
+from django.apps import apps
+from django.core.checks import ERROR, CheckMessage
 from django.core.exceptions import ValidationError
 from typing_extensions import ParamSpec
 
@@ -88,3 +90,17 @@ class DatabaseBackend(BaseTaskBackend):
             return (await DBTaskResult.objects.aget(id=result_id)).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise ResultDoesNotExist(result_id) from e
+
+    def check(self, **kwargs: Any) -> List[CheckMessage]:
+        if not apps.is_installed("django_tasks.backends.database"):
+            backend_name = self.__class__.__name__
+
+            return [
+                CheckMessage(
+                    ERROR,
+                    f"{backend_name} configured as django_tasks backend, but database app not installed",
+                    "Insert 'django_tasks.backends.database' in INSTALLED_APPS",
+                )
+            ]
+
+        return []
