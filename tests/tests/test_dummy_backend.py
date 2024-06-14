@@ -26,6 +26,7 @@ class DummyBackendTestCase(SimpleTestCase):
                 result = default_task_backend.enqueue(task, (1,), {"two": 3})
 
                 self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
                 self.assertEqual(result.task, task)
@@ -40,6 +41,7 @@ class DummyBackendTestCase(SimpleTestCase):
                 result = await default_task_backend.aenqueue(task, (), {})
 
                 self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
                 self.assertEqual(result.task, task)

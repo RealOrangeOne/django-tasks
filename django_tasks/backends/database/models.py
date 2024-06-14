@@ -63,6 +63,9 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         max_length=max(len(value) for value in ResultStatus.values),
     )
 
+    enqueued_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True)
+
     args_kwargs = models.JSONField()
 
     priority = models.PositiveSmallIntegerField(default=0)
@@ -108,6 +111,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             task=self.task,
             id=str(self.id),
             status=ResultStatus[self.status],
+            enqueued_at=self.enqueued_at,
+            finished_at=self.finished_at,
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],
             backend=self.backend_name,
@@ -128,10 +133,12 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     @retry()
     def set_result(self, result: Any) -> None:
         self.status = ResultStatus.COMPLETE
+        self.finished_at = timezone.now()
         self.result = result
-        self.save(update_fields=["status", "result"])
+        self.save(update_fields=["status", "result", "finished_at"])
 
     @retry()
     def set_failed(self) -> None:
         self.status = ResultStatus.FAILED
-        self.save(update_fields=["status"])
+        self.finished_at = timezone.now()
+        self.save(update_fields=["status", "finished_at"])

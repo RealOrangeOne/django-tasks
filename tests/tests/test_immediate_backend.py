@@ -24,6 +24,8 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 result = default_task_backend.enqueue(task, (1,), {"two": 3})
 
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
+                self.assertIsNotNone(result.finished_at)
+                self.assertGreaterEqual(result.finished_at, result.enqueued_at)
                 self.assertIsNone(result.result)
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
@@ -35,6 +37,8 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 result = await default_task_backend.aenqueue(task, (), {})
 
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
+                self.assertIsNotNone(result.finished_at)
+                self.assertGreaterEqual(result.finished_at, result.enqueued_at)
                 self.assertIsNone(result.result)
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
@@ -44,6 +48,8 @@ class ImmediateBackendTestCase(SimpleTestCase):
         result = default_task_backend.enqueue(test_tasks.failing_task, [], {})
 
         self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsNotNone(result.finished_at)
+        self.assertGreaterEqual(result.finished_at, result.enqueued_at)
         self.assertIsNone(result.result)
         self.assertEqual(result.task, test_tasks.failing_task)
         self.assertEqual(result.args, [])

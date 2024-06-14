@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import List, TypeVar
 from uuid import uuid4
 
+from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.exceptions import ResultDoesNotExist
@@ -33,6 +34,8 @@ class DummyBackend(BaseTaskBackend):
             task=task,
             id=str(uuid4()),
             status=ResultStatus.NEW,
+            enqueued_at=timezone.now(),
+            finished_at=None,
             args=json_normalize(args),
             kwargs=json_normalize(kwargs),
             backend=self.alias,

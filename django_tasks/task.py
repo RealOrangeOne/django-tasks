@@ -178,6 +178,12 @@ class TaskResult(Generic[T]):
     status: ResultStatus
     """The status of the running task"""
 
+    enqueued_at: datetime
+    """The time this task was enqueued"""
+
+    finished_at: Optional[datetime]
+    """The time this task was finished"""
+
     args: list
     """The arguments to pass to the task function"""
 
@@ -208,8 +214,9 @@ class TaskResult(Generic[T]):
         """
         refreshed_task = self.task.get_backend().get_result(self.id)
 
-        # status and result are the only refreshable attributes
+        # status, finished_at and result are the only refreshable attributes
         self.status = refreshed_task.status
+        self.finished_at = refreshed_task.finished_at
         self._result = refreshed_task._result
 
     async def arefresh(self) -> None:
@@ -218,6 +225,7 @@ class TaskResult(Generic[T]):
         """
         refreshed_task = await self.task.get_backend().aget_result(self.id)
 
-        # status and result are the only refreshable attributes
+        # status, finished_at and result are the only refreshable attributes
         self.status = refreshed_task.status
+        self.finished_at = refreshed_task.finished_at
         self._result = refreshed_task._result
