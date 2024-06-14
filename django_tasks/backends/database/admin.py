@@ -8,7 +8,15 @@ from .models import DBTaskResult
 
 @admin.register(DBTaskResult)
 class DBTaskResultAdmin(admin.ModelAdmin):
-    list_display = ("id", "get_task_name", "status", "priority", "queue_name")
+    list_display = (
+        "id",
+        "get_task_name",
+        "status",
+        "enqueued_at",
+        "finished_at",
+        "priority",
+        "queue_name",
+    )
     list_filter = ("status", "priority", "queue_name")
 
     def has_add_permission(
