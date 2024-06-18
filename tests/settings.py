@@ -63,6 +63,6 @@ DATABASES = {
 
 USE_TZ = True
 
-if not IN_TEST:
+if sys.argv[1] == "runserver":
     DEBUG = True
     TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}

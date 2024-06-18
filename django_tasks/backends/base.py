@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from inspect import iscoroutinefunction
-from typing import Any, Iterable, TypeVar
+from typing import Any, Iterable, Optional, TypeVar
 
 from asgiref.sync import sync_to_async
-from django.core.checks.messages import CheckMessage
+from django.core.checks import messages
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
@@ -16,6 +16,9 @@ P = ParamSpec("P")
 
 
 class BaseTaskBackend(metaclass=ABCMeta):
+    alias: str
+    enqueue_on_commit: Optional[bool]
+
     task_class = Task
 
     supports_defer = False
@@ -32,6 +35,18 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
         self.alias = options["ALIAS"]
         self.queues = set(options.get("QUEUES", [DEFAULT_QUEUE_NAME]))
+        self.enqueue_on_commit = options.get("ENQUEUE_ON_COMMIT", None)
+
+    def _get_enqueue_on_commit_for_task(self, task: Task) -> Optional[bool]:
+        """
+        Determine the correct `enqueue_on_commit` setting to use for a given task.
+
+        If the task defines it, use that, otherwise, fall back to the backend.
+        """
+        if isinstance(task.enqueue_on_commit, bool):
+            return task.enqueue_on_commit
+
+        return self.enqueue_on_commit
 
     def validate_task(self, task: Task) -> None:
         """
@@ -101,8 +116,8 @@ class BaseTaskBackend(metaclass=ABCMeta):
             result_id=result_id
         )
 
-    def check(self, **kwargs: Any) -> Iterable[CheckMessage]:
-        raise NotImplementedError(
-            "subclasses may provide a check() method to verify that task "
-            "backend is configured correctly."
-        )
+    def check(self, **kwargs: Any) -> Iterable[messages.CheckMessage]:
+        if self.enqueue_on_commit not in {True, False, None}:
+            yield messages.CheckMessage(
+                messages.ERROR, "`ENQUEUE_ON_COMMIT` must be a bool or None"
+            )

@@ -1,7 +1,8 @@
 import json
 from typing import cast
 
-from django.test import SimpleTestCase, override_settings
+from django.db import transaction
+from django.test import SimpleTestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
 from django_tasks import ResultStatus, Task, default_task_backend, tasks
@@ -129,3 +130,91 @@ class DummyBackendTestCase(SimpleTestCase):
             json.loads(response.content),
             {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
         )
+
+
+class DummyBackendTransactionTestCase(TransactionTestCase):
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+                "ENQUEUE_ON_COMMIT": True,
+            }
+        }
+    )
+    def test_wait_until_transaction_commit(self) -> None:
+        self.assertTrue(default_task_backend.enqueue_on_commit)
+        self.assertTrue(
+            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
+        )
+
+        with transaction.atomic():
+            test_tasks.noop_task.enqueue()
+
+            self.assertEqual(len(default_task_backend.results), 0)
+
+        self.assertEqual(len(default_task_backend.results), 1)
+
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+                "ENQUEUE_ON_COMMIT": False,
+            }
+        }
+    )
+    def test_doesnt_wait_until_transaction_commit(self) -> None:
+        self.assertFalse(default_task_backend.enqueue_on_commit)
+        self.assertFalse(
+            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
+        )
+
+        with transaction.atomic():
+            test_tasks.noop_task.enqueue()
+
+            self.assertEqual(len(default_task_backend.results), 1)
+
+        self.assertEqual(len(default_task_backend.results), 1)
+
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+            }
+        }
+    )
+    def test_wait_until_transaction_by_default(self) -> None:
+        self.assertIsNone(default_task_backend.enqueue_on_commit)
+        self.assertIsNone(
+            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
+        )
+
+        with transaction.atomic():
+            test_tasks.noop_task.enqueue()
+
+            self.assertEqual(len(default_task_backend.results), 0)
+
+        self.assertEqual(len(default_task_backend.results), 1)
+
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+                "ENQUEUE_ON_COMMIT": False,
+            }
+        }
+    )
+    def test_task_specific_enqueue_on_commit(self) -> None:
+        self.assertFalse(default_task_backend.enqueue_on_commit)
+        self.assertTrue(test_tasks.enqueue_on_commit_task.enqueue_on_commit)
+        self.assertTrue(
+            default_task_backend._get_enqueue_on_commit_for_task(
+                test_tasks.enqueue_on_commit_task
+            )
+        )
+
+        with transaction.atomic():
+            test_tasks.enqueue_on_commit_task.enqueue()
+
+            self.assertEqual(len(default_task_backend.results), 0)
+
+        self.assertEqual(len(default_task_backend.results), 1)

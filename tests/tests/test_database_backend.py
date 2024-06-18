@@ -23,7 +23,7 @@ from django_tasks.backends.database.management.commands.db_worker import (
 )
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction, normalize_uuid
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 from tests import tasks as test_tasks
 
 
@@ -193,9 +193,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             backend_name="default",
         )
 
-        with self.assertRaises(
-            ImportError,
-        ):
+        with self.assertRaises(ImportError):
             _ = db_task_result.task
 
     def test_check(self) -> None:
@@ -237,6 +235,51 @@ class DatabaseBackendTestCase(TransactionTestCase):
         DBTaskResult.objects.create(
             task_path="", backend_name="default", priority=0, args_kwargs={}
         )
+
+    def test_must_enqueue_on_commit_in_options(self) -> None:
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+                    "ENQUEUE_ON_COMMIT": True,
+                }
+            }
+        ):
+            self.assertEqual(len(list(default_task_backend.check())), 0)
+
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+                    "ENQUEUE_ON_COMMIT": None,
+                }
+            }
+        ):
+            self.assertEqual(len(list(default_task_backend.check())), 0)
+
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+                    "ENQUEUE_ON_COMMIT": False,
+                }
+            }
+        ):
+            errors = list(default_task_backend.check())
+            self.assertEqual(len(errors), 1)
+            self.assertEqual(errors[0].hint, "Ensure ENQUEUE_ON_COMMIT is True or None")
+
+    def test_must_enqueue_on_commit_in_task(self) -> None:
+        self.assertIsNone(default_task_backend.enqueue_on_commit)
+
+        default_task_backend.validate_task(test_tasks.noop_task)
+        default_task_backend.validate_task(test_tasks.enqueue_on_commit_task)
+
+        with self.assertRaisesMessage(
+            InvalidTaskError,
+            "enqueue_on_commit must be True or None when using database backend",
+        ):
+            default_task_backend.validate_task(test_tasks.never_enqueue_on_commit_task)
 
 
 @override_settings(

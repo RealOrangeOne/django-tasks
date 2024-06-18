@@ -44,3 +44,13 @@ def complex_exception() -> None:
 @task()
 def exit_task() -> None:
     exit(1)
+
+
+@task(enqueue_on_commit=True)
+def enqueue_on_commit_task() -> None:
+    pass
+
+
+@task(enqueue_on_commit=False)
+def never_enqueue_on_commit_task() -> None:
+    pass
