@@ -153,7 +153,7 @@ class Task(Generic[P, T]):
 # Bare decorator usage
 # e.g. @task
 @overload
-def task(function: Callable[P, T]) -> Task[P, T]: ...
+def task(function: Callable[P, T], /) -> Task[P, T]: ...
 
 
 # Decorator with arguments
