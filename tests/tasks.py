@@ -16,11 +16,6 @@ async def noop_task_async(*args: tuple, **kwargs: dict) -> None:
     return None
 
 
-@task
-async def noop_task_async_from_bare_decorator(*args: tuple, **kwargs: dict) -> None:
-    return None
-
-
 @task()
 def calculate_meaning_of_life() -> int:
     return 42
