@@ -11,6 +11,7 @@ from typing import (
     Optional,
     TypeVar,
     Union,
+    overload,
 )
 
 from asgiref.sync import async_to_sync, sync_to_async
@@ -149,11 +150,31 @@ class Task(Generic[P, T]):
         return f"{self.func.__module__}.{self.func.__qualname__}"
 
 
+# Bare decorator usage
+# e.g. @task
+@overload
+def task(function: Callable[P, T]) -> Task[P, T]: ...
+
+
+# Decorator with arguments
+# e.g. @task() or @task(priority=1, ...)
+@overload
 def task(
+    *,
     priority: int = 0,
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-) -> Callable[[Callable[P, T]], Task[P, T]]:
+) -> Callable[[Callable[P, T]], Task[P, T]]: ...
+
+
+# Implementation
+def task(
+    function: Optional[Callable[P, T]] = None,
+    *,
+    priority: int = 0,
+    queue_name: str = DEFAULT_QUEUE_NAME,
+    backend: str = DEFAULT_TASK_BACKEND_ALIAS,
+) -> Task[P, T] | Callable[[Callable[P, T]], Task[P, T]]:
     """
     A decorator used to create a task.
     """
@@ -163,6 +184,9 @@ def task(
         return tasks[backend].task_class(
             priority=priority, func=f, queue_name=queue_name, backend=backend
         )
+
+    if function:
+        return wrapper(function)
 
     return wrapper
 
