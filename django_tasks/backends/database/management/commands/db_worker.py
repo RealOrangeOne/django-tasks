@@ -54,7 +54,7 @@ class Worker:
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
 
         if self.interval:
-            # Add a random small delay before starting the loop to avoid a thundering hurd
+            # Add a random small delay before starting the loop to avoid a thundering herd
             time.sleep(random.random())
 
         while self.running:
