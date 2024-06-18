@@ -41,6 +41,7 @@ class TaskTestCase(SimpleTestCase):
     def test_task_decorator(self) -> None:
         self.assertIsInstance(test_tasks.noop_task, Task)
         self.assertIsInstance(test_tasks.noop_task_from_bare_decorator, Task)
+        self.assertIsInstance(test_tasks.noop_task_async_from_bare_decorator, Task)
 
     def test_enqueue_task(self) -> None:
         result = test_tasks.noop_task.enqueue()
