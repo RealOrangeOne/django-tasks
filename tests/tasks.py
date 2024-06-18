@@ -6,6 +6,11 @@ def noop_task(*args: tuple, **kwargs: dict) -> None:
     return None
 
 
+@task
+def noop_task_from_bare_decorator(*args: tuple, **kwargs: dict) -> None:
+    return None
+
+
 @task()
 async def noop_task_async(*args: tuple, **kwargs: dict) -> None:
     return None

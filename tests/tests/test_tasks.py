@@ -8,6 +8,7 @@ from django.utils.module_loading import import_string
 from django_tasks import (
     DEFAULT_QUEUE_NAME,
     ResultStatus,
+    Task,
     default_task_backend,
     task,
     tasks,
@@ -36,6 +37,11 @@ class TaskTestCase(SimpleTestCase):
     def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
         self.assertIsInstance(tasks["default"], DummyBackend)
+
+    def test_task_decorator(self) -> None:
+        self.assertIsInstance(test_tasks.noop_task, Task)
+        self.assertIsInstance(test_tasks.noop_task_async, Task)
+        self.assertIsInstance(test_tasks.noop_task_from_bare_decorator, Task)
 
     def test_enqueue_task(self) -> None:
         result = test_tasks.noop_task.enqueue()
