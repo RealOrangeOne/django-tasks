@@ -174,7 +174,7 @@ def task(
     priority: int = 0,
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-) -> Task[P, T] | Callable[[Callable[P, T]], Task[P, T]]:
+) -> Union[Task[P, T], Callable[[Callable[P, T]], Task[P, T]]]:
     """
     A decorator used to create a task.
     """
