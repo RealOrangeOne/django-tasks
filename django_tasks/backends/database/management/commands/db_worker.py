@@ -70,24 +70,27 @@ class Worker:
                 with transaction.atomic():
                     task_result = tasks.get_locked()
 
-                    if task_result is None:
-                        if self.batch:
-                            # If we're running in "batch" mode, terminate the loop (and thus the worker)
-                            return None
-                        else:
-                            # Otherwise, check for more jobs
-                            continue
+                    if task_result is not None:
+                        # "claim" the task, so it isn't run by another worker process
+                        task_result.claim()
 
-                    # "claim" the task, so it isn't run by another worker process
-                    task_result.claim()
+                if task_result is not None:
+                    self.run_task(task_result)
 
-                self.run_task(task_result)
             finally:
                 self.running_task = False
 
+            if self.batch and task_result is None:
+                # If we're running in "batch" mode, terminate the loop (and thus the worker)
+                return None
+
+            # Wait before checking for another task
             time.sleep(self.interval)
 
     def run_task(self, db_task_result: DBTaskResult) -> None:
+        """
+        Run the given task, marking it as complete or failed.
+        """
         try:
             task = db_task_result.task
             task_result = db_task_result.task_result
