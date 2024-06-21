@@ -22,7 +22,9 @@ python -m pip install django-tasks
 
 ### Settings
 
-The first step is to configure a backend. This connects the tasks to whatever is going to execute them.
+The first step is to add `django_tasks` to your `INSTALLED_APPS`.
+
+Secondly, you'll need to configure a backend. This connects the tasks to whatever is going to execute them.
 
 If omitted, the following configuration is used:
 
@@ -36,9 +38,11 @@ TASKS = {
 
 A few backends are included by default:
 
-- `DummyBackend`: Don't execute the tasks, just store them. This is especially useful for testing.
-- `ImmediateBackend`: Execute the task immediately in the current thread
-- `DatabaseBackend`: Store tasks in the database (via Django's ORM), and retrieve and execute them using the `db_worker` management command
+- `django_tasks.backends.dummy.DummyBackend`: Don't execute the tasks, just store them. This is especially useful for testing.
+- `django_tasks.backends.immediate.ImmediateBackend`: Execute the task immediately in the current thread
+- `django_tasks.backends.database.DatabaseBackend`: Store tasks in the database (via Django's ORM), and retrieve and execute them using the `db_worker` management command
+
+Note: `DatabaseBackend` additionally requires `django_tasks.backends.database` adding to `INSTALLED_APPS`.
 
 ### Defining tasks
 
