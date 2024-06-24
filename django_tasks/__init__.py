@@ -3,6 +3,7 @@ import django_stubs_ext
 
 django_stubs_ext.monkeypatch()
 
+import importlib.metadata
 from typing import Mapping, Optional, cast
 
 from django.core import signals
@@ -19,7 +20,7 @@ from .task import (
     task,
 )
 
-__version__ = "0.2.0"
+__version__ = importlib.metadata.version(__name__)
 
 __all__ = [
     "tasks",
