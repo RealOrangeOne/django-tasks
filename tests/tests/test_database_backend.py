@@ -311,6 +311,15 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 )
         self.assertIn("The connection 'unknown' doesn't exist.", output.getvalue())
 
+    def test_incorrect_backend(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--backend", "dummy"]
+                )
+        self.assertIn("Backend 'dummy' is not a database backend", output.getvalue())
+
     def test_negative_interval(self) -> None:
         output = StringIO()
         with redirect_stderr(output):
