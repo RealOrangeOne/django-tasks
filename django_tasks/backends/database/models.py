@@ -60,6 +60,12 @@ class DBTaskResultQuerySet(models.QuerySet):
     def failed(self) -> "DBTaskResultQuerySet":
         return self.filter(status=ResultStatus.FAILED)
 
+    def running(self) -> "DBTaskResultQuerySet":
+        return self.filter(status=ResultStatus.RUNNING)
+
+    def finished(self) -> "DBTaskResultQuerySet":
+        return self.failed() | self.complete()
+
     @retry()
     def get_locked(self) -> Optional["DBTaskResult"]:
         """

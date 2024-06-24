@@ -19,6 +19,9 @@ from django.utils import timezone
 
 from django_tasks import ResultStatus, Task, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
+from django_tasks.backends.database.management.commands.cull_db_tasks import (
+    logger as cull_db_tasks_logger,
+)
 from django_tasks.backends.database.management.commands.db_worker import (
     logger as db_worker_logger,
 )
@@ -921,3 +924,219 @@ class ConnectionExclusiveTranscationTestCase(TestCase):
         self.assertFalse(
             connection_requires_manual_exclusive_transaction(self.connection)
         )
+
+
+@override_settings(
+    TASKS={
+        "default": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+            "QUEUES": ["default", "queue-1"],
+        },
+        "dummy": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
+    }
+)
+class DatabaseBackendCullTasksTestCase(TransactionTestCase):
+    cull_tasks = partial(call_command, "cull_db_tasks", verbosity=0)
+
+    def tearDown(self) -> None:
+        # Reset the logger after every run, to ensure the correct `stdout` is used
+        for handler in cull_db_tasks_logger.handlers:
+            cull_db_tasks_logger.removeHandler(handler)
+
+    def test_culls_tasks(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        DBTaskResult.objects.all().update(
+            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        )
+
+        self.assertEqual(DBTaskResult.objects.finished().count(), 1)
+
+        stdout = StringIO()
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(min_age_days=0, stdout=stdout, verbosity=3)
+
+        self.assertEqual(DBTaskResult.objects.finished().count(), 0)
+
+        with self.assertRaises(ResultDoesNotExist):
+            result.refresh()
+
+        self.assertEqual(stdout.getvalue().strip(), "Deleted 1 task(s)")
+
+    def test_doesnt_cull_new_tasks(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        stdout = StringIO()
+        with self.assertNumQueries(3):
+            self.cull_tasks(min_age_days=0, stdout=stdout, verbosity=3)
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        result.refresh()
+
+        self.assertEqual(stdout.getvalue().strip(), "Deleted 0 task(s)")
+
+    def test_doesnt_cull_running_tasks(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        DBTaskResult.objects.all().update(status=ResultStatus.RUNNING)
+
+        self.assertEqual(DBTaskResult.objects.running().count(), 1)
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(min_age_days=0)
+
+        self.assertEqual(DBTaskResult.objects.running().count(), 1)
+
+        result.refresh()
+
+    def test_only_culls_specified_queue(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+        queue_1_result = test_tasks.noop_task.using(queue_name="queue-1").enqueue()
+
+        DBTaskResult.objects.all().update(
+            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        )
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(queue_name="queue-1", min_age_days=0)
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 1)
+
+        result.refresh()
+
+        with self.assertRaises(ResultDoesNotExist):
+            queue_1_result.refresh()
+
+    def test_cull_all_queues(self) -> None:
+        test_tasks.noop_task.enqueue()
+        test_tasks.noop_task.using(queue_name="queue-1").enqueue()
+
+        DBTaskResult.objects.all().update(
+            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        )
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(queue_name="*", min_age_days=0)
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 0)
+
+    def test_min_age(self) -> None:
+        one_day_result = test_tasks.noop_task.enqueue()
+
+        DBTaskResult.objects.ready().update(
+            status=ResultStatus.COMPLETE, finished_at=timezone.now() - timedelta(days=1)
+        )
+
+        three_day_result = test_tasks.noop_task.enqueue()
+        DBTaskResult.objects.ready().update(
+            status=ResultStatus.COMPLETE, finished_at=timezone.now() - timedelta(days=3)
+        )
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+
+        with self.assertNumQueries(3):
+            self.cull_tasks()
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(min_age_days=3)
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 1)
+
+        one_day_result.refresh()
+
+        with self.assertRaises(ResultDoesNotExist):
+            three_day_result.refresh()
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(min_age_days=1)
+
+        self.assertEqual(DBTaskResult.objects.complete().count(), 0)
+
+    def test_failed_min_age(self) -> None:
+        completed_result = test_tasks.noop_task.enqueue()
+
+        DBTaskResult.objects.ready().update(
+            status=ResultStatus.COMPLETE, finished_at=timezone.now() - timedelta(days=3)
+        )
+
+        failed_result = test_tasks.noop_task.enqueue()
+        DBTaskResult.objects.ready().update(
+            status=ResultStatus.FAILED, finished_at=timezone.now() - timedelta(days=3)
+        )
+
+        self.assertEqual(DBTaskResult.objects.finished().count(), 2)
+
+        with self.assertNumQueries(3):
+            self.cull_tasks()
+
+        self.assertEqual(DBTaskResult.objects.finished().count(), 2)
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(min_age_days=3, failed_min_age_days=5)
+
+        self.assertEqual(DBTaskResult.objects.finished().count(), 1)
+
+        failed_result.refresh()
+
+        with self.assertRaises(ResultDoesNotExist):
+            completed_result.refresh()
+
+        with self.assertNumQueries(3):
+            self.cull_tasks(min_age_days=3, failed_min_age_days=1)
+
+        with self.assertRaises(ResultDoesNotExist):
+            failed_result.refresh()
+
+    def test_dry_run(self) -> None:
+        test_tasks.noop_task.enqueue()
+
+        DBTaskResult.objects.all().update(
+            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        )
+
+        self.assertEqual(DBTaskResult.objects.count(), 1)
+
+        stdout = StringIO()
+        with self.assertNumQueries(1):
+            self.cull_tasks(min_age_days=0, dry_run=True, stdout=stdout, verbosity=3)
+
+        self.assertEqual(DBTaskResult.objects.count(), 1)
+
+        self.assertEqual(stdout.getvalue().strip(), "Would delete 1 task(s)")
+
+    def test_unknown_backend(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "cull_db_tasks", "--backend", "unknown"]
+                )
+        self.assertIn("The connection 'unknown' doesn't exist.", output.getvalue())
+
+    def test_incorrect_backend(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "cull_db_tasks", "--backend", "dummy"]
+                )
+        self.assertIn("Backend 'dummy' is not a database backend", output.getvalue())
+
+    def test_negative_age(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "cull_db_tasks", "--min-age-days", "-1"]
+                )
+        self.assertIn("Must be greater than zero", output.getvalue())
