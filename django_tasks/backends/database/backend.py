@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, List, TypeVar
 
 from django.apps import apps
@@ -22,16 +22,6 @@ P = ParamSpec("P")
 @dataclass
 class TaskResult(BaseTaskResult[T]):
     db_result: "DBTaskResult"
-
-    def refresh(self) -> None:
-        self.db_result.refresh_from_db()
-        for attr, value in asdict(self.db_result.task_result).items():
-            setattr(self, attr, value)
-
-    async def arefresh(self) -> None:
-        await self.db_result.arefresh_from_db()
-        for attr, value in asdict(self.db_result.task_result).items():
-            setattr(self, attr, value)
 
 
 class DatabaseBackend(BaseTaskBackend):
