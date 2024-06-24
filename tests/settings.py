@@ -5,6 +5,8 @@ import dj_database_url
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+IN_TEST = sys.argv[0] == "test"
+
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
@@ -52,12 +54,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 DATABASES = {
     "default": dj_database_url.config(
-        default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
+        default="sqlite://:memory:"
+        if IN_TEST
+        else "sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
     )
 }
 
+
 USE_TZ = True
 
-if sys.argv[0] != "test":
+if not IN_TEST:
     DEBUG = True
     TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
