@@ -6,7 +6,6 @@ django_stubs_ext.monkeypatch()
 import importlib.metadata
 from typing import Mapping, Optional, cast
 
-from django.core import signals
 from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
 
@@ -69,10 +68,3 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
 tasks = TasksHandler()
 
 default_task_backend = ConnectionProxy(cast(Mapping, tasks), DEFAULT_TASK_BACKEND_ALIAS)
-
-
-def close_task_backends(**kwargs: dict) -> None:
-    tasks.close_all()
-
-
-signals.request_finished.connect(close_task_backends)
