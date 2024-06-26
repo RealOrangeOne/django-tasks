@@ -87,13 +87,6 @@ class BaseTaskBackend(metaclass=ABCMeta):
             result_id=result_id
         )
 
-    def close(self) -> None:
-        """
-        Close any connections opened as part of the constructor
-        """
-        # HACK: `close` isn't abstract, but should do nothing by default
-        return None
-
     def check(self, **kwargs: Any) -> List[CheckMessage]:
         raise NotImplementedError(
             "subclasses may provide a check() method to verify that task "
