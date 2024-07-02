@@ -10,10 +10,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         django-version: ["4.2", "5.0"]
         exclude:
@@ -21,6 +22,8 @@ jobs:
             python-version: "3.8"
           - django-version: "5.0"
             python-version: "3.9"
+          - os: windows-latest  # JSON1 is only built-in on 3.9+
+            python-version: 3.8
 
     steps:
       - uses: actions/checkout@v4
