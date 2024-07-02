@@ -4,7 +4,6 @@ from celery import Celery
 
 from django_tasks.task import DEFAULT_QUEUE_NAME
 
-
 # Set the default Django settings module for the 'celery' program.
 django_settings = os.environ.get('DJANGO_SETTINGS_MODULE')
 if django_settings is None:
@@ -19,3 +18,5 @@ app = Celery('django_tasks')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 app.conf.task_default_queue = DEFAULT_QUEUE_NAME
+
+app.autodiscover_tasks()

@@ -1,11 +1,16 @@
 from typing import TypeVar
 
+from celery import shared_task
+from celery.app import default_app
+from celery.local import Proxy as CeleryTaskProxy
 from typing_extensions import ParamSpec
 
-from celery import shared_task
-from celery.local import Proxy as CeleryTaskProxy
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.task import Task, TaskResult
+
+if not default_app:
+    from django_tasks.backends.celery.app import app as celery_app
+    celery_app.set_default()
 
 
 T = TypeVar("T")
