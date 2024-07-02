@@ -22,6 +22,8 @@ jobs:
             python-version: "3.8"
           - django-version: "5.0"
             python-version: "3.9"
+          - os: windows-latest  # JSON1 is only built-in on 3.9+
+            python-version: 3.8
 
     steps:
       - uses: actions/checkout@v4
