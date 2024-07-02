@@ -16,12 +16,6 @@ A reference implementation and backport of background workers and tasks in Djang
 python -m pip install django-tasks
 ```
 
-## Usage
-
-**Note**: This documentation is still work-in-progress. Further details can also be found on the [DEP](https://github.com/django/deps/blob/main/accepted/0014-background-workers.rst). [The tests](./tests/tests/) are also a good exhaustive reference.
-
-### Settings
-
 The first step is to add `django_tasks` to your `INSTALLED_APPS`.
 
 Secondly, you'll need to configure a backend. This connects the tasks to whatever is going to execute them.
@@ -43,6 +37,10 @@ A few backends are included by default:
 - `django_tasks.backends.database.DatabaseBackend`: Store tasks in the database (via Django's ORM), and retrieve and execute them using the `db_worker` management command
 
 Note: `DatabaseBackend` additionally requires `django_tasks.backends.database` adding to `INSTALLED_APPS`.
+
+## Usage
+
+**Note**: This documentation is still work-in-progress. Further details can also be found on the [DEP](https://github.com/django/deps/blob/main/accepted/0014-background-workers.rst). [The tests](./tests/tests/) are also a good exhaustive reference.
 
 ### Defining tasks
 
@@ -83,7 +81,7 @@ The returned `TaskResult` can be interrogated to query the current state of the 
 
 If the task takes arguments, these can be passed as-is to `enqueue`.
 
-### Executing tasks with the database backend
+### The database backend worker
 
 First, you'll need to add `django_tasks.backends.database`  to `INSTALLED_APPS`, and run `manage.py migrate`.
 
@@ -102,6 +100,58 @@ Finally, you can run `manage.py db_worker` to run tasks as they're created. Chec
 > [!CAUTION]
 > The database backend does not work with SQLite when you are running multiple worker processes - tasks may be executed more than once. See [#33](https://github.com/RealOrangeOne/django-tasks/issues/33).
 
-### Contributing
+### Retrieving task result
+
+When enqueueing a task, you get a `TaskResult`, however it may be useful to retrieve said result from somewhere else (another request, another task etc). This can be done with `get_result` (or `aget_result`):
+
+```python
+result_id = result.id
+
+# Later, somewhere else...
+calculate_meaning_of_life.get_result(result_id)
+```
+
+Only tasks of the same type can be retrieved this way. To retrieve the result of any task, you can call `get_result` on the backend:
+
+```python
+from django_tasks import default_task_backend
+
+default_task_backend.get_result(result_id)
+```
+
+### Return values
+
+If your task returns something, it can be retrieved from the `.result` attribute on a `TaskResult`. Accessing this property on an unfinished task (ie not `COMPLETE` or `FAILED`) will raise a `ValueError`.
+
+```python
+assert result.status == ResultStatus.COMPLETE
+assert result.result == 42
+```
+
+If a result has been updated in the background, you can call `refresh` on it to update its values. Results obtained using `get_result` will always be up-to-date.
+
+```python
+assert result.status == ResultStatus.NEW
+result.refresh()
+assert result.status == ResultStatus.COMPLETE
+```
+
+### Backend introspecting
+
+Because `django-tasks` enables support for multiple different backends, those backends may not support all features, and it can be useful to determine this at runtime to ensure the chosen task queue meets the requirements, or to gracefully degrade functionality if it doesn't.
+
+- `supports_defer`: Can tasks be enqueued with the `run_after` attribute?
+- `supports_async_task`: Can coroutines be enqueued?
+- `supports_get_result`: Can results be retrieved after the fact (from **any** thread / process)?
+
+```python
+from django_tasks import default_task_backend
+
+assert default_task_backend.supports_get_result
+```
+
+This is particularly useful in combination with Django's [system check framework](https://docs.djangoproject.com/en/stable/topics/checks/).
+
+## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to contribute.
