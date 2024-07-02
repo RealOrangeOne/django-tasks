@@ -81,6 +81,23 @@ The returned `TaskResult` can be interrogated to query the current state of the 
 
 If the task takes arguments, these can be passed as-is to `enqueue`.
 
+### Queue names
+
+By default, tasks are enqueued onto the "default" queue. When using multiple queues, it can be useful to constrain the allowed names, so tasks aren't missed.
+
+```python
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+        "QUEUES": ["default", "special"]
+    }
+}
+```
+
+Enqueueing tasks to an unknown queue name raises `InvalidTaskError`.
+
+To disable queue name validation, set `QUEUES` to `[]`.
+
 ### The database backend worker
 
 First, you'll need to add `django_tasks.backends.database`  to `INSTALLED_APPS`, and run `manage.py migrate`.

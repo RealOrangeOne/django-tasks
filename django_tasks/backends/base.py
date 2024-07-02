@@ -28,7 +28,10 @@ class BaseTaskBackend(metaclass=ABCMeta):
     """Can results be retrieved after the fact (from **any** thread / process)"""
 
     def __init__(self, options: dict) -> None:
+        from django_tasks import DEFAULT_QUEUE_NAME
+
         self.alias = options["ALIAS"]
+        self.queues = set(options.get("QUEUES", [DEFAULT_QUEUE_NAME]))
 
     def validate_task(self, task: Task) -> None:
         """
@@ -50,6 +53,11 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
         if task.run_after is not None and not timezone.is_aware(task.run_after):
             raise InvalidTaskError("run_after must be an aware datetime")
+
+        if self.queues and task.queue_name not in self.queues:
+            raise InvalidTaskError(
+                f"Queue '{task.queue_name}' is not valid for backend"
+            )
 
     @abstractmethod
     def enqueue(

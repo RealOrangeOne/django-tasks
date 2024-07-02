@@ -22,7 +22,12 @@ from tests import tasks as test_tasks
 
 
 @override_settings(
-    TASKS={"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
+    TASKS={
+        "default": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+            "QUEUES": ["default", "queue-1"],
+        }
+    }
 )
 class DatabaseBackendTestCase(TestCase):
     def test_using_correct_backend(self) -> None:
@@ -190,7 +195,10 @@ class DatabaseBackendTestCase(TestCase):
 
 @override_settings(
     TASKS={
-        "default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"},
+        "default": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+            "QUEUES": ["default", "queue-1"],
+        },
         "dummy": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
     }
 )
