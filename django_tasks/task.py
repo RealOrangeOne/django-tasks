@@ -205,6 +205,9 @@ class TaskResult(Generic[T]):
     enqueued_at: datetime
     """The time this task was enqueued"""
 
+    started_at: Optional[datetime]
+    """The time this task was started"""
+
     finished_at: Optional[datetime]
     """The time this task was finished"""
 
@@ -238,8 +241,9 @@ class TaskResult(Generic[T]):
         """
         refreshed_task = self.task.get_backend().get_result(self.id)
 
-        # status, finished_at and result are the only refreshable attributes
+        # status, started_at, finished_at and result are the only refreshable attributes
         self.status = refreshed_task.status
+        self.started_at = refreshed_task.started_at
         self.finished_at = refreshed_task.finished_at
         self._result = refreshed_task._result
 
@@ -249,7 +253,8 @@ class TaskResult(Generic[T]):
         """
         refreshed_task = await self.task.get_backend().aget_result(self.id)
 
-        # status, finished_at and result are the only refreshable attributes
+        # status, started_at, finished_at and result are the only refreshable attributes
         self.status = refreshed_task.status
+        self.started_at = refreshed_task.started_at
         self.finished_at = refreshed_task.finished_at
         self._result = refreshed_task._result

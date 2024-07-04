@@ -40,6 +40,7 @@ class ImmediateBackend(BaseTaskBackend):
             id=str(uuid4()),
             status=status,
             enqueued_at=enqueued_at,
+            started_at=timezone.now(),
             finished_at=timezone.now(),
             args=json_normalize(args),
             kwargs=json_normalize(kwargs),
