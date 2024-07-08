@@ -28,9 +28,8 @@ class ImmediateBackend(BaseTaskBackend):
         )
 
         enqueued_at = timezone.now()
-        started_at = None
+        started_at = timezone.now()
         try:
-            started_at = timezone.now()
             result = json_normalize(calling_task_func(*args, **kwargs))
             status = ResultStatus.COMPLETE
         except Exception:
