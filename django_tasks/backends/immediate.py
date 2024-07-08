@@ -19,7 +19,7 @@ class ImmediateBackend(BaseTaskBackend):
     supports_async_task = True
 
     def enqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+            self, task: Task[P, T], args: P.args, kwargs: P.kwargs
     ) -> TaskResult[T]:
         self.validate_task(task)
 
@@ -28,7 +28,9 @@ class ImmediateBackend(BaseTaskBackend):
         )
 
         enqueued_at = timezone.now()
+        started_at = None
         try:
+            started_at = timezone.now()
             result = json_normalize(calling_task_func(*args, **kwargs))
             status = ResultStatus.COMPLETE
         except Exception:
@@ -40,7 +42,7 @@ class ImmediateBackend(BaseTaskBackend):
             id=str(uuid4()),
             status=status,
             enqueued_at=enqueued_at,
-            started_at=timezone.now(),
+            started_at=started_at,
             finished_at=timezone.now(),
             args=json_normalize(args),
             kwargs=json_normalize(kwargs),
