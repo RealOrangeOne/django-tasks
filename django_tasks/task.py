@@ -20,6 +20,7 @@ from django.utils import timezone
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
+from .utils import get_module_path
 
 if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
@@ -147,7 +148,7 @@ class Task(Generic[P, T]):
 
     @property
     def module_path(self) -> str:
-        return f"{self.func.__module__}.{self.func.__qualname__}"
+        return get_module_path(self.func)
 
 
 # Bare decorator usage
