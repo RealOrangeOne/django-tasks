@@ -71,10 +71,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertIsNotNone(result.finished_at)
         self.assertGreaterEqual(result.started_at, result.enqueued_at)
         self.assertGreaterEqual(result.finished_at, result.started_at)
-        self.assertIsInstance(result.result, TypeError)
-        self.assertEqual(
-            result.result.args[0], "Object of type ValueError is not JSON serializable"
-        )
+        self.assertIsNone(result.result, TypeError)
         self.assertIsNone(result.get_result())
         self.assertEqual(result.task, test_tasks.complex_exception)
         self.assertEqual(result.args, [])

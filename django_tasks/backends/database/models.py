@@ -146,6 +146,6 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.finished_at = timezone.now()
         try:
             self.result = exception_to_dict(exc)
-        except Exception as e:
-            self.result = exception_to_dict(e)
+        except Exception:
+            self.result = None
         self.save(update_fields=["status", "finished_at", "result"])

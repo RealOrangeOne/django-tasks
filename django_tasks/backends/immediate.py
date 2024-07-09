@@ -35,8 +35,8 @@ class ImmediateBackend(BaseTaskBackend):
         except Exception as e:
             try:
                 result = exception_to_dict(e)
-            except Exception as encode_e:
-                result = exception_to_dict(encode_e)
+            except Exception:
+                result = None
             status = ResultStatus.FAILED
 
         task_result = TaskResult[T](

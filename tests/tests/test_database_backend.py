@@ -328,11 +328,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertIsInstance(result.result, TypeError)
-        self.assertEqual(
-            result.result.args[0],  # type: ignore[union-attr]
-            "Object of type ValueError is not JSON serializable",
-        )
+        self.assertIsNone(result.result)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
