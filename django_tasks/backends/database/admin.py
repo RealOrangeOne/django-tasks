@@ -13,6 +13,7 @@ class DBTaskResultAdmin(admin.ModelAdmin):
         "get_task_name",
         "status",
         "enqueued_at",
+        "started_at",
         "finished_at",
         "priority",
         "queue_name",

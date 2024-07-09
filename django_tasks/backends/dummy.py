@@ -35,6 +35,7 @@ class DummyBackend(BaseTaskBackend):
             id=str(uuid4()),
             status=ResultStatus.NEW,
             enqueued_at=timezone.now(),
+            started_at=None,
             finished_at=None,
             args=json_normalize(args),
             kwargs=json_normalize(kwargs),

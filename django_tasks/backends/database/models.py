@@ -64,6 +64,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     )
 
     enqueued_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True)
     finished_at = models.DateTimeField(null=True)
 
     args_kwargs = models.JSONField()
@@ -112,6 +113,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             id=str(self.id),
             status=ResultStatus[self.status],
             enqueued_at=self.enqueued_at,
+            started_at=self.started_at,
             finished_at=self.finished_at,
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],
@@ -128,7 +130,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         Mark as job as being run
         """
         self.status = ResultStatus.RUNNING
-        self.save(update_fields=["status"])
+        self.started_at = timezone.now()
+        self.save(update_fields=["status", "started_at"])
 
     @retry()
     def set_result(self, result: Any) -> None:

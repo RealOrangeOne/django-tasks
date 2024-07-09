@@ -28,6 +28,7 @@ class ImmediateBackend(BaseTaskBackend):
         )
 
         enqueued_at = timezone.now()
+        started_at = timezone.now()
         try:
             result = json_normalize(calling_task_func(*args, **kwargs))
             status = ResultStatus.COMPLETE
@@ -40,6 +41,7 @@ class ImmediateBackend(BaseTaskBackend):
             id=str(uuid4()),
             status=status,
             enqueued_at=enqueued_at,
+            started_at=started_at,
             finished_at=timezone.now(),
             args=json_normalize(args),
             kwargs=json_normalize(kwargs),
