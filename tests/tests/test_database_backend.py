@@ -44,6 +44,7 @@ class DatabaseBackendTestCase(TestCase):
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
+                self.assertIsNone(result.get_result())
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
@@ -58,6 +59,7 @@ class DatabaseBackendTestCase(TestCase):
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
+                self.assertIsNone(result.get_result())
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
@@ -307,6 +309,30 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.result, ValueError)
+
+        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+
+    def test_complex_exception(self) -> None:
+        result = test_tasks.complex_exception.enqueue()
+        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+
+        with self.assertNumQueries(8):
+            self.run_worker()
+
+        self.assertEqual(result.status, ResultStatus.NEW)
+        result.refresh()
+        self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.finished_at)
+
+        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
+        self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.result, TypeError)
+        self.assertEqual(
+            result.result.args[0],  # type: ignore[union-attr]
+            "Object of type ValueError is not JSON serializable",
+        )
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 

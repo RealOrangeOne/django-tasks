@@ -44,6 +44,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)
                 self.assertGreaterEqual(result.finished_at, result.started_at)
                 self.assertIsNone(result.result)
+                self.assertIsNone(result.get_result())
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
@@ -56,8 +57,26 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertIsNotNone(result.finished_at)
         self.assertGreaterEqual(result.started_at, result.enqueued_at)
         self.assertGreaterEqual(result.finished_at, result.started_at)
-        self.assertIsNone(result.result)
+        self.assertIsInstance(result.result, ValueError)
+        self.assertIsNone(result.get_result())
         self.assertEqual(result.task, test_tasks.failing_task)
+        self.assertEqual(result.args, [])
+        self.assertEqual(result.kwargs, {})
+
+    def test_complex_exception(self) -> None:
+        result = default_task_backend.enqueue(test_tasks.complex_exception, [], {})
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.finished_at)
+        self.assertGreaterEqual(result.started_at, result.enqueued_at)
+        self.assertGreaterEqual(result.finished_at, result.started_at)
+        self.assertIsInstance(result.result, TypeError)
+        self.assertEqual(
+            result.result.args[0], "Object of type ValueError is not JSON serializable"
+        )
+        self.assertIsNone(result.get_result())
+        self.assertEqual(result.task, test_tasks.complex_exception)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 

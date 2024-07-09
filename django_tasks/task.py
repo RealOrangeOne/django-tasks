@@ -11,6 +11,7 @@ from typing import (
     Optional,
     TypeVar,
     Union,
+    cast,
     overload,
 )
 
@@ -20,7 +21,7 @@ from django.utils import timezone
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
-from .utils import get_module_path
+from .utils import exception_from_dict, get_module_path
 
 if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
@@ -221,20 +222,26 @@ class TaskResult(Generic[T]):
     backend: str
     """The name of the backend the task will run on"""
 
-    _result: Optional[T] = field(init=False, default=None)
+    _result: Optional[Union[T, dict]] = field(init=False, default=None)
 
     @property
-    def result(self) -> T:
-        if self.status not in [ResultStatus.COMPLETE, ResultStatus.FAILED]:
-            raise ValueError("Task has not finished yet")
+    def result(self) -> Optional[Union[T, BaseException]]:
+        if self.status == ResultStatus.COMPLETE:
+            return cast(T, self._result)
+        elif self.status == ResultStatus.FAILED:
+            return (
+                exception_from_dict(cast(dict, self._result))
+                if self._result is not None
+                else None
+            )
 
-        return self._result  # type:ignore
+        raise ValueError("Task has not finished yet")
 
     def get_result(self) -> Optional[T]:
         """
-        A convenience method to get the result, or None if it's not ready yet.
+        A convenience method to get the result, or None if it's not ready yet or has failed.
         """
-        return self._result
+        return cast(T, self.result) if self.status == ResultStatus.COMPLETE else None
 
     def refresh(self) -> None:
         """

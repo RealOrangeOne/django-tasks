@@ -9,7 +9,7 @@ from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
 
 from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus, Task
-from django_tasks.utils import retry
+from django_tasks.utils import exception_to_dict, retry
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -141,7 +141,11 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.save(update_fields=["status", "result", "finished_at"])
 
     @retry()
-    def set_failed(self) -> None:
+    def set_failed(self, exc: BaseException) -> None:
         self.status = ResultStatus.FAILED
         self.finished_at = timezone.now()
-        self.save(update_fields=["status", "finished_at"])
+        try:
+            self.result = exception_to_dict(exc)
+        except Exception as e:
+            self.result = exception_to_dict(e)
+        self.save(update_fields=["status", "finished_at", "result"])

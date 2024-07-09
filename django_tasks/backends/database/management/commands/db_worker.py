@@ -121,7 +121,7 @@ class Worker:
                 db_task_result.task_path,
                 ResultStatus.FAILED,
             )
-            db_task_result.set_failed()
+            db_task_result.set_failed(e)
 
             # If the user tried to terminate, let them
             if isinstance(e, KeyboardInterrupt):

@@ -27,5 +27,10 @@ def failing_task() -> None:
 
 
 @task()
+def complex_exception() -> None:
+    raise ValueError(ValueError("This task failed"))
+
+
+@task()
 def exit_task() -> None:
     exit(1)

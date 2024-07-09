@@ -7,7 +7,7 @@ from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.task import ResultStatus, Task, TaskResult
-from django_tasks.utils import json_normalize
+from django_tasks.utils import exception_to_dict, json_normalize
 
 from .base import BaseTaskBackend
 
@@ -32,8 +32,11 @@ class ImmediateBackend(BaseTaskBackend):
         try:
             result = json_normalize(calling_task_func(*args, **kwargs))
             status = ResultStatus.COMPLETE
-        except Exception:
-            result = None
+        except Exception as e:
+            try:
+                result = exception_to_dict(e)
+            except Exception as encode_e:
+                result = exception_to_dict(encode_e)
             status = ResultStatus.FAILED
 
         task_result = TaskResult[T](
