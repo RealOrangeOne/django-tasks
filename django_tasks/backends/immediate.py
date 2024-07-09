@@ -19,7 +19,7 @@ class ImmediateBackend(BaseTaskBackend):
     supports_async_task = True
 
     def enqueue(
-            self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
     ) -> TaskResult[T]:
         self.validate_task(task)
 

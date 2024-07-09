@@ -4,15 +4,17 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_tasks_database', '0003_dbtaskresult_enqueued_at_dbtaskresult_finished_at'),
+        (
+            "django_tasks_database",
+            "0003_dbtaskresult_enqueued_at_dbtaskresult_finished_at",
+        ),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='dbtaskresult',
-            name='started_at',
+            model_name="dbtaskresult",
+            name="started_at",
             field=models.DateTimeField(null=True),
         ),
     ]

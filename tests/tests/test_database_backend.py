@@ -84,7 +84,9 @@ class DatabaseBackendTestCase(TestCase):
         )
 
         DBTaskResult.objects.all().update(
-            status=ResultStatus.COMPLETE, started_at=timezone.now(), finished_at=timezone.now()
+            status=ResultStatus.COMPLETE,
+            started_at=timezone.now(),
+            finished_at=timezone.now(),
         )
 
         self.assertEqual(result.status, ResultStatus.NEW)
@@ -102,7 +104,9 @@ class DatabaseBackendTestCase(TestCase):
         )
 
         await DBTaskResult.objects.all().aupdate(
-            status=ResultStatus.COMPLETE, started_at=timezone.now(), finished_at=timezone.now()
+            status=ResultStatus.COMPLETE,
+            started_at=timezone.now(),
+            finished_at=timezone.now(),
         )
 
         self.assertEqual(result.status, ResultStatus.NEW)
@@ -299,8 +303,9 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result.refresh()
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore[arg-type]
-        self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore[arg-type]
+
+        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
+        self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
