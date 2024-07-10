@@ -57,7 +57,7 @@ def calculate_meaning_of_life() -> int:
 
 The task decorator accepts a few arguments to customize the task:
 
-- `priority`: The priority of the task (larger numbers are higher priority)
+- `priority`: The priority of the task (between -100 and 100. Larger numbers are higher priority. 0 by default)
 - `queue_name`: Whether to run the task on a specific queue
 - `backend`: Name of the backend for this task to use (as defined in `TASKS`)
 
