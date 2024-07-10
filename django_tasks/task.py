@@ -90,7 +90,7 @@ class Task(Generic[P, T]):
         if backend is not None:
             task.backend = backend
 
-        task.get_backend().validate_task(self)
+        task.get_backend().validate_task(task)
 
         return task
 
