@@ -25,7 +25,10 @@ from tests import tasks as test_tasks
 
 @override_settings(
     TASKS={
-        "default": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
+        "default": {
+            "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+            "QUEUES": ["default", "queue_1"],
+        },
         "immediate": {"BACKEND": "django_tasks.backends.immediate.ImmediateBackend"},
         "missing": {"BACKEND": "does.not.exist"},
     }
@@ -122,27 +125,17 @@ class TaskTestCase(SimpleTestCase):
 
         self.assertEqual(dataclasses.asdict(result), original_result)
 
-    async def test_naive_datetime(self) -> None:
+    def test_naive_datetime(self) -> None:
         with self.assertRaisesMessage(
             InvalidTaskError, "run_after must be an aware datetime"
         ):
-            test_tasks.noop_task.using(run_after=datetime.now()).enqueue()
+            test_tasks.noop_task.using(run_after=datetime.now())
 
-        with self.assertRaisesMessage(
-            InvalidTaskError, "run_after must be an aware datetime"
-        ):
-            await test_tasks.noop_task.using(run_after=datetime.now()).aenqueue()
-
-    async def test_invalid_priority(self) -> None:
+    def test_invalid_priority(self) -> None:
         with self.assertRaisesMessage(
             InvalidTaskError, "priority must be zero or greater"
         ):
-            test_tasks.noop_task.using(priority=-1).enqueue()
-
-        with self.assertRaisesMessage(
-            InvalidTaskError, "priority must be zero or greater"
-        ):
-            await test_tasks.noop_task.using(priority=-1).aenqueue()
+            test_tasks.noop_task.using(priority=-1)
 
     def test_call_task(self) -> None:
         self.assertEqual(test_tasks.calculate_meaning_of_life.call(), 42)
