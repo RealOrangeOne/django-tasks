@@ -547,7 +547,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                 c.execute("PRAGMA journal_mode=wal")
 
     def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> list:
-        if isinstance(sql, QuerySet):  # type:ignore[misc]
+        if isinstance(sql, QuerySet):
             sql = str(sql.query)
         new_connection = connections.create_connection("default")
         try:
