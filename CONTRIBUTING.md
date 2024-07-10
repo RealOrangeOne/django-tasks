@@ -24,3 +24,15 @@ just test
 ```
 
 If you don't have `just` installed, you can look in the `justfile` for the commands that are run.
+
+To help with testing on Docker, there's a `docker-compose.yml` file to run PostgreSQL and MySQL in Docker, as well as some additional `just` commands for testing:
+
+```sh
+just start-dbs
+just test-postgres
+just test-mysql
+just test-sqlite
+
+# To run all of the above:
+just test-dbs
+```
