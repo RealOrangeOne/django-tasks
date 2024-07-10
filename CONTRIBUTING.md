@@ -1,4 +1,10 @@
-## Contributing
+# Contributing
+
+Found a bug? Want to fix an open issue? Got an idea for an improvement? Please contribute!
+
+**All** contributions are welcome, from absolutely anyone. Just open a PR, Issue or Discussion (as relevant) - no need to ask beforehand. If you're going to work on an issue, it's a good idea to say so on the issue, to make sure work isn't duplicated.
+
+## Development set up
 
 Fork, then clone the repo:
 
@@ -25,7 +31,7 @@ just test
 
 If you don't have `just` installed, you can look in the `justfile` for the commands that are run.
 
-To help with testing on Docker, there's a `docker-compose.yml` file to run PostgreSQL and MySQL in Docker, as well as some additional `just` commands for testing:
+To help with testing on different databases, there's a `docker-compose.yml` file to run PostgreSQL and MySQL in Docker, as well as some additional `just` commands for testing:
 
 ```sh
 just start-dbs
