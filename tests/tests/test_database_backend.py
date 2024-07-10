@@ -4,9 +4,12 @@ from contextlib import redirect_stderr
 from datetime import timedelta
 from functools import partial
 from io import StringIO
+from typing import Union, cast
 
 from django.core.exceptions import SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
+from django.db import connections, transaction
+from django.db.models import QuerySet
 from django.db.utils import IntegrityError
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
@@ -527,3 +530,67 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
+
+
+@override_settings(
+    TASKS={
+        "default": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+        },
+    }
+)
+class DatabaseTaskResultTestCase(TransactionTestCase):
+    def setUp(self) -> None:
+        if connections["default"].vendor == "sqlite":
+            with connections["default"].cursor() as c:
+                # Set journal mode so multiple connections can see the same data
+                c.execute("PRAGMA journal_mode=wal")
+
+    def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> list:
+        if isinstance(sql, QuerySet):  # type:ignore[misc]
+            sql = str(sql.query)
+        new_connection = connections.create_connection("default")
+        try:
+            with new_connection.cursor() as c:
+                c.execute(sql)
+                return cast(list, c.fetchall())
+        finally:
+            new_connection.close()
+
+    def test_cross_connection(self) -> None:
+        default_task_backend.enqueue(test_tasks.noop_task, [], {})
+
+        self.assertEqual(DBTaskResult.objects.count(), 1)
+
+        self.assertEqual(DBTaskResult.objects.using("default").count(), 1)
+
+        self.assertEqual(
+            len(self.execute_in_new_connection(DBTaskResult.objects.all())),
+            1,
+        )
+
+    def test_locks_tasks(self) -> None:
+        result = default_task_backend.enqueue(test_tasks.noop_task, [], {})
+
+        with transaction.atomic():
+            locked_result = DBTaskResult.objects.get_locked()
+
+            self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
+
+            self.assertEqual(
+                self.execute_in_new_connection(
+                    DBTaskResult.objects.select_for_update(skip_locked=True)
+                ),
+                [],
+            )
+
+        with transaction.atomic():
+            # The original transaction has closed, so the result is unlocked
+            self.assertEqual(
+                len(
+                    self.execute_in_new_connection(
+                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                    )
+                ),
+                1,
+            )
