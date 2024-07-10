@@ -4,13 +4,14 @@ from contextlib import redirect_stderr
 from datetime import timedelta
 from functools import partial
 from io import StringIO
-from typing import Union, cast
+from typing import Sequence, Union, cast
+from unittest import skipIf
 
 from django.core.exceptions import SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
-from django.db import connections, transaction
+from django.db import connection, connections
 from django.db.models import QuerySet
-from django.db.utils import IntegrityError
+from django.db.utils import IntegrityError, OperationalError
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -21,6 +22,7 @@ from django_tasks.backends.database.management.commands.db_worker import (
     logger as db_worker_logger,
 )
 from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
 
@@ -540,13 +542,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     }
 )
 class DatabaseTaskResultTestCase(TransactionTestCase):
-    def setUp(self) -> None:
-        if connections["default"].vendor == "sqlite":
-            with connections["default"].cursor() as c:
-                # Set journal mode so multiple connections can see the same data
-                c.execute("PRAGMA journal_mode=wal")
-
-    def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> list:
+    def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> Sequence:
         if isinstance(sql, QuerySet):
             sql = str(sql.query)
         new_connection = connections.create_connection("default")
@@ -559,32 +555,45 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
     def test_cross_connection(self) -> None:
         default_task_backend.enqueue(test_tasks.noop_task, [], {})
+        default_task_backend.enqueue(test_tasks.noop_task, [], {})
 
-        self.assertEqual(DBTaskResult.objects.count(), 1)
+        self.assertEqual(DBTaskResult.objects.count(), 2)
 
-        self.assertEqual(DBTaskResult.objects.using("default").count(), 1)
+        self.assertEqual(DBTaskResult.objects.using("default").count(), 2)
 
         self.assertEqual(
             len(self.execute_in_new_connection(DBTaskResult.objects.all())),
-            1,
+            2,
         )
 
+    @skipIf(connection.vendor == "sqlite", "SQLite handles locks differently")
     def test_locks_tasks(self) -> None:
-        result = default_task_backend.enqueue(test_tasks.noop_task, [], {})
+        default_task_backend.enqueue(test_tasks.noop_task, [], {})
+        default_task_backend.enqueue(test_tasks.noop_task, [], {})
 
-        with transaction.atomic():
-            locked_result = DBTaskResult.objects.get_locked()
-
-            self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
-
+        with exclusive_transaction():
             self.assertEqual(
-                self.execute_in_new_connection(
-                    DBTaskResult.objects.select_for_update(skip_locked=True)
+                len(
+                    self.execute_in_new_connection(
+                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                    )
                 ),
-                [],
+                2,
             )
 
-        with transaction.atomic():
+            DBTaskResult.objects.get_locked()
+
+            self.assertEqual(
+                len(
+                    self.execute_in_new_connection(
+                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                    )
+                ),
+                # MySQL likes to lock all the rows
+                0 if connection.vendor == "mysql" else 1,
+            )
+
+        with exclusive_transaction():
             # The original transaction has closed, so the result is unlocked
             self.assertEqual(
                 len(
@@ -592,5 +601,31 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                         DBTaskResult.objects.select_for_update(skip_locked=True)
                     )
                 ),
-                1,
+                2,
             )
+
+    @skipIf(connection.vendor != "sqlite", "SQLite handles locks differently")
+    def test_locks_tasks_sqlite(self) -> None:
+        result = default_task_backend.enqueue(test_tasks.noop_task, [], {})
+
+        with exclusive_transaction():
+            locked_result = DBTaskResult.objects.get_locked()
+
+            self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
+
+            with self.assertRaisesMessage(
+                OperationalError, "database schema is locked: main"
+            ):
+                self.execute_in_new_connection(
+                    DBTaskResult.objects.select_for_update(skip_locked=True)
+                )
+
+        # The original transaction has closed, so the database is unlocked
+        self.execute_in_new_connection(
+            DBTaskResult.objects.select_for_update(skip_locked=True)
+        )
+
+    @exclusive_transaction()
+    def test_lock_no_rows(self) -> None:
+        self.assertEqual(DBTaskResult.objects.count(), 0)
+        self.assertIsNone(DBTaskResult.objects.get_locked())
