@@ -1,5 +1,5 @@
 import uuid
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, TypeVar
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
@@ -63,7 +63,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         max_length=max(len(value) for value in ResultStatus.values),
     )
 
-    enqueued_at = models.DateTimeField(auto_now_add=True)
+    enqueued_at = models.DateTimeField(default=timezone.now)
     started_at = models.DateTimeField(null=True)
     finished_at = models.DateTimeField(null=True)
 
@@ -79,6 +79,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     run_after = models.DateTimeField(null=True)
 
     result = models.JSONField(default=None, null=True)
+
+    signature = models.TextField()
 
     objects = DBTaskResultQuerySet.as_manager()
 
@@ -123,6 +125,30 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         result._result = self.result
 
         return result
+
+    @property
+    def canonical(self) -> Dict:
+        """
+        Get canonical form
+        """
+        return {
+            "args_kwargs": {
+                "args": self.args_kwargs["args"],
+                "kwargs": self.args_kwargs["kwargs"],
+            },
+            "priority": self.priority,
+            "task_path": self.task_path,
+            "queue_name": self.queue_name,
+            "run_after": (
+                int(self.run_after.timestamp()) if self.run_after is not None else None
+            ),
+            "backend_name": self.backend_name,
+            "enqueued_at": (
+                int(self.enqueued_at.timestamp())
+                if self.enqueued_at is not None
+                else None
+            ),
+        }
 
     @retry(backoff_delay=0)
     def claim(self) -> None:
