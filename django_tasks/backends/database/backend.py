@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, List, TypeVar
 
 from django.apps import apps
+from django.conf import settings
 from django.core.checks import ERROR, CheckMessage
 from django.core.exceptions import ValidationError
+from django.core.signing import Signer
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
@@ -28,13 +30,14 @@ class DatabaseBackend(BaseTaskBackend):
     supports_async_task = True
     supports_get_result = True
     supports_defer = True
+    supports_signed_task = True
 
     def _task_to_db_task(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
     ) -> "DBTaskResult":
         from .models import DBTaskResult
 
-        return DBTaskResult(
+        db_task_result: DBTaskResult = DBTaskResult(
             args_kwargs=json_normalize({"args": args, "kwargs": kwargs}),
             priority=task.priority,
             task_path=task.module_path,
@@ -42,6 +45,17 @@ class DatabaseBackend(BaseTaskBackend):
             run_after=task.run_after,
             backend_name=self.alias,
         )
+
+        # sign value without timestamp
+        # TimestampSigner doesn't support setting our own timestamp?
+        if settings.TASKS.get(self.alias, {}).get("SIGN_TASKS") is True:
+            signer = Signer()
+            _, _, signature = signer.sign_object(db_task_result.canonical).partition(
+                ":"
+            )
+            db_task_result.signature = signature
+
+        return db_task_result
 
     def enqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
