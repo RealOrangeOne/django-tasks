@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from inspect import iscoroutinefunction
-from typing import Any, List, TypeVar
+from typing import Any, Iterable, TypeVar
 
 from asgiref.sync import sync_to_async
 from django.core.checks.messages import CheckMessage
@@ -101,7 +101,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
             result_id=result_id
         )
 
-    def check(self, **kwargs: Any) -> List[CheckMessage]:
+    def check(self, **kwargs: Any) -> Iterable[CheckMessage]:
         raise NotImplementedError(
             "subclasses may provide a check() method to verify that task "
             "backend is configured correctly."

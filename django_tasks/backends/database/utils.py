@@ -14,7 +14,10 @@ def exclusive_transaction(using: Optional[str] = None) -> Generator[Any, Any, An
     """
     connection = transaction.get_connection(using)
 
-    if connection.vendor == "sqlite":
+    if (
+        connection.vendor == "sqlite"
+        and getattr(connection, "transaction_mode", None) != "EXCLUSIVE"
+    ):
         with connection.cursor() as c:
             c.execute("BEGIN EXCLUSIVE")
             try:
