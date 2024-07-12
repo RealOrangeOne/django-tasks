@@ -9,7 +9,7 @@ from unittest import skipIf
 
 from django.core.exceptions import SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
-from django.db import connection, connections
+from django.db import connection, connections, transaction
 from django.db.models import QuerySet
 from django.db.utils import IntegrityError, OperationalError
 from django.test import TransactionTestCase, override_settings
@@ -538,7 +538,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result_1 = test_tasks.noop_task.enqueue()
         new_connection = connections.create_connection("default")
 
-        with exclusive_transaction():
+        with transaction.atomic():
             locked_tasks_query = str(DBTaskResult.objects.select_for_update().query)
 
         try:
@@ -603,7 +603,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         test_tasks.noop_task.enqueue()
         test_tasks.noop_task.enqueue()
 
-        with exclusive_transaction():
+        with transaction.atomic():
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
@@ -627,7 +627,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
             DBTaskResult.objects.get_locked()
 
-        with exclusive_transaction():
+        with transaction.atomic():
             # The original transaction has closed, so the result is unlocked
             self.assertEqual(
                 len(
@@ -664,7 +664,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         result = test_tasks.noop_task.using(priority=10).enqueue()
         test_tasks.noop_task.enqueue()
 
-        with exclusive_transaction():
+        with transaction.atomic():
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
@@ -688,7 +688,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                 1,
             )
 
-        with exclusive_transaction():
+        with transaction.atomic():
             # The original transaction has closed, so the result is unlocked
             self.assertEqual(
                 len(
@@ -726,14 +726,14 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
     @exclusive_transaction()
     def test_lock_no_rows(self) -> None:
         self.assertEqual(DBTaskResult.objects.count(), 0)
-        self.assertIsNone(DBTaskResult.objects.get_locked())
+        self.assertIsNone(DBTaskResult.objects.all().get_locked())
 
     @skipIf(connection.vendor == "sqlite", "SQLite handles locks differently")
     def test_get_locked_with_locked_rows(self) -> None:
         result_1 = test_tasks.noop_task.enqueue()
         new_connection = connections.create_connection("default")
 
-        with exclusive_transaction():
+        with transaction.atomic():
             locked_tasks_query = str(DBTaskResult.objects.select_for_update().query)
 
         try:
@@ -748,7 +748,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             self.assertEqual(len(results), 1)
             self.assertEqual(normalize_uuid(results[0][0]), normalize_uuid(result_1.id))
 
-            with exclusive_transaction():
+            with transaction.atomic():
                 # .count with skip_locked isn't supported
                 self.assertEqual(
                     len(DBTaskResult.objects.select_for_update(skip_locked=True)), 0
@@ -758,7 +758,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             # Add another task which isn't locked
             result_2 = test_tasks.noop_task.enqueue()
 
-            with exclusive_transaction():
+            with transaction.atomic():
                 self.assertEqual(
                     normalize_uuid(
                         DBTaskResult.objects.select_for_update(
