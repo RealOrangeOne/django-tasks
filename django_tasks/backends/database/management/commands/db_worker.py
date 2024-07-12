@@ -7,11 +7,12 @@ from types import FrameType
 from typing import List, Optional
 
 from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.db.utils import OperationalError
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus
 
@@ -68,8 +69,16 @@ class Worker:
 
                 # During this transaction, all "ready" tasks are locked. Therefore, it's important
                 # it be as efficient as possible.
-                with transaction.atomic():
-                    task_result = tasks.get_locked()
+                with exclusive_transaction(tasks.db):
+                    try:
+                        task_result = tasks.get_locked()
+                    except OperationalError as e:
+                        # Ignore locked databases and keep trying.
+                        # It should unlock eventually.
+                        if "database is locked" in e.args[0]:
+                            task_result = None
+                        else:
+                            raise
 
                     if task_result is not None:
                         # "claim" the task, so it isn't run by another worker process

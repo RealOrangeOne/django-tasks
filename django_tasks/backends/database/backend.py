@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, List, TypeVar
+from typing import TYPE_CHECKING, Any, Iterable, TypeVar
 
 from django.apps import apps
 from django.core.checks import ERROR, CheckMessage
 from django.core.exceptions import ValidationError
+from django.db import connections, router
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
@@ -81,16 +82,26 @@ class DatabaseBackend(BaseTaskBackend):
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise ResultDoesNotExist(result_id) from e
 
-    def check(self, **kwargs: Any) -> List[CheckMessage]:
+    def check(self, **kwargs: Any) -> Iterable[CheckMessage]:
+        from .models import DBTaskResult
+
+        backend_name = self.__class__.__name__
+
         if not apps.is_installed("django_tasks.backends.database"):
-            backend_name = self.__class__.__name__
+            yield CheckMessage(
+                ERROR,
+                f"{backend_name} configured as django_tasks backend, but database app not installed",
+                "Insert 'django_tasks.backends.database' in INSTALLED_APPS",
+            )
 
-            return [
-                CheckMessage(
-                    ERROR,
-                    f"{backend_name} configured as django_tasks backend, but database app not installed",
-                    "Insert 'django_tasks.backends.database' in INSTALLED_APPS",
-                )
-            ]
-
-        return []
+        db_connection = connections[router.db_for_read(DBTaskResult)]
+        if (
+            db_connection.vendor == "sqlite"
+            and hasattr(db_connection, "transaction_mode")
+            and db_connection.transaction_mode != "EXCLUSIVE"
+        ):
+            yield CheckMessage(
+                ERROR,
+                f"{backend_name} is using SQLite non-exclusive transactions",
+                f"Set settings.DATABASES[{db_connection.alias!r}]['OPTIONS']['transaction_mode'] to 'EXCLUSIVE'",
+            )
