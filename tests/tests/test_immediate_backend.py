@@ -72,7 +72,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertIsNotNone(result.finished_at)
         self.assertGreaterEqual(result.started_at, result.enqueued_at)
         self.assertGreaterEqual(result.finished_at, result.started_at)
-        self.assertIsNone(result.result, TypeError)
+        self.assertIsNone(result.result)
         self.assertIsNone(result.get_result())
         self.assertEqual(result.task, test_tasks.complex_exception)
         self.assertEqual(result.args, [])
