@@ -6,10 +6,8 @@ from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
 from typing import List, Optional
 
-from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 from django.core.management.base import BaseCommand
-from django.core.signing import Signer
 from django.db import transaction
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
@@ -23,7 +21,12 @@ logger = logging.getLogger("django_tasks.backends.database.db_worker")
 
 class Worker:
     def __init__(
-        self, *, queue_names: List[str], interval: float, batch: bool, backend_name: str
+        self,
+        *,
+        queue_names: List[str],
+        interval: float,
+        batch: bool,
+        backend_name: str,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -98,13 +101,13 @@ class Worker:
         try:
             task = db_task_result.task
             task_result = db_task_result.task_result
-
-            if settings.TASKS.get(self.backend_name, {}).get("SIGN_TASKS") is True:
-                signer = Signer()
-                _, _, signature = signer.sign_object(
-                    db_task_result.canonical
-                ).partition(":")
-                if db_task_result.signature != signature:
+            if getattr(task.get_backend(), "sign_tasks", False) is True:
+                if (
+                    task_result.validate(
+                        db_task_result.signature, salt=db_task_result.salt
+                    )
+                    is False
+                ):
                     raise SuspiciousOperation(
                         f"Task {db_task_result.id} signature does not match ({db_task_result.signature})"
                     )
@@ -219,7 +222,6 @@ class Command(BaseCommand):
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
-
         worker = Worker(
             queue_names=queue_name.split(","),
             interval=interval,

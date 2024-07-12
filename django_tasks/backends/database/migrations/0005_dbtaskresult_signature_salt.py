@@ -15,4 +15,9 @@ class Migration(migrations.Migration):
             name="signature",
             field=models.TextField(),
         ),
+        migrations.AddField(
+            model_name="dbtaskresult",
+            name="salt",
+            field=models.TextField(),
+        ),
     ]

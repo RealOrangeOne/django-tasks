@@ -27,9 +27,6 @@ class BaseTaskBackend(metaclass=ABCMeta):
     supports_get_result = False
     """Can results be retrieved after the fact (from **any** thread / process)"""
 
-    supports_signed_task = False
-    """Can tasks be cryptographically signed"""
-
     def __init__(self, options: dict) -> None:
         from django_tasks import DEFAULT_QUEUE_NAME
 

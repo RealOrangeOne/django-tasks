@@ -15,8 +15,10 @@ from typing import (
 )
 
 from asgiref.sync import async_to_sync, sync_to_async
+from django.core.signing import Signer
 from django.db.models.enums import TextChoices
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
@@ -258,3 +260,48 @@ class TaskResult(Generic[T]):
         self.started_at = refreshed_task.started_at
         self.finished_at = refreshed_task.finished_at
         self._result = refreshed_task._result
+
+    @property
+    def canonical(self) -> Dict[str, Any]:
+        """
+        The canonical form of the task result
+        """
+        return {
+            "task": {
+                "priority": self.task.priority,
+                "func": self.task.func.__qualname__,
+                "backend": self.task.backend,
+                "queue_name": self.task.queue_name,
+                "run_after": (
+                    int(self.task.run_after.timestamp())
+                    if self.task.run_after
+                    else None
+                ),
+            },
+            "id": self.id,
+            "enqueued_at": int(self.enqueued_at.timestamp()),
+            "args": self.args,
+            "kwargs": self.kwargs,
+            "backend": self.backend,
+        }
+
+    def sign(
+        self,
+        salt: Optional[str] = None,
+        algorithm: str = "sha256",
+    ) -> str:
+        """
+        Sign task
+        """
+        signature = Signer(salt=salt, algorithm=algorithm).sign_object(self.canonical)
+        return signature.partition(":")[2]
+
+    def validate(
+        self, signature: str, salt: Optional[str] = None, algorithm: str = "sha256"
+    ) -> bool:
+        """
+        Validate task signature
+        """
+        return constant_time_compare(
+            self.sign(salt=salt, algorithm=algorithm), signature
+        )

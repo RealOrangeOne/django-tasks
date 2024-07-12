@@ -1,5 +1,5 @@
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
@@ -80,6 +80,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     result = models.JSONField(default=None, null=True)
 
+    salt = models.TextField()
     signature = models.TextField()
 
     objects = DBTaskResultQuerySet.as_manager()
@@ -125,30 +126,6 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         result._result = self.result
 
         return result
-
-    @property
-    def canonical(self) -> Dict:
-        """
-        Get canonical form
-        """
-        return {
-            "args_kwargs": {
-                "args": self.args_kwargs["args"],
-                "kwargs": self.args_kwargs["kwargs"],
-            },
-            "priority": self.priority,
-            "task_path": self.task_path,
-            "queue_name": self.queue_name,
-            "run_after": (
-                int(self.run_after.timestamp()) if self.run_after is not None else None
-            ),
-            "backend_name": self.backend_name,
-            "enqueued_at": (
-                int(self.enqueued_at.timestamp())
-                if self.enqueued_at is not None
-                else None
-            ),
-        }
 
     @retry(backoff_delay=0)
     def claim(self) -> None:
