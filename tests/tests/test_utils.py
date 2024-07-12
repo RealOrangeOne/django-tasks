@@ -2,9 +2,11 @@ import datetime
 import subprocess
 from unittest.mock import Mock
 
+from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
 from django_tasks import utils
+from django_tasks.exceptions import InvalidTaskError
 from tests import tasks as test_tasks
 
 
@@ -85,3 +87,34 @@ class RetryTestCase(SimpleTestCase):
     def test_keeps_return_value(self) -> None:
         self.assertTrue(utils.retry()(lambda: True)())
         self.assertFalse(utils.retry()(lambda: False)())
+
+
+class ExceptionSerializationTestCase(SimpleTestCase):
+    def test_serialize_exceptions(self) -> None:
+        for exc in [
+            ValueError(10),
+            SyntaxError("Wrong"),
+            ImproperlyConfigured("It's wrong"),
+            InvalidTaskError(""),
+            SystemExit(),
+        ]:
+            with self.subTest(exc):
+                data = utils.exception_to_dict(exc)
+                self.assertEqual(utils.json_normalize(data), data)
+                self.assertEqual(set(data.keys()), {"exc_type", "exc_args"})
+                reconstructed = utils.exception_from_dict(data)
+                self.assertIsInstance(reconstructed, type(exc))
+                self.assertEqual(reconstructed.args, exc.args)
+
+    def test_cannot_deserialize_non_exception(self) -> None:
+        for data in [
+            {"exc_type": "subprocess.check_output", "exc_args": ["exit", "1"]},
+            {"exc_type": "True", "exc_args": []},
+            {"exc_type": "math.pi", "exc_args": []},
+            {"exc_type": __name__, "exc_args": []},
+            {"exc_type": utils.get_module_path(type(self)), "exc_args": []},
+            {"exc_type": utils.get_module_path(Mock), "exc_args": []},
+        ]:
+            with self.subTest(data):
+                with self.assertRaises((TypeError, ImportError)):
+                    utils.exception_from_dict(data)

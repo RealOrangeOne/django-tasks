@@ -153,6 +153,16 @@ result.refresh()
 assert result.status == ResultStatus.COMPLETE
 ```
 
+#### Exceptions
+
+If a task raised an exception, its `.result` will be the exception raised:
+
+```python
+assert isinstance(result.result, ValueError)
+```
+
+As part of the serialization process for exceptions, some information, such as the traceback information, is lost. If the exception could not be serialized, the `.result` is `None`.
+
 ### Backend introspecting
 
 Because `django-tasks` enables support for multiple different backends, those backends may not support all features, and it can be useful to determine this at runtime to ensure the chosen task queue meets the requirements, or to gracefully degrade functionality if it doesn't.

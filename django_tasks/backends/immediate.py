@@ -1,3 +1,4 @@
+import logging
 from inspect import iscoroutinefunction
 from typing import TypeVar
 from uuid import uuid4
@@ -7,9 +8,12 @@ from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.task import ResultStatus, Task, TaskResult
-from django_tasks.utils import json_normalize
+from django_tasks.utils import exception_to_dict, json_normalize
 
 from .base import BaseTaskBackend
+
+logger = logging.getLogger(__name__)
+
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -29,16 +33,21 @@ class ImmediateBackend(BaseTaskBackend):
 
         enqueued_at = timezone.now()
         started_at = timezone.now()
+        result_id = str(uuid4())
         try:
             result = json_normalize(calling_task_func(*args, **kwargs))
             status = ResultStatus.COMPLETE
-        except Exception:
-            result = None
+        except Exception as e:
+            try:
+                result = exception_to_dict(e)
+            except Exception:
+                logger.exception("Task id=%s unable to save exception", result_id)
+                result = None
             status = ResultStatus.FAILED
 
         task_result = TaskResult[T](
             task=task,
-            id=str(uuid4()),
+            id=result_id,
             status=status,
             enqueued_at=enqueued_at,
             started_at=started_at,
