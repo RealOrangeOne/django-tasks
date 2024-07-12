@@ -317,7 +317,9 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.complex_exception.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(8), self.assertLogs(
+            "django_tasks.backends.database", level="ERROR"
+        ):
             self.run_worker()
 
         self.assertEqual(result.status, ResultStatus.NEW)

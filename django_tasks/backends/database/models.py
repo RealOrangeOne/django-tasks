@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
@@ -10,6 +11,8 @@ from typing_extensions import ParamSpec
 
 from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus, Task
 from django_tasks.utils import exception_to_dict, retry
+
+logger = logging.getLogger("django_tasks.backends.database")
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -147,5 +150,6 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         try:
             self.result = exception_to_dict(exc)
         except Exception:
+            logger.exception("Task id=%s unable to save exception", self.id)
             self.result = None
         self.save(update_fields=["status", "finished_at", "result"])

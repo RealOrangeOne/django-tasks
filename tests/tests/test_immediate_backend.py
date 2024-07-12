@@ -64,7 +64,8 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertEqual(result.kwargs, {})
 
     def test_complex_exception(self) -> None:
-        result = default_task_backend.enqueue(test_tasks.complex_exception, [], {})
+        with self.assertLogs("django_tasks.backends.immediate", level="ERROR"):
+            result = default_task_backend.enqueue(test_tasks.complex_exception, [], {})
 
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsNotNone(result.started_at)
