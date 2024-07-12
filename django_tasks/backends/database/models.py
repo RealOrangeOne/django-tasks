@@ -62,7 +62,7 @@ class DBTaskResultQuerySet(models.QuerySet):
         """
         Get a job, locking the row and accounting for deadlocks.
         """
-        return self.select_for_update().first()
+        return self.select_for_update(skip_locked=True).first()
 
 
 class DBTaskResult(GenericBase[P, T], models.Model):
