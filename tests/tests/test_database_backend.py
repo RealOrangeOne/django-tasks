@@ -7,7 +7,8 @@ from io import StringIO
 
 from django.core.exceptions import SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.db.utils import IntegrityError
+from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -29,7 +30,7 @@ from tests import tasks as test_tasks
         }
     }
 )
-class DatabaseBackendTestCase(TestCase):
+class DatabaseBackendTestCase(TransactionTestCase):
     def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
         self.assertIsInstance(tasks["default"], DatabaseBackend)
@@ -203,6 +204,34 @@ class DatabaseBackendTestCase(TestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("django_tasks.backends.database", errors[0].hint)
+
+    def test_priority_range_check(self) -> None:
+        with self.assertRaises(IntegrityError):
+            DBTaskResult.objects.create(
+                task_path="", backend_name="default", priority=-101, args_kwargs={}
+            )
+
+        with self.assertRaises(IntegrityError):
+            DBTaskResult.objects.create(
+                task_path="", backend_name="default", priority=101, args_kwargs={}
+            )
+
+        # Django accepts the float, but only stores an int
+        result = DBTaskResult.objects.create(
+            task_path="", backend_name="default", priority=3.1, args_kwargs={}
+        )
+        result.refresh_from_db()
+        self.assertEqual(result.priority, 3)
+
+        DBTaskResult.objects.create(
+            task_path="", backend_name="default", priority=100, args_kwargs={}
+        )
+        DBTaskResult.objects.create(
+            task_path="", backend_name="default", priority=-100, args_kwargs={}
+        )
+        DBTaskResult.objects.create(
+            task_path="", backend_name="default", priority=0, args_kwargs={}
+        )
 
 
 @override_settings(
@@ -426,6 +455,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         high_priority_result = test_tasks.noop_task.using(priority=10).enqueue()
 
         low_priority_result = test_tasks.noop_task.using(priority=2).enqueue()
+        lower_priority_result = test_tasks.noop_task.using(priority=-2).enqueue()
 
         self.assertEqual(
             [dbt.task_result for dbt in DBTaskResult.objects.all()],
@@ -435,6 +465,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 low_priority_result,
                 far_future_result,
                 future_result,
+                lower_priority_result,
             ],
         )
 
@@ -443,6 +474,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             [
                 high_priority_result,
                 low_priority_result,
+                lower_priority_result,
             ],
         )
 

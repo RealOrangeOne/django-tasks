@@ -20,6 +20,7 @@ from django_tasks.exceptions import (
     InvalidTaskError,
     ResultDoesNotExist,
 )
+from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY
 from tests import tasks as test_tasks
 
 
@@ -133,9 +134,26 @@ class TaskTestCase(SimpleTestCase):
 
     def test_invalid_priority(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError, "priority must be zero or greater"
+            InvalidTaskError,
+            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
         ):
-            test_tasks.noop_task.using(priority=-1)
+            test_tasks.noop_task.using(priority=-101)
+
+        with self.assertRaisesMessage(
+            InvalidTaskError,
+            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
+        ):
+            test_tasks.noop_task.using(priority=101)
+
+        with self.assertRaisesMessage(
+            InvalidTaskError,
+            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
+        ):
+            test_tasks.noop_task.using(priority=3.1)  # type:ignore[arg-type]
+
+        test_tasks.noop_task.using(priority=100)
+        test_tasks.noop_task.using(priority=-100)
+        test_tasks.noop_task.using(priority=0)
 
     def test_call_task(self) -> None:
         self.assertEqual(test_tasks.calculate_meaning_of_life.call(), 42)

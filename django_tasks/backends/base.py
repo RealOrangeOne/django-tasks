@@ -8,7 +8,7 @@ from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.exceptions import InvalidTaskError
-from django_tasks.task import Task, TaskResult
+from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY, Task, TaskResult
 from django_tasks.utils import is_global_function
 
 T = TypeVar("T")
@@ -45,8 +45,14 @@ class BaseTaskBackend(metaclass=ABCMeta):
         if not self.supports_async_task and iscoroutinefunction(task.func):
             raise InvalidTaskError("Backend does not support async tasks")
 
-        if task.priority < 0:
-            raise InvalidTaskError("priority must be zero or greater")
+        if (
+            task.priority < MIN_PRIORITY
+            or task.priority > MAX_PRIORITY
+            or int(task.priority) != task.priority
+        ):
+            raise InvalidTaskError(
+                f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}"
+            )
 
         if not self.supports_defer and task.run_after is not None:
             raise InvalidTaskError("Backend does not support run_after")

@@ -4,12 +4,20 @@ from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
-from django.db.models import F
+from django.db.models import F, Q
+from django.db.models.constraints import CheckConstraint
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
 
-from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus, Task
+from django_tasks.task import (
+    DEFAULT_PRIORITY,
+    DEFAULT_QUEUE_NAME,
+    MAX_PRIORITY,
+    MIN_PRIORITY,
+    ResultStatus,
+    Task,
+)
 from django_tasks.utils import exception_to_dict, retry
 
 logger = logging.getLogger("django_tasks.backends.database")
@@ -72,7 +80,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     args_kwargs = models.JSONField()
 
-    priority = models.PositiveSmallIntegerField(default=0)
+    priority = models.IntegerField(default=DEFAULT_PRIORITY)
 
     task_path = models.TextField()
 
@@ -89,6 +97,12 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
         verbose_name = "Task Result"
         verbose_name_plural = "Task Results"
+        constraints = [
+            CheckConstraint(
+                check=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),
+                name="priority_range",
+            )
+        ]
 
     @property
     def task(self) -> Task[P, T]:
