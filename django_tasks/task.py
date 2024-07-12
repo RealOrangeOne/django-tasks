@@ -22,7 +22,7 @@ from django.utils import timezone
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
-from .utils import exception_from_dict, get_module_path
+from .utils import SerializedExceptionDict, exception_from_dict, get_module_path
 
 if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
@@ -227,7 +227,9 @@ class TaskResult(Generic[T]):
     backend: str
     """The name of the backend the task will run on"""
 
-    _result: Optional[Union[T, dict]] = field(init=False, default=None)
+    _result: Optional[Union[T, SerializedExceptionDict]] = field(
+        init=False, default=None
+    )
 
     @property
     def result(self) -> Optional[Union[T, BaseException]]:
@@ -235,7 +237,7 @@ class TaskResult(Generic[T]):
             return cast(T, self._result)
         elif self.status == ResultStatus.FAILED:
             return (
-                exception_from_dict(cast(dict, self._result))
+                exception_from_dict(cast(SerializedExceptionDict, self._result))
                 if self._result is not None
                 else None
             )
@@ -249,7 +251,7 @@ class TaskResult(Generic[T]):
         if self.status == ResultStatus.FAILED:
             if self._result is None:
                 return None
-            return cast(dict, self._result)["exc_traceback"]
+            return cast(SerializedExceptionDict, self._result)["exc_traceback"]
 
         raise ValueError("Task has not finished yet")
 

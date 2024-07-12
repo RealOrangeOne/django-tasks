@@ -124,7 +124,7 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             # - it's easy to trip down
             # - it's unlikely to change ever
             # - We can normalize the strack trace from it
-            optparse.OptionParser(option_list=[1])
+            optparse.OptionParser(option_list=[1])  # type: ignore
         except Exception as e:
             traceback = utils.exception_to_dict(e)["exc_traceback"]
 
@@ -159,4 +159,4 @@ class ExceptionSerializationTestCase(SimpleTestCase):
         ]:
             with self.subTest(data):
                 with self.assertRaises((TypeError, ImportError)):
-                    utils.exception_from_dict(data)
+                    utils.exception_from_dict(data)  # type: ignore

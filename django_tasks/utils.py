@@ -3,11 +3,18 @@ import json
 import time
 from collections import deque
 from functools import wraps
-from typing import Any, Callable, TypeVar
 from traceback import format_exception
+from typing import Any, Callable, List, TypedDict, TypeVar
 
 from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
+
+
+class SerializedExceptionDict(TypedDict):
+    exc_type: str
+    exc_args: List[Any]
+    exc_traceback: List[str]
+
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -72,7 +79,7 @@ def get_module_path(val: Any) -> str:
     return f"{val.__module__}.{val.__qualname__}"
 
 
-def exception_to_dict(exc: BaseException) -> dict:
+def exception_to_dict(exc: BaseException) -> SerializedExceptionDict:
     return {
         "exc_type": get_module_path(type(exc)),
         "exc_args": json_normalize(exc.args),
@@ -80,7 +87,7 @@ def exception_to_dict(exc: BaseException) -> dict:
     }
 
 
-def exception_from_dict(exc_data: dict) -> BaseException:
+def exception_from_dict(exc_data: SerializedExceptionDict) -> BaseException:
     exc_class = import_string(exc_data["exc_type"])
 
     if not inspect.isclass(exc_class) or not issubclass(exc_class, BaseException):
