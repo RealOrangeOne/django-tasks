@@ -8,6 +8,7 @@ from typing import (
     Callable,
     Dict,
     Generic,
+    List,
     Optional,
     TypeVar,
     Union,
@@ -238,6 +239,17 @@ class TaskResult(Generic[T]):
                 if self._result is not None
                 else None
             )
+
+        raise ValueError("Task has not finished yet")
+
+    @property
+    def traceback(self) -> Optional[Union[T, List[str]]]:
+        if self.status == ResultStatus.COMPLETE:
+            return None
+        if self.status == ResultStatus.FAILED:
+            if self._result is None:
+                return None
+            return cast(dict, self._result)["exc_traceback"]
 
         raise ValueError("Task has not finished yet")
 

@@ -4,6 +4,7 @@ import time
 from collections import deque
 from functools import wraps
 from typing import Any, Callable, TypeVar
+from traceback import format_exception
 
 from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
@@ -75,6 +76,7 @@ def exception_to_dict(exc: BaseException) -> dict:
     return {
         "exc_type": get_module_path(type(exc)),
         "exc_args": json_normalize(exc.args),
+        "exc_traceback": format_exception(type(exc), exc, exc.__traceback__),
     }
 
 

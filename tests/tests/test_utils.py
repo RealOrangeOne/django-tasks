@@ -1,4 +1,5 @@
 import datetime
+import optparse
 import subprocess
 from unittest.mock import Mock
 
@@ -101,10 +102,51 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             with self.subTest(exc):
                 data = utils.exception_to_dict(exc)
                 self.assertEqual(utils.json_normalize(data), data)
-                self.assertEqual(set(data.keys()), {"exc_type", "exc_args"})
-                reconstructed = utils.exception_from_dict(data)
-                self.assertIsInstance(reconstructed, type(exc))
-                self.assertEqual(reconstructed.args, exc.args)
+                self.assertEqual(
+                    set(data.keys()), {"exc_type", "exc_args", "exc_traceback"}
+                )
+                exception = utils.exception_from_dict(data)
+                self.assertIsInstance(exception, type(exc))
+                self.assertEqual(exception.args, exc.args)
+
+                # Check that the exception traceback contains only one line,
+                # the one with the name of the exception and the message.
+                dotted_path = utils.get_module_path(exc.__class__).replace(
+                    "builtins.", ""
+                )
+                msg = f": {exc.args[0]}\n" if exc.args[0] else "\n"
+                self.assertEqual(data["exc_traceback"], [dotted_path + msg])
+
+    def test_serialize_full_traceback(self) -> None:
+        try:
+            # Using optparse to generate an error because:
+            # - it's pure python
+            # - it's easy to trip down
+            # - it's unlikely to change ever
+            # - We can normalize the strack trace from it
+            optparse.OptionParser(option_list=[1])
+        except Exception as e:
+            traceback = utils.exception_to_dict(e)["exc_traceback"]
+
+            expected_traceback_head = "Traceback (most recent call last):\n"
+
+            expected_traceback_tail = [
+                f'  File "{optparse.__file__}", line 1206, in __init__\n'
+                "    self._populate_option_list(option_list,\n",
+                f'  File "{optparse.__file__}", line 1249, in '
+                "_populate_option_list\n"
+                "    self.add_options(option_list)\n",
+                f'  File "{optparse.__file__}", line 1027, in add_options\n'
+                "    self.add_option(option)\n",
+                f'  File "{optparse.__file__}", line 1004, in add_option\n'
+                '    raise TypeError("not an Option instance: %r" % option)\n',
+                "TypeError: not an Option instance: 1\n",
+            ]
+
+            self.assertEqual(traceback[0], expected_traceback_head)
+            self.assertEqual(
+                traceback[-len(expected_traceback_tail) :], expected_traceback_tail
+            )
 
     def test_cannot_deserialize_non_exception(self) -> None:
         for data in [
