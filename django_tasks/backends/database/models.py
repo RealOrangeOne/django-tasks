@@ -20,6 +20,8 @@ from django_tasks.task import (
 )
 from django_tasks.utils import exception_to_dict, retry
 
+from .utils import normalize_uuid
+
 logger = logging.getLogger("django_tasks.backends.database")
 
 T = TypeVar("T")
@@ -127,7 +129,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         result = TaskResult[T](
             db_result=self,
             task=self.task,
-            id=str(self.id),
+            id=normalize_uuid(self.id),
             status=ResultStatus[self.status],
             enqueued_at=self.enqueued_at,
             started_at=self.started_at,
