@@ -96,6 +96,7 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             SyntaxError("Wrong"),
             ImproperlyConfigured("It's wrong"),
             InvalidTaskError(""),
+            SystemExit(),
         ]:
             with self.subTest(exc):
                 data = utils.exception_to_dict(exc)
@@ -110,6 +111,9 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             {"exc_type": "subprocess.check_output", "exc_args": ["exit", "1"]},
             {"exc_type": "True", "exc_args": []},
             {"exc_type": "math.pi", "exc_args": []},
+            {"exc_type": __name__, "exc_args": []},
+            {"exc_type": utils.get_module_path(type(self)), "exc_args": []},
+            {"exc_type": utils.get_module_path(Mock), "exc_args": []},
         ]:
             with self.subTest(data):
                 with self.assertRaises((TypeError, ImportError)):
