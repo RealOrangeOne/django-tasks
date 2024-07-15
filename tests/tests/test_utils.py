@@ -11,6 +11,8 @@ from django_tasks import utils
 from django_tasks.exceptions import InvalidTaskError
 from tests import tasks as test_tasks
 
+import hashlib
+
 
 class IsGlobalFunctionTestCase(SimpleTestCase):
     def test_builtin(self) -> None:
@@ -152,6 +154,24 @@ class ExceptionSerializationTestCase(SimpleTestCase):
                     "TypeError: not an Option instance: 1\n"
                 )
             )
+
+    def test_serialize_traceback_from_c_module(self) -> None:
+        try:
+            # Same as test_serialize_full_traceback, but uses hashlib
+            # because it's in C, not in Python
+            hashlib.md5(1)  # type: ignore
+        except Exception as e:
+            traceback = utils.exception_to_dict(e)["exc_traceback"]
+            self.assertTrue(traceback.startswith("Traceback (most recent call last):"))
+            self.assertTrue(
+                traceback.endswith(
+                    "TypeError: object supporting the buffer API required\n"
+                )
+            )
+            # Check that it's indeed a short traceback that sees mostly
+            # the error line
+            self.assertTrue("hashlib.md5(1)" in traceback)
+            self.assertEqual(len(traceback.strip("\n").split("\n")), 4)
 
     def test_cannot_deserialize_non_exception(self) -> None:
         serialized_exceptions: List[utils.SerializedExceptionDict] = [
