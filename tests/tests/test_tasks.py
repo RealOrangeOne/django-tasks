@@ -30,10 +30,6 @@ from tests import tasks as test_tasks
             "BACKEND": "django_tasks.backends.dummy.DummyBackend",
             "QUEUES": ["default", "queue_1"],
         },
-        "default": {
-            "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-            "QUEUES": ["default", "queue_1"],
-        },
         "immediate": {"BACKEND": "django_tasks.backends.immediate.ImmediateBackend"},
         "missing": {"BACKEND": "does.not.exist"},
     }

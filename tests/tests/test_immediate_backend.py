@@ -58,7 +58,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)
         self.assertGreaterEqual(result.finished_at, result.started_at)
         self.assertIsInstance(result.result, ValueError)
-        self.assertEqual(result.traceback[-1], "ValueError: This task failed\n")
+        self.assertTrue(result.traceback.endswith("ValueError: This task failed\n"))
         self.assertIsNone(result.get_result())
         self.assertEqual(result.task, test_tasks.failing_task)
         self.assertEqual(result.args, [])

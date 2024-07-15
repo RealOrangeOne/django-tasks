@@ -4,16 +4,22 @@ import time
 from collections import deque
 from functools import wraps
 from traceback import format_exception
-from typing import Any, Callable, List, TypedDict, TypeVar
+from typing import Any, Callable, List, Sequence, TypedDict, TypeVar
 
 from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
 
 
 class SerializedExceptionDict(TypedDict):
+    """Type for the dictionary holding exception informations in task result
+
+    The task result either stores the result of the task, or the serialized exception
+    information required to reconstitute part of the exception for debugging.
+    """
+
     exc_type: str
     exc_args: List[Any]
-    exc_traceback: List[str]
+    exc_traceback: str
 
 
 T = TypeVar("T")
@@ -83,7 +89,7 @@ def exception_to_dict(exc: BaseException) -> SerializedExceptionDict:
     return {
         "exc_type": get_module_path(type(exc)),
         "exc_args": json_normalize(exc.args),
-        "exc_traceback": format_exception(type(exc), exc, exc.__traceback__),
+        "exc_traceback": "".join(format_exception(type(exc), exc, exc.__traceback__)),
     }
 
 

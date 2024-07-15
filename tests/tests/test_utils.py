@@ -1,6 +1,7 @@
 import datetime
 import optparse
 import subprocess
+from typing import List
 from unittest.mock import Mock
 
 from django.core.exceptions import ImproperlyConfigured
@@ -111,11 +112,15 @@ class ExceptionSerializationTestCase(SimpleTestCase):
 
                 # Check that the exception traceback contains only one line,
                 # the one with the name of the exception and the message.
+                # The format varies depending of the presence, absence and
+                # size of the exception message, and if the exception is
+                # a builtin or not.
                 dotted_path = utils.get_module_path(exc.__class__).replace(
                     "builtins.", ""
                 )
-                msg = f": {exc.args[0]}\n" if exc.args[0] else "\n"
-                self.assertEqual(data["exc_traceback"], [dotted_path + msg])
+                msg = exc.args[0] if exc.args else ""
+                msg = f": {msg}\n" if msg else "\n"
+                self.assertEqual(data["exc_traceback"], dotted_path + msg)
 
     def test_serialize_full_traceback(self) -> None:
         try:
@@ -128,35 +133,49 @@ class ExceptionSerializationTestCase(SimpleTestCase):
         except Exception as e:
             traceback = utils.exception_to_dict(e)["exc_traceback"]
 
-            expected_traceback_head = "Traceback (most recent call last):\n"
-
-            expected_traceback_tail = [
-                f'  File "{optparse.__file__}", line 1206, in __init__\n'
-                "    self._populate_option_list(option_list,\n",
-                f'  File "{optparse.__file__}", line 1249, in '
-                "_populate_option_list\n"
-                "    self.add_options(option_list)\n",
-                f'  File "{optparse.__file__}", line 1027, in add_options\n'
-                "    self.add_option(option)\n",
-                f'  File "{optparse.__file__}", line 1004, in add_option\n'
-                '    raise TypeError("not an Option instance: %r" % option)\n',
-                "TypeError: not an Option instance: 1\n",
-            ]
-
-            self.assertEqual(traceback[0], expected_traceback_head)
-            self.assertEqual(
-                traceback[-len(expected_traceback_tail) :], expected_traceback_tail
+            # The first line and last few lines of the traceback variable parts
+            # depend of the position of the optparse module, which comes with
+            # few surprises.
+            # Between them, there are a few lines that have variable parts
+            # depending on our code base. We skip those to avoid maintenance burden.
+            self.assertTrue(traceback.startswith("Traceback (most recent call last):"))
+            self.assertTrue(
+                traceback.endswith(
+                    f'  File "{optparse.__file__}", line 1206, in __init__\n'
+                    "    self._populate_option_list(option_list,\n"
+                    f'  File "{optparse.__file__}", line 1249, in _populate_option_list\n'
+                    "    self.add_options(option_list)\n"
+                    f'  File "{optparse.__file__}", line 1027, in add_options\n'
+                    "    self.add_option(option)\n"
+                    f'  File "{optparse.__file__}", line 1004, in add_option\n'
+                    '    raise TypeError("not an Option instance: %r" % option)\n'
+                    "TypeError: not an Option instance: 1\n"
+                )
             )
 
     def test_cannot_deserialize_non_exception(self) -> None:
-        for data in [
-            {"exc_type": "subprocess.check_output", "exc_args": ["exit", "1"]},
-            {"exc_type": "True", "exc_args": []},
-            {"exc_type": "math.pi", "exc_args": []},
-            {"exc_type": __name__, "exc_args": []},
-            {"exc_type": utils.get_module_path(type(self)), "exc_args": []},
-            {"exc_type": utils.get_module_path(Mock), "exc_args": []},
-        ]:
+        serialized_exceptions: List[utils.SerializedExceptionDict] = [
+            {
+                "exc_type": "subprocess.check_output",
+                "exc_args": ["exit", "1"],
+                "exc_traceback": "",
+            },
+            {"exc_type": "True", "exc_args": [], "exc_traceback": ""},
+            {"exc_type": "math.pi", "exc_args": [], "exc_traceback": ""},
+            {"exc_type": __name__, "exc_args": [], "exc_traceback": ""},
+            {
+                "exc_type": utils.get_module_path(type(self)),
+                "exc_args": [],
+                "exc_traceback": "",
+            },
+            {
+                "exc_type": utils.get_module_path(Mock),
+                "exc_args": [],
+                "exc_traceback": "",
+            },
+        ]
+
+        for data in serialized_exceptions:
             with self.subTest(data):
                 with self.assertRaises((TypeError, ImportError)):
-                    utils.exception_from_dict(data)  # type: ignore
+                    utils.exception_from_dict(data)

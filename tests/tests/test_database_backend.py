@@ -346,7 +346,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertIsInstance(result.result, ValueError)
         assert result.traceback  # So that mypy knows the next line is allowed
-        self.assertEqual(result.traceback[-1], "ValueError: This task failed\n")
+        self.assertTrue(result.traceback.endswith("ValueError: This task failed\n"))
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
