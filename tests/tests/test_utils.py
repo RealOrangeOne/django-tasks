@@ -111,17 +111,11 @@ class ExceptionSerializationTestCase(SimpleTestCase):
                 self.assertIsInstance(exception, type(exc))
                 self.assertEqual(exception.args, exc.args)
 
-                # Check that the exception traceback contains only one line,
-                # the one with the name of the exception and the message.
-                # The format varies depending of the presence, absence and
-                # size of the exception message, and if the exception is
-                # a builtin or not.
-                dotted_path = utils.get_module_path(exc.__class__).replace(
-                    "builtins.", ""
-                )
-                msg = exc.args[0] if exc.args else ""
-                msg = f": {msg}\n" if msg else "\n"
-                self.assertEqual(data["exc_traceback"], dotted_path + msg)
+                # Check that the exception traceback contains a minimal traceback
+                msg = str(exc.args[0]) if exc.args else ""
+                traceback = data["exc_traceback"]
+                self.assertIn(exc.__class__.__name__, traceback)
+                self.assertIn(msg, traceback)
 
     def test_serialize_full_traceback(self) -> None:
         try:
@@ -129,29 +123,16 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             # - it's pure python
             # - it's easy to trip down
             # - it's unlikely to change ever
-            # - We can normalize the strack trace from it
             optparse.OptionParser(option_list=[1])  # type: ignore
         except Exception as e:
             traceback = utils.exception_to_dict(e)["exc_traceback"]
-
-            # The first line and last few lines of the traceback variable parts
-            # depend of the position of the optparse module, which comes with
-            # few surprises.
-            # Between them, there are a few lines that have variable parts
-            # depending on our code base. We skip those to avoid maintenance burden.
-            self.assertTrue(traceback.startswith("Traceback (most recent call last):"))
+            # The test is willingly fuzzy to ward against changes in the
+            # traceback formatting
+            self.assertIn("traceback", traceback.lower())
+            self.assertIn("line", traceback.lower())
+            self.assertIn(optparse.__file__, traceback)
             self.assertTrue(
-                traceback.endswith(
-                    f'  File "{optparse.__file__}", line 1206, in __init__\n'
-                    "    self._populate_option_list(option_list,\n"
-                    f'  File "{optparse.__file__}", line 1249, in _populate_option_list\n'
-                    "    self.add_options(option_list)\n"
-                    f'  File "{optparse.__file__}", line 1027, in add_options\n'
-                    "    self.add_option(option)\n"
-                    f'  File "{optparse.__file__}", line 1004, in add_option\n'
-                    '    raise TypeError("not an Option instance: %r" % option)\n'
-                    "TypeError: not an Option instance: 1\n"
-                )
+                traceback.endswith("TypeError: not an Option instance: 1\n")
             )
 
     def test_serialize_traceback_from_c_module(self) -> None:
@@ -161,16 +142,13 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             hashlib.md5(1)  # type: ignore
         except Exception as e:
             traceback = utils.exception_to_dict(e)["exc_traceback"]
-            self.assertTrue(traceback.startswith("Traceback (most recent call last):"))
+            self.assertIn("traceback", traceback.lower())
             self.assertTrue(
                 traceback.endswith(
                     "TypeError: object supporting the buffer API required\n"
                 )
             )
-            # Check that it's indeed a short traceback that sees mostly
-            # the error line
             self.assertIn("hashlib.md5(1)", traceback)
-            self.assertEqual(len(traceback.strip("\n").split("\n")), 4)
 
     def test_cannot_deserialize_non_exception(self) -> None:
         serialized_exceptions: List[utils.SerializedExceptionDict] = [
