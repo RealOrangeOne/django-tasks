@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import optparse
 import subprocess
 from typing import List
@@ -10,8 +11,6 @@ from django.test import SimpleTestCase
 from django_tasks import utils
 from django_tasks.exceptions import InvalidTaskError
 from tests import tasks as test_tasks
-
-import hashlib
 
 
 class IsGlobalFunctionTestCase(SimpleTestCase):
@@ -170,7 +169,7 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             )
             # Check that it's indeed a short traceback that sees mostly
             # the error line
-            self.assertTrue("hashlib.md5(1)" in traceback)
+            self.assertIn("hashlib.md5(1)", traceback)
             self.assertEqual(len(traceback.strip("\n").split("\n")), 4)
 
     def test_cannot_deserialize_non_exception(self) -> None:

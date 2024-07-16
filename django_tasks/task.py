@@ -248,11 +248,7 @@ class TaskResult(Generic[T]):
         """
         Return the string representation of the traceback of the task if it failed
         """
-
-        if self._result is None:
-            return None
-
-        if self.status == ResultStatus.FAILED:
+        if self.status == ResultStatus.FAILED and self._result is not None:
             return cast(SerializedExceptionDict, self._result)["exc_traceback"]
 
         return None

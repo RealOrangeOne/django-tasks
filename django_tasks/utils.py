@@ -4,7 +4,7 @@ import time
 from collections import deque
 from functools import wraps
 from traceback import format_exception
-from typing import Any, Callable, List, Sequence, TypedDict, TypeVar
+from typing import Any, Callable, List, TypedDict, TypeVar
 
 from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
