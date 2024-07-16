@@ -343,7 +343,10 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
+
         self.assertIsInstance(result.result, ValueError)
+        assert result.traceback  # So that mypy knows the next line is allowed
+        self.assertTrue(result.traceback.endswith("ValueError: This task failed\n"))
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -364,7 +367,9 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
+
         self.assertIsNone(result.result)
+        self.assertIsNone(result.traceback)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 

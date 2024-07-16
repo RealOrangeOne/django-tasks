@@ -158,7 +158,15 @@ If a task raised an exception, its `.result` will be the exception raised:
 assert isinstance(result.result, ValueError)
 ```
 
-As part of the serialization process for exceptions, some information, such as the traceback information, is lost. If the exception could not be serialized, the `.result` is `None`.
+As part of the serialization process for exceptions, some information is lost. The traceback information is reduced to a string that you can print to help debugging:
+
+```python
+assert isinstance(result.traceback, str)
+```
+
+The stack frames, `globals()` and `locals()` are not available.
+
+If the exception could not be serialized, the `.result` is `None`.
 
 ### Backend introspecting
 
