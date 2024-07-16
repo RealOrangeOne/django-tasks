@@ -10,7 +10,7 @@ description = "A reference implementation and backport of background workers and
 authors = [
     {name = "Jake Howard"},
 ]
-version = "0.2.0"
+version = "0.3.0"
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = [
