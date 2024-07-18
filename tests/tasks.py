@@ -23,17 +23,17 @@ def calculate_meaning_of_life() -> int:
 
 @task()
 def failing_task_value_error() -> None:
-    raise ValueError("This task raised ValueError")
+    raise ValueError("This task failed due to ValueError")
 
 
 @task()
 def failing_task_system_exit() -> None:
-    raise SystemExit("This task raised SystemExit")
+    raise SystemExit("This task failed due to SystemExit")
 
 
 @task()
 def failing_task_keyboard_interrupt() -> None:
-    raise KeyboardInterrupt("This task raised KeyboardInterrupt")
+    raise KeyboardInterrupt("This task failed due to KeyboardInterrupt")
 
 
 @task()
