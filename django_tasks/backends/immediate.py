@@ -37,7 +37,7 @@ class ImmediateBackend(BaseTaskBackend):
         try:
             result = json_normalize(calling_task_func(*args, **kwargs))
             status = ResultStatus.COMPLETE
-        except Exception as e:
+        except BaseException as e:
             try:
                 result = exception_to_dict(e)
             except Exception:
@@ -47,6 +47,10 @@ class ImmediateBackend(BaseTaskBackend):
             # Use `.exception` to integrate with error monitoring tools (eg Sentry)
             logger.exception("Task execution failed: %s", e)
             status = ResultStatus.FAILED
+
+            # If the user tried to terminate, let them
+            if isinstance(e, KeyboardInterrupt):
+                raise
 
         task_result = TaskResult[T](
             task=task,
