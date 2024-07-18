@@ -18,6 +18,13 @@ python -m pip install django-tasks
 
 The first step is to add `django_tasks` to your `INSTALLED_APPS`.
 
+```python
+INSTALLED_APPS = [
+    # ...
+    "django_tasks",
+]
+```
+
 Secondly, you'll need to configure a backend. This connects the tasks to whatever is going to execute them.
 
 If omitted, the following configuration is used:
@@ -100,7 +107,21 @@ To disable queue name validation, set `QUEUES` to `[]`.
 
 ### The database backend worker
 
-First, you'll need to add `django_tasks.backends.database`  to `INSTALLED_APPS`, and run `manage.py migrate`.
+First, you'll need to add `django_tasks.backends.database`  to `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "django_tasks",
+    "django_tasks.backends.database",
+]
+```
+
+Then, run migrations:
+
+```shell
+./manage.py migrate
+```
 
 Next, configure the database backend:
 
@@ -112,7 +133,11 @@ TASKS = {
 }
 ```
 
-Finally, you can run `manage.py db_worker` to run tasks as they're created. Check the `--help` for more options.
+Finally, you can run the `db_worker` command to run tasks as they're created. Check the `--help` for more options.
+
+```shell
+./manage.py db_worker
+```
 
 ### Retrieving task result
 
