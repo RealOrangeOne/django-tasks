@@ -43,6 +43,9 @@ class ImmediateBackend(BaseTaskBackend):
             except Exception:
                 logger.exception("Task id=%s unable to save exception", result_id)
                 result = None
+
+            # Use `.exception` to integrate with error monitoring tools (eg Sentry)
+            logger.exception("Task execution failed: %s", e)
             status = ResultStatus.FAILED
 
         task_result = TaskResult[T](
