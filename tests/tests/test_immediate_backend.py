@@ -50,7 +50,18 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.kwargs, {})
 
     def test_catches_exception(self) -> None:
-        result = default_task_backend.enqueue(test_tasks.failing_task, [], {})
+        tasks_with_expected_messages = [
+            (test_tasks.failing_task_value_error, "This task raised ValueError"),
+            (test_tasks.failing_task_system_exit, "This task raised SystemExit"),
+        ]
+        for task, message in tasks_with_expected_messages:
+            with self.subTest(task):
+                with self.assertLogs(
+                    "django_tasks.backends.immediate", level="ERROR"
+                ) as captured_logs:
+                    result = default_task_backend.enqueue(task, [], {})
+                    self.assertEqual(len(captured_logs.output), 1)
+                    self.assertIn(message, captured_logs.output[0])
 
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsNotNone(result.started_at)
@@ -63,6 +74,12 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertEqual(result.task, test_tasks.failing_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
+
+    def test_throws_keyboard_interrupt(self) -> None:
+        with self.assertRaises(KeyboardInterrupt):
+            default_task_backend.enqueue(
+                test_tasks.failing_task_keyboard_interrupt, [], {}
+            )
 
     def test_complex_exception(self) -> None:
         with self.assertLogs("django_tasks.backends.immediate", level="ERROR"):
@@ -134,7 +151,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             "Backend does not support run_after",
         ):
             default_task_backend.validate_task(
-                test_tasks.failing_task.using(run_after=timezone.now())
+                test_tasks.failing_task_value_error.using(run_after=timezone.now())
             )
 
     def test_meaning_of_life_view(self) -> None:
