@@ -45,7 +45,12 @@ class ImmediateBackend(BaseTaskBackend):
                 result = None
 
             # Use `.exception` to integrate with error monitoring tools (eg Sentry)
-            logger.exception("Task execution failed: %s", e)
+            logger.exception(
+                "Task id=%s path=%s state=%s",
+                result_id,
+                task.module_path,
+                ResultStatus.FAILED,
+            )
             status = ResultStatus.FAILED
 
             # If the user tried to terminate, let them
