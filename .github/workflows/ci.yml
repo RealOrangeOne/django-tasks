@@ -139,7 +139,7 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Save built package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: package
         path: dist
@@ -147,4 +147,4 @@ jobs:
       if: ${{ github.ref_type	== 'tag' }}
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        print_hash: true
+        print-hash: true
