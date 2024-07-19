@@ -1,6 +1,7 @@
 import logging
 import random
 import signal
+import sys
 import time
 from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
@@ -33,16 +34,22 @@ class Worker:
         self.running_task = False
 
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
-        logger.warning(
-            "Received %s - shutting down gracefully.", signal.strsignal(signum)
-        )
+        if not self.running:
+            logger.warning(
+                "Received %s - shutting down immediately.", signal.strsignal(signum)
+            )
+            sys.exit(1)
 
+        logger.warning(
+            "Received %s - shutting down gracefully... (press Ctrl+C again to force)",
+            signal.strsignal(signum),
+        )
         self.running = False
 
         if not self.running_task:
             # If we're not currently running a task, exit immediately.
             # This is useful if we're currently in a `sleep`.
-            exit(0)
+            sys.exit(0)
 
     def configure_signals(self) -> None:
         signal.signal(signal.SIGINT, self.shutdown)
@@ -94,8 +101,9 @@ class Worker:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
                 return None
 
-            # Wait before checking for another task
-            time.sleep(self.interval)
+            if self.running:
+                # Wait before checking for another task
+                time.sleep(self.interval)
 
     def run_task(self, db_task_result: DBTaskResult) -> None:
         """
