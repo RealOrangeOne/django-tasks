@@ -50,19 +50,57 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.kwargs, {})
 
     def test_catches_exception(self) -> None:
-        result = default_task_backend.enqueue(test_tasks.failing_task, [], {})
+        test_data = [
+            (
+                test_tasks.failing_task_value_error,  # task function
+                ValueError,  # expected exception
+                "This task failed due to ValueError",  # expected message
+            ),
+            (
+                test_tasks.failing_task_system_exit,
+                SystemExit,
+                "This task failed due to SystemExit",
+            ),
+        ]
+        for task, exception, message in test_data:
+            with self.subTest(task), self.assertLogs(
+                "django_tasks.backends.immediate", level="ERROR"
+            ) as captured_logs:
+                result = default_task_backend.enqueue(task, [], {})
 
-        self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertIsNotNone(result.started_at)
-        self.assertIsNotNone(result.finished_at)
-        self.assertGreaterEqual(result.started_at, result.enqueued_at)
-        self.assertGreaterEqual(result.finished_at, result.started_at)
-        self.assertIsInstance(result.result, ValueError)
-        self.assertTrue(result.traceback.endswith("ValueError: This task failed\n"))
-        self.assertIsNone(result.get_result())
-        self.assertEqual(result.task, test_tasks.failing_task)
-        self.assertEqual(result.args, [])
-        self.assertEqual(result.kwargs, {})
+                # assert logging
+                self.assertEqual(len(captured_logs.output), 1)
+                self.assertIn(message, captured_logs.output[0])
+
+                # assert result
+                self.assertEqual(result.status, ResultStatus.FAILED)
+                self.assertIsNotNone(result.started_at)
+                self.assertIsNotNone(result.finished_at)
+                self.assertGreaterEqual(result.started_at, result.enqueued_at)
+                self.assertGreaterEqual(result.finished_at, result.started_at)
+                self.assertIsInstance(result.result, exception)
+                self.assertTrue(
+                    result.traceback.endswith(f"{exception.__name__}: {message}\n")
+                )
+                self.assertIsNone(result.get_result())
+                self.assertEqual(result.task, task)
+                self.assertEqual(result.args, [])
+                self.assertEqual(result.kwargs, {})
+
+    def test_throws_keyboard_interrupt(self) -> None:
+        with self.assertRaises(KeyboardInterrupt):
+            with self.assertLogs(
+                "django_tasks.backends.immediate", level="ERROR"
+            ) as captured_logs:
+                default_task_backend.enqueue(
+                    test_tasks.failing_task_keyboard_interrupt, [], {}
+                )
+
+        # assert logging
+        self.assertEqual(len(captured_logs.output), 1)
+        self.assertIn(
+            "This task failed due to KeyboardInterrupt", captured_logs.output[0]
+        )
 
     def test_complex_exception(self) -> None:
         with self.assertLogs("django_tasks.backends.immediate", level="ERROR"):
@@ -134,7 +172,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             "Backend does not support run_after",
         ):
             default_task_backend.validate_task(
-                test_tasks.failing_task.using(run_after=timezone.now())
+                test_tasks.failing_task_value_error.using(run_after=timezone.now())
             )
 
     def test_meaning_of_life_view(self) -> None:

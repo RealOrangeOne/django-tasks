@@ -283,7 +283,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     def test_batch_processes_all_tasks(self) -> None:
         for _ in range(3):
             test_tasks.noop_task.enqueue()
-        test_tasks.failing_task.enqueue()
+        test_tasks.failing_task_value_error.enqueue()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 4)
 
@@ -329,7 +329,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
     def test_failing_task(self) -> None:
-        result = test_tasks.failing_task.enqueue()
+        result = test_tasks.failing_task_value_error.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
         with self.assertNumQueries(8):
@@ -346,7 +346,11 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertIsInstance(result.result, ValueError)
         assert result.traceback  # So that mypy knows the next line is allowed
-        self.assertTrue(result.traceback.endswith("ValueError: This task failed\n"))
+        self.assertTrue(
+            result.traceback.endswith(
+                "ValueError: This task failed due to ValueError\n"
+            )
+        )
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -374,7 +378,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
     def test_doesnt_process_different_backend(self) -> None:
-        result = test_tasks.failing_task.enqueue()
+        result = test_tasks.failing_task_value_error.enqueue()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
