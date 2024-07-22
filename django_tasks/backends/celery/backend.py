@@ -1,14 +1,16 @@
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import Any, Iterable, TypeVar
 
 from celery import shared_task
 from celery.app import default_app
 from celery.local import Proxy as CeleryTaskProxy
+from django.apps import apps
+from django.core.checks import ERROR, CheckMessage
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.task import ResultStatus, TaskResult
+from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY, ResultStatus, TaskResult
 from django_tasks.task import Task as BaseTask
 from django_tasks.utils import json_normalize
 
@@ -20,6 +22,26 @@ if not default_app:
 
 T = TypeVar("T")
 P = ParamSpec("P")
+
+
+CELERY_MIN_PRIORITY = 0
+CELERY_MAX_PRIORITY = 9
+
+
+def _map_priority(value: int) -> int:
+    # linear scale value to the range 0 to 9
+    scaled_value = (value + abs(MIN_PRIORITY)) / (
+        (MAX_PRIORITY - MIN_PRIORITY) / (CELERY_MAX_PRIORITY - CELERY_MIN_PRIORITY)
+    )
+    mapped_value = int(scaled_value)
+
+    # ensure the mapped value is within the range 0 to 9
+    if mapped_value < CELERY_MIN_PRIORITY:
+        mapped_value = CELERY_MIN_PRIORITY
+    elif mapped_value > CELERY_MAX_PRIORITY:
+        mapped_value = CELERY_MAX_PRIORITY
+
+    return mapped_value
 
 
 @dataclass
@@ -50,8 +72,10 @@ class CeleryBackend(BaseTaskBackend):
         }
         if task.queue_name:
             apply_async_kwargs["queue"] = task.queue_name
-        if task.priority:
-            apply_async_kwargs["priority"] = task.priority
+        if task.priority is not None:
+            # map priority to the range 0 to 9
+            priority = _map_priority(task.priority)
+            apply_async_kwargs["priority"] = priority
 
         # TODO: a Celery result backend is required to get additional information
         async_result = task.celery_task.apply_async(
@@ -62,9 +86,20 @@ class CeleryBackend(BaseTaskBackend):
             id=async_result.id,
             status=ResultStatus.NEW,
             enqueued_at=timezone.now(),
+            started_at=None,
             finished_at=None,
             args=json_normalize(args),
             kwargs=json_normalize(kwargs),
             backend=self.alias,
         )
         return task_result
+
+    def check(self, **kwargs: Any) -> Iterable[CheckMessage]:
+        backend_name = self.__class__.__name__
+
+        if not apps.is_installed("django_tasks.backends.celery"):
+            yield CheckMessage(
+                ERROR,
+                f"{backend_name} configured as django_tasks backend, but celery app not installed",
+                "Insert 'django_tasks.backends.celery' in INSTALLED_APPS",
+            )
