@@ -1,11 +1,16 @@
 import json
 import logging
+import multiprocessing
+import os
+import signal
+import tempfile
+import time
 import uuid
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import timedelta
 from functools import partial
 from io import StringIO
-from typing import Sequence, Union, cast
+from typing import Any, List, Sequence, Union, cast
 from unittest import mock, skipIf
 
 import django
@@ -777,9 +782,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
             self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
 
-            with self.assertRaisesMessage(
-                OperationalError, "database schema is locked: main"
-            ):
+            with self.assertRaisesMessage(OperationalError, "database is locked"):
                 self.execute_in_new_connection(
                     DBTaskResult.objects.select_for_update(skip_locked=True)
                 )
@@ -841,9 +844,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
             self.assertEqual(result.id, str(locked_result.id))
 
-            with self.assertRaisesMessage(
-                OperationalError, "database schema is locked: main"
-            ):
+            with self.assertRaisesMessage(OperationalError, "database is locked"):
                 self.execute_in_new_connection(
                     DBTaskResult.objects.select_for_update(skip_locked=True)
                 )
@@ -1159,3 +1160,193 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
                     ["django-admin", "prune_db_task_results", "--min-age-days", "-1"]
                 )
         self.assertIn("Must be greater than zero", output.getvalue())
+
+
+@override_settings(
+    TASKS={
+        "default": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+        },
+    }
+)
+class DatabaseWorkerProcessTestCase(TransactionTestCase):
+    def setUp(self) -> None:
+        self.processes: List[multiprocessing.Process] = []
+
+    def tearDown(self) -> None:
+        # Try n times to kill any remaining child processes
+        for _ in range(3):
+            for process in self.processes:
+                if process.is_alive():
+                    process.terminate()
+                    time.sleep(0.01)
+
+    def start_worker(self, **kwargs: Any) -> multiprocessing.Process:
+        p = multiprocessing.Process(
+            target=call_command,
+            daemon=True,
+            args=["db_worker"],
+            kwargs={"verbosity": 0, "batch": True, "interval": 0, **kwargs},
+        )
+        self.processes.append(p)
+        p.start()
+        return p
+
+    def test_run_multiprocess(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+        process = self.start_worker()
+        process.join()
+
+        self.assertEqual(result.status, ResultStatus.NEW)
+
+        result.refresh()
+
+        self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+    def test_interrupt_no_tasks(self) -> None:
+        process = self.start_worker(batch=False, interval=1)
+
+        time.sleep(0.01)
+
+        process.terminate()
+
+        process.join(timeout=0.5)
+        self.assertFalse(process.is_alive())
+        self.assertEqual(process.exitcode, 0)
+
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
+    def test_interrupt_signals(self) -> None:
+        for sig in [
+            signal.SIGINT,  # ctrl-c
+            signal.SIGTERM,
+        ]:
+            with self.subTest(sig):
+                result = test_tasks.sleep_for.enqueue(0.5)
+
+                # Unset "batch" so the worker would never normally terminate
+                process = self.start_worker(batch=False)
+
+                # Make sure the task is running by now
+                time.sleep(0.01)
+
+                result.refresh()
+                self.assertEqual(result.status, ResultStatus.RUNNING)
+
+                os.kill(process.pid, sig)  # type:ignore[arg-type]
+
+                process.join(timeout=1)
+
+                self.assertFalse(process.is_alive())
+                self.assertEqual(process.exitcode, 0)
+
+                result.refresh()
+
+                self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
+    def test_repeat_ctrl_c(self) -> None:
+        result = test_tasks.hang.enqueue()
+
+        # Unset "batch" so the worker would never normally terminate
+        process = self.start_worker(batch=False)
+
+        # Make sure the task is running by now
+        time.sleep(0.01)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+        os.kill(process.pid, signal.SIGINT)  # type:ignore[arg-type]
+        time.sleep(0.01)
+
+        self.assertTrue(process.is_alive())
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+        os.kill(process.pid, signal.SIGINT)  # type:ignore[arg-type]
+
+        process.join(timeout=2)
+
+        self.assertFalse(process.is_alive())
+        self.assertEqual(process.exitcode, 0)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.exception, SystemExit)
+
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
+    def test_kill(self) -> None:
+        result = test_tasks.hang.enqueue()
+
+        # Unset "batch" so the worker would never normally terminate
+        process = self.start_worker(batch=False)
+
+        # Make sure the task is running by now
+        time.sleep(0.01)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+        process.kill()
+
+        process.join(timeout=2)
+
+        self.assertFalse(process.is_alive())
+        self.assertEqual(process.exitcode, -signal.SIGKILL)
+
+        result.refresh()
+        # TODO: https://github.com/RealOrangeOne/django-tasks/issues/46
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+    def test_system_exit_task(self) -> None:
+        result = test_tasks.failing_task_system_exit.enqueue()
+
+        process = self.start_worker()
+        process.join(timeout=2)
+
+        self.assertEqual(process.exitcode, 0)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.exception, SystemExit)
+
+    def test_keyboard_interrupt_task(self) -> None:
+        result = test_tasks.failing_task_system_exit.enqueue()
+
+        process = self.start_worker()
+        process.join(timeout=2)
+
+        self.assertEqual(process.exitcode, 0)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.exception, SystemExit)
+
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
+    def test_multiple_workers(self) -> None:
+        results = [test_tasks.noop_task.enqueue() for _ in range(10)]
+
+        with tempfile.TemporaryFile(mode="w+") as output:
+            with redirect_stdout(output):
+                for _ in range(3):
+                    self.start_worker(batch=False, verbosity=3)
+
+                time.sleep(1)
+
+                for process in self.processes:
+                    process.terminate()
+                    process.join(timeout=3)
+                    self.assertFalse(process.is_alive())
+
+            for result in results:
+                result.refresh()
+                self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+            output.seek(0)
+            output_text = output.read()
+
+        self.assertEqual(output_text.count("shutting down gracefully"), 3)
+
+        for result in results:
+            # Running and complete
+            self.assertEqual(output_text.count(result.id), 2)

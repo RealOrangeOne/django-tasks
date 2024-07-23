@@ -19,7 +19,6 @@ lint:
     python -m mypy django_tasks tests
 
 start-dbs:
-    docker-compose pull
     docker-compose up -d
 
 test-sqlite *ARGS:

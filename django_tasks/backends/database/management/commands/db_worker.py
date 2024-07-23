@@ -41,7 +41,7 @@ class Worker:
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
         if not self.running:
             logger.warning(
-                "Received %s - shutting down immediately.", signal.strsignal(signum)
+                "Received %s - terminating current task.", signal.strsignal(signum)
             )
             sys.exit(1)
 
@@ -149,10 +149,6 @@ class Worker:
                     sender=sender,
                     task_result=task_result,
                 )
-
-            # If the user tried to terminate, let them
-            if isinstance(e, KeyboardInterrupt):
-                raise
 
 
 def valid_backend_name(val: str) -> str:
