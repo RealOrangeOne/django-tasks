@@ -855,7 +855,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 result.refresh()
                 self.assertEqual(result.status, ResultStatus.RUNNING)
 
-                os.kill(process.pid, sig)
+                os.kill(process.pid, sig)  # type:ignore[arg-type]
 
                 process.join(timeout=1)
 
@@ -879,14 +879,14 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
 
-        os.kill(process.pid, signal.SIGINT)
+        os.kill(process.pid, signal.SIGINT)  # type:ignore[arg-type]
         time.sleep(0.01)
 
         self.assertTrue(process.is_alive())
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
 
-        os.kill(process.pid, signal.SIGINT)
+        os.kill(process.pid, signal.SIGINT)  # type:ignore[arg-type]
 
         process.join(timeout=2)
 
@@ -946,7 +946,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertIsInstance(result.result, SystemExit)
 
     @skipIf(connection.vendor != "sqlite", "SQLite only for now")
-    def test_multiple_workers(self):
+    def test_multiple_workers(self) -> None:
         results = [test_tasks.noop_task.enqueue() for _ in range(10)]
 
         with tempfile.TemporaryFile(mode="w+") as output:
