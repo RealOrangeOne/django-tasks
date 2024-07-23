@@ -792,7 +792,6 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         },
     }
 )
-@skipIf(connection.vendor != "sqlite", "SQLite only for now")
 class DatabaseWorkerProcessTestCase(TransactionTestCase):
     def setUp(self) -> None:
         self.processes: List[multiprocessing.Process] = []
@@ -803,10 +802,12 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             for process in self.processes:
                 if process.is_alive():
                     process.terminate()
+                    time.sleep(0.01)
 
     def start_worker(self, **kwargs: Any) -> multiprocessing.Process:
         p = multiprocessing.Process(
             target=call_command,
+            daemon=True,
             args=["db_worker"],
             kwargs={"verbosity": 0, "batch": True, "interval": 0, **kwargs},
         )
@@ -836,6 +837,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertFalse(process.is_alive())
         self.assertEqual(process.exitcode, 0)
 
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     def test_interrupt_signals(self) -> None:
         for sig in [
             signal.SIGINT,  # ctrl-c
@@ -864,6 +866,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
 
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     def test_repeat_ctrl_c(self) -> None:
         result = test_tasks.hang.enqueue()
 
@@ -894,6 +897,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsInstance(result.result, SystemExit)
 
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     def test_kill(self) -> None:
         result = test_tasks.hang.enqueue()
 
@@ -941,6 +945,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsInstance(result.result, SystemExit)
 
+    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     def test_multiple_workers(self):
         results = [test_tasks.noop_task.enqueue() for _ in range(10)]
 
