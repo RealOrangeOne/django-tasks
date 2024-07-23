@@ -1,3 +1,5 @@
+import time
+
 from django_tasks import task
 
 
@@ -44,3 +46,16 @@ def complex_exception() -> None:
 @task()
 def exit_task() -> None:
     exit(1)
+
+
+@task()
+def hang() -> None:
+    """
+    Do nothing for 5 minutes
+    """
+    time.sleep(300)
+
+
+@task()
+def sleep_for(seconds: float) -> None:
+    time.sleep(seconds)
