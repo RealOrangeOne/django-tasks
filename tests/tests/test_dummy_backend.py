@@ -131,6 +131,13 @@ class DummyBackendTestCase(SimpleTestCase):
             {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
         )
 
+    def test_enqueue_on_commit(self) -> None:
+        self.assertFalse(
+            default_task_backend._get_enqueue_on_commit_for_task(
+                test_tasks.enqueue_on_commit_task
+            )
+        )
+
 
 class DummyBackendTransactionTestCase(TransactionTestCase):
     @override_settings(

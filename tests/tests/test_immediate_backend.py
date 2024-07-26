@@ -205,6 +205,13 @@ class ImmediateBackendTestCase(SimpleTestCase):
         ):
             response = self.client.get(reverse("result", args=[result_id]))
 
+    def test_enqueue_on_commit(self) -> None:
+        self.assertFalse(
+            default_task_backend._get_enqueue_on_commit_for_task(
+                test_tasks.enqueue_on_commit_task
+            )
+        )
+
 
 class ImmediateBackendTransactionTestCase(TransactionTestCase):
     @override_settings(
