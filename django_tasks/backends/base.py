@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from inspect import iscoroutinefunction
-from typing import Any, Iterable, Optional, TypeVar
+from typing import Any, Iterable, TypeVar
 
 from asgiref.sync import sync_to_async
 from django.core.checks import messages
@@ -19,7 +19,7 @@ P = ParamSpec("P")
 
 class BaseTaskBackend(metaclass=ABCMeta):
     alias: str
-    enqueue_on_commit: Optional[bool]
+    enqueue_on_commit: bool
 
     task_class = Task
 
@@ -37,9 +37,9 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
         self.alias = options["ALIAS"]
         self.queues = set(options.get("QUEUES", [DEFAULT_QUEUE_NAME]))
-        self.enqueue_on_commit = options.get("ENQUEUE_ON_COMMIT", None)
+        self.enqueue_on_commit = bool(options.get("ENQUEUE_ON_COMMIT", True))
 
-    def _get_enqueue_on_commit_for_task(self, task: Task) -> Optional[bool]:
+    def _get_enqueue_on_commit_for_task(self, task: Task) -> bool:
         """
         Determine the correct `enqueue_on_commit` setting to use for a given task.
 
@@ -128,11 +128,6 @@ class BaseTaskBackend(metaclass=ABCMeta):
         )
 
     def check(self, **kwargs: Any) -> Iterable[messages.CheckMessage]:
-        if self.enqueue_on_commit not in {True, False, None}:
-            yield messages.CheckMessage(
-                messages.ERROR, "`ENQUEUE_ON_COMMIT` must be a bool or None"
-            )
-
         if self.enqueue_on_commit and not connections.settings:
             yield messages.CheckMessage(
                 messages.ERROR,

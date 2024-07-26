@@ -302,8 +302,8 @@ class DatabaseBackendTestCase(TransactionTestCase):
         }
     )
     def test_wait_until_transaction_by_default(self) -> None:
-        self.assertIsNone(default_task_backend.enqueue_on_commit)
-        self.assertIsNone(
+        self.assertTrue(default_task_backend.enqueue_on_commit)
+        self.assertTrue(
             default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
         )
 
