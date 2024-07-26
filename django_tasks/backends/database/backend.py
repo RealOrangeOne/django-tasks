@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Any, Iterable, TypeVar
 from django.apps import apps
 from django.core.checks import messages
 from django.core.exceptions import ValidationError
-from django.db import connections, router
+from django.db import connections, router, transaction
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
+from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.task import Task
 from django_tasks.task import TaskResult as BaseTaskResult
 from django_tasks.utils import json_normalize
@@ -29,14 +29,6 @@ class DatabaseBackend(BaseTaskBackend):
     supports_async_task = True
     supports_get_result = True
     supports_defer = True
-
-    def validate_task(self, task: Task[P, T]) -> None:
-        super().validate_task(task)
-
-        if task.enqueue_on_commit is False:
-            raise InvalidTaskError(
-                "enqueue_on_commit must be True or None when using database backend"
-            )
 
     def _task_to_db_task(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
@@ -59,18 +51,10 @@ class DatabaseBackend(BaseTaskBackend):
 
         db_result = self._task_to_db_task(task, args, kwargs)
 
-        db_result.save()
-
-        return db_result.task_result
-
-    async def aenqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
-    ) -> TaskResult[T]:
-        self.validate_task(task)
-
-        db_result = self._task_to_db_task(task, args, kwargs)
-
-        await db_result.asave()
+        if self._get_enqueue_on_commit_for_task(task):
+            transaction.on_commit(db_result.save)
+        else:
+            db_result.save()
 
         return db_result.task_result
 
@@ -114,11 +98,4 @@ class DatabaseBackend(BaseTaskBackend):
                 messages.ERROR,
                 f"{backend_name} is using SQLite non-exclusive transactions",
                 f"Set settings.DATABASES[{db_connection.alias!r}]['OPTIONS']['transaction_mode'] to 'EXCLUSIVE'",
-            )
-
-        if self.enqueue_on_commit is False:
-            yield messages.CheckMessage(
-                messages.WARNING,
-                f"{backend_name} must enqueue tasks at the end of a transaction",
-                "Ensure ENQUEUE_ON_COMMIT is True or None",
             )
