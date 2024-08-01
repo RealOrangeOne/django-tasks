@@ -4,7 +4,7 @@ import django_stubs_ext
 django_stubs_ext.monkeypatch()
 
 import importlib.metadata
-from typing import Mapping, Optional, cast
+from typing import Any, Optional, cast
 
 from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
@@ -67,4 +67,4 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
 
 tasks = TasksHandler()
 
-default_task_backend = ConnectionProxy(cast(Mapping, tasks), DEFAULT_TASK_BACKEND_ALIAS)
+default_task_backend = cast(Any, ConnectionProxy(tasks, DEFAULT_TASK_BACKEND_ALIAS))

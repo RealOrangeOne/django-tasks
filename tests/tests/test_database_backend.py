@@ -777,7 +777,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                     normalize_uuid(result_2.id),
                 )
                 self.assertEqual(
-                    normalize_uuid(DBTaskResult.objects.get_locked().id),  # type:ignore[union-attr, arg-type]
+                    normalize_uuid(DBTaskResult.objects.get_locked().id),  # type:ignore[union-attr]
                     normalize_uuid(result_2.id),
                 )
         finally:
