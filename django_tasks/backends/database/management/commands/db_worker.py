@@ -104,7 +104,7 @@ class Worker:
 
             # If ctrl-c has just interrupted a task, self.running was cleared,
             # and we should not sleep, but rather exit immediately.
-            if self.running:
+            if self.running and not task_result:
                 # Wait before checking for another task
                 time.sleep(self.interval)
 
