@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from django_tasks import ResultStatus, Task, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
+from django_tasks.backends.database.backend import TaskResult
 from django_tasks.backends.database.management.commands.db_worker import (
     logger as db_worker_logger,
 )
@@ -679,6 +680,8 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     }
 )
 class DatabaseTaskResultTestCase(TransactionTestCase):
+    run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
+
     def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> Sequence:
         if isinstance(sql, QuerySet):
             sql = str(sql.query)
@@ -878,3 +881,19 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                 )
         finally:
             new_connection.close()
+
+    def test_duplicate(self) -> None:
+        result_1 = cast(TaskResult, test_tasks.calculate_meaning_of_life.enqueue())
+        db_result_1 = result_1.db_result
+        db_result_2 = result_1.db_result.duplicate()
+        db_result_2.save()
+        result_2 = db_result_2.task_result
+
+        assert db_result_1.pk != db_result_2.pk
+
+        self.run_worker()
+
+        result_1.refresh()
+        result_2.refresh()
+
+        assert result_1.result == result_2.result

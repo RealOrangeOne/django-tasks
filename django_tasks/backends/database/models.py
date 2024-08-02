@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Optional, Self, TypeVar
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
@@ -169,3 +169,13 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             logger.exception("Task id=%s unable to save exception", self.id)
             self.result = None
         self.save(update_fields=["status", "finished_at", "result"])
+
+    def duplicate(self) -> Self:
+        return type(self)(
+            args_kwargs=self.args_kwargs,
+            priority=self.priority,
+            task_path=self.task_path,
+            queue_name=self.queue_name,
+            backend_name=self.backend_name,
+            run_after=self.run_after,
+        )
