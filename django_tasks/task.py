@@ -56,12 +56,16 @@ class Task(Generic[P, T]):
     """The name of the backend the task will run on"""
 
     queue_name: str = DEFAULT_QUEUE_NAME
-    """The name of the queue the task will run on """
+    """The name of the queue the task will run on"""
 
     run_after: Optional[datetime] = None
     """The earliest this task will run"""
 
     enqueue_on_commit: Optional[bool] = None
+    """
+    Whether the task will be enqueued when the current transaction commits,
+    immediately, or whatever the backend decides
+    """
 
     def __post_init__(self) -> None:
         self.get_backend().validate_task(self)
