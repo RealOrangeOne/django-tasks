@@ -1,7 +1,9 @@
 from copy import deepcopy
+from functools import partial
 from typing import List, TypeVar
 from uuid import uuid4
 
+from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
@@ -42,8 +44,11 @@ class DummyBackend(BaseTaskBackend):
             backend=self.alias,
         )
 
-        # Copy the task to prevent mutation issues
-        self.results.append(deepcopy(result))
+        if self._get_enqueue_on_commit_for_task(task) is not False:
+            # Copy the task to prevent mutation issues
+            transaction.on_commit(partial(self.results.append, deepcopy(result)))
+        else:
+            self.results.append(deepcopy(result))
 
         return result
 

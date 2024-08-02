@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Iterable, TypeVar
 
 from django.apps import apps
-from django.core.checks import ERROR, CheckMessage
+from django.core.checks import messages
 from django.core.exceptions import ValidationError
-from django.db import connections, router
+from django.db import connections, router, transaction
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
@@ -51,18 +51,10 @@ class DatabaseBackend(BaseTaskBackend):
 
         db_result = self._task_to_db_task(task, args, kwargs)
 
-        db_result.save()
-
-        return db_result.task_result
-
-    async def aenqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
-    ) -> TaskResult[T]:
-        self.validate_task(task)
-
-        db_result = self._task_to_db_task(task, args, kwargs)
-
-        await db_result.asave()
+        if self._get_enqueue_on_commit_for_task(task):
+            transaction.on_commit(db_result.save)
+        else:
+            db_result.save()
 
         return db_result.task_result
 
@@ -82,14 +74,16 @@ class DatabaseBackend(BaseTaskBackend):
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise ResultDoesNotExist(result_id) from e
 
-    def check(self, **kwargs: Any) -> Iterable[CheckMessage]:
+    def check(self, **kwargs: Any) -> Iterable[messages.CheckMessage]:
         from .models import DBTaskResult
+
+        yield from super().check(**kwargs)
 
         backend_name = self.__class__.__name__
 
         if not apps.is_installed("django_tasks.backends.database"):
-            yield CheckMessage(
-                ERROR,
+            yield messages.CheckMessage(
+                messages.ERROR,
                 f"{backend_name} configured as django_tasks backend, but database app not installed",
                 "Insert 'django_tasks.backends.database' in INSTALLED_APPS",
             )
@@ -100,8 +94,8 @@ class DatabaseBackend(BaseTaskBackend):
             and hasattr(db_connection, "transaction_mode")
             and db_connection.transaction_mode != "EXCLUSIVE"
         ):
-            yield CheckMessage(
-                ERROR,
+            yield messages.CheckMessage(
+                messages.ERROR,
                 f"{backend_name} is using SQLite non-exclusive transactions",
                 f"Set settings.DATABASES[{db_connection.alias!r}]['OPTIONS']['transaction_mode'] to 'EXCLUSIVE'",
             )

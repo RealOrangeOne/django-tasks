@@ -114,7 +114,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertIsNot(new_task, test_tasks.noop_task)
 
     async def test_refresh_result(self) -> None:
-        result = test_tasks.noop_task.enqueue()
+        result = await test_tasks.noop_task.aenqueue()
 
         original_result = dataclasses.asdict(result)
 
@@ -188,12 +188,13 @@ class TaskTestCase(SimpleTestCase):
         with self.assertRaises(ResultDoesNotExist):
             await test_tasks.noop_task.aget_result("123")
 
-    async def test_get_incorrect_result(self) -> None:
+    def test_get_incorrect_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task_async, (), {})
-
         with self.assertRaises(ResultDoesNotExist):
             test_tasks.noop_task.get_result(result.id)
 
+    async def test_get_incorrect_result_async(self) -> None:
+        result = await default_task_backend.aenqueue(test_tasks.noop_task_async, (), {})
         with self.assertRaises(ResultDoesNotExist):
             await test_tasks.noop_task.aget_result(result.id)
 
