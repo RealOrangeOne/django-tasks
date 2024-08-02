@@ -1,9 +1,10 @@
 import json
+from typing import cast
 
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
-from django_tasks import ResultStatus, default_task_backend, tasks
+from django_tasks import ResultStatus, Task, default_task_backend, tasks
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
@@ -14,7 +15,7 @@ from tests import tasks as test_tasks
 )
 class DummyBackendTestCase(SimpleTestCase):
     def setUp(self) -> None:
-        default_task_backend.clear()
+        default_task_backend.clear()  # type:ignore[attr-defined]
 
     def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
@@ -23,7 +24,7 @@ class DummyBackendTestCase(SimpleTestCase):
     def test_enqueue_task(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
-                result = default_task_backend.enqueue(task, (1,), {"two": 3})
+                result = cast(Task, task).enqueue(1, two=3)
 
                 self.assertEqual(result.status, ResultStatus.NEW)
                 self.assertIsNone(result.started_at)
@@ -34,12 +35,12 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
 
-                self.assertIn(result, default_task_backend.results)
+                self.assertIn(result, default_task_backend.results)  # type:ignore[attr-defined]
 
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
-                result = await default_task_backend.aenqueue(task, (), {})
+                result = await cast(Task, task).aenqueue()
 
                 self.assertEqual(result.status, ResultStatus.NEW)
                 self.assertIsNone(result.started_at)
@@ -50,7 +51,7 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
 
-                self.assertIn(result, default_task_backend.results)
+                self.assertIn(result, default_task_backend.results)  # type:ignore[attr-defined]
 
     def test_get_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task, (), {})
@@ -71,7 +72,8 @@ class DummyBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        default_task_backend.results[0].status = ResultStatus.COMPLETE
+        enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
+        enqueued_result.status = ResultStatus.COMPLETE
 
         self.assertEqual(result.status, ResultStatus.NEW)
         result.refresh()
@@ -82,7 +84,8 @@ class DummyBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        default_task_backend.results[0].status = ResultStatus.COMPLETE
+        enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
+        enqueued_result.status = ResultStatus.COMPLETE
 
         self.assertEqual(result.status, ResultStatus.NEW)
         await result.arefresh()

@@ -16,7 +16,7 @@ from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from django_tasks import ResultStatus, default_task_backend, tasks
+from django_tasks import ResultStatus, Task, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
 from django_tasks.backends.database.management.commands.db_worker import (
     logger as db_worker_logger,
@@ -43,7 +43,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
     def test_enqueue_task(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task), self.assertNumQueries(1):
-                result = default_task_backend.enqueue(task, (1,), {"two": 3})
+                result = cast(Task, task).enqueue(1, two=3)
 
                 self.assertEqual(result.status, ResultStatus.NEW)
                 self.assertIsNone(result.started_at)
@@ -58,7 +58,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
-                result = await default_task_backend.aenqueue(task, [], {})
+                result = await cast(Task, task).aenqueue()
 
                 self.assertEqual(result.status, ResultStatus.NEW)
                 self.assertIsNone(result.started_at)
@@ -127,11 +127,11 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
     def test_get_missing_result(self) -> None:
         with self.assertRaises(ResultDoesNotExist):
-            default_task_backend.get_result(uuid.uuid4())
+            default_task_backend.get_result(str(uuid.uuid4()))
 
     async def test_async_get_missing_result(self) -> None:
         with self.assertRaises(ResultDoesNotExist):
-            await default_task_backend.aget_result(uuid.uuid4())
+            await default_task_backend.aget_result(str(uuid.uuid4()))
 
     def test_invalid_uuid(self) -> None:
         with self.assertRaises(ResultDoesNotExist):
@@ -208,7 +208,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         errors = list(default_task_backend.check())
 
         self.assertEqual(len(errors), 1)
-        self.assertIn("django_tasks.backends.database", errors[0].hint)
+        self.assertIn("django_tasks.backends.database", errors[0].hint)  # type:ignore[arg-type]
 
     def test_priority_range_check(self) -> None:
         with self.assertRaises(IntegrityError):
@@ -262,7 +262,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             test_tasks.noop_task_async,
         ]:
             with self.subTest(task):
-                result = default_task_backend.enqueue(task, [], {})
+                result = cast(Task, task).enqueue()
                 self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
                 self.assertEqual(result.status, ResultStatus.NEW)
@@ -274,8 +274,8 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 result.refresh()
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
-                self.assertGreaterEqual(result.started_at, result.enqueued_at)
-                self.assertGreaterEqual(result.finished_at, result.started_at)
+                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
+                self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
 
                 self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -777,7 +777,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                     normalize_uuid(result_2.id),
                 )
                 self.assertEqual(
-                    normalize_uuid(DBTaskResult.objects.get_locked().id),  # type:ignore[union-attr, arg-type]
+                    normalize_uuid(DBTaskResult.objects.get_locked().id),  # type:ignore[union-attr]
                     normalize_uuid(result_2.id),
                 )
         finally:

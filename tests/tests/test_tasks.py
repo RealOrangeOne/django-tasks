@@ -36,7 +36,7 @@ from tests import tasks as test_tasks
 )
 class TaskTestCase(SimpleTestCase):
     def setUp(self) -> None:
-        default_task_backend.clear()
+        default_task_backend.clear()  # type:ignore[attr-defined]
 
     def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
@@ -55,7 +55,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
-        self.assertEqual(default_task_backend.results, [result])
+        self.assertEqual(default_task_backend.results, [result])  # type:ignore[attr-defined]
 
     async def test_enqueue_task_async(self) -> None:
         result = await test_tasks.noop_task.aenqueue()
@@ -65,7 +65,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
-        self.assertEqual(default_task_backend.results, [result])
+        self.assertEqual(default_task_backend.results, [result])  # type:ignore[attr-defined]
 
     def test_using_priority(self) -> None:
         self.assertEqual(test_tasks.noop_task.priority, 0)
