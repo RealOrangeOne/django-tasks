@@ -160,7 +160,9 @@ def valid_backend_name(val: str) -> str:
 
 def valid_interval(val: str) -> float:
     num = float(val)
-    if not math.isfinite(num) or num < 0:
+    if not math.isfinite(num):
+        raise ArgumentTypeError("Must be a finite floating point value")
+    if num < 0:
         raise ArgumentTypeError("Must be greater than zero")
     return num
 

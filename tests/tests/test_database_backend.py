@@ -426,7 +426,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 execute_from_command_line(
                     ["django-admin", "db_worker", "--interval", "inf"]
                 )
-        self.assertIn("invalid valid_interval value: 'inf'", output.getvalue())
+        self.assertIn("Must be a finite floating point value", output.getvalue())
 
     def test_fractional_interval(self) -> None:
         with mock.patch(
