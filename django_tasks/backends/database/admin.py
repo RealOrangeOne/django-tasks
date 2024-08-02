@@ -19,7 +19,7 @@ class DBTaskResultAdmin(admin.ModelAdmin):
         "queue_name",
     )
     list_filter = ("status", "priority", "queue_name")
-    ordering = ['-enqueued_at']
+    ordering = ["-enqueued_at"]
 
     def has_add_permission(
         self, request: HttpRequest, obj: Optional[DBTaskResult] = None
