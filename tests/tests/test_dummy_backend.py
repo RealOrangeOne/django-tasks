@@ -157,9 +157,9 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             test_tasks.noop_task.enqueue()
 
-            self.assertEqual(len(default_task_backend.results), 0)
+            self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
 
-        self.assertEqual(len(default_task_backend.results), 1)
+        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
 
     @override_settings(
         TASKS={
@@ -178,9 +178,9 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             test_tasks.noop_task.enqueue()
 
-            self.assertEqual(len(default_task_backend.results), 1)
+            self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
 
-        self.assertEqual(len(default_task_backend.results), 1)
+        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
 
     @override_settings(
         TASKS={
@@ -198,9 +198,9 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             test_tasks.noop_task.enqueue()
 
-            self.assertEqual(len(default_task_backend.results), 0)
+            self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
 
-        self.assertEqual(len(default_task_backend.results), 1)
+        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
 
     @override_settings(
         TASKS={
@@ -222,6 +222,6 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             test_tasks.enqueue_on_commit_task.enqueue()
 
-            self.assertEqual(len(default_task_backend.results), 0)
+            self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
 
-        self.assertEqual(len(default_task_backend.results), 1)
+        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
