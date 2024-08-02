@@ -9,6 +9,7 @@ from types import FrameType
 from typing import List, Optional
 
 from django.core.management.base import BaseCommand
+from django.db import connections
 from django.db.utils import OperationalError
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
@@ -97,6 +98,9 @@ class Worker:
 
             finally:
                 self.running_task = False
+
+                for conn in connections.all(initialized_only=True):
+                    conn.close()
 
             if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
