@@ -1,4 +1,5 @@
 import logging
+import math
 import random
 import signal
 import sys
@@ -158,11 +159,8 @@ def valid_backend_name(val: str) -> str:
 
 
 def valid_interval(val: str) -> float:
-    # Cast to an int first to catch invalid values like 'inf'
-    int(val)
-
     num = float(val)
-    if num < 0:
+    if not math.isfinite(num) or num < 0:
         raise ArgumentTypeError("Must be greater than zero")
     return num
 

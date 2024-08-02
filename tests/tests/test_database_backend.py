@@ -5,7 +5,7 @@ from datetime import timedelta
 from functools import partial
 from io import StringIO
 from typing import Sequence, Union, cast
-from unittest import skipIf
+from unittest import mock, skipIf
 
 from django.core.exceptions import SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
@@ -427,6 +427,16 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                     ["django-admin", "db_worker", "--interval", "inf"]
                 )
         self.assertIn("invalid valid_interval value: 'inf'", output.getvalue())
+
+    def test_fractional_interval(self) -> None:
+        with mock.patch(
+            "django_tasks.backends.database.management.commands.db_worker.Worker"
+        ) as worker_class:
+            execute_from_command_line(
+                ["django-admin", "db_worker", "--interval", "0.1"]
+            )
+
+        self.assertEqual(worker_class.mock_calls[0].kwargs["interval"], 0.1)
 
     def test_run_after(self) -> None:
         result = test_tasks.noop_task.using(
