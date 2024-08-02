@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from django.contrib import admin
+from django.db.models import QuerySet
 from django.http import HttpRequest
 
 from django_tasks.task import ResultStatus
@@ -8,12 +9,20 @@ from django_tasks.task import ResultStatus
 from .models import DBTaskResult
 
 
-def reenqueue(modeladmin: admin.ModelAdmin, request, queryset):
+def reenqueue(
+    modeladmin: admin.ModelAdmin,
+    request: HttpRequest,
+    queryset: QuerySet[DBTaskResult],
+) -> None:
     tasks = queryset.update(status=ResultStatus.NEW)
     modeladmin.message_user(request, f"Rescheduled {tasks} tasks.", "SUCCESS")
 
 
-def duplicate(modeladmin: admin.ModelAdmin, request, queryset):
+def duplicate(
+    modeladmin: admin.ModelAdmin,
+    request: HttpRequest,
+    queryset: QuerySet[DBTaskResult],
+) -> None:
     tasks = DBTaskResult.objects.bulk_create(
         old_task.duplicate() for old_task in queryset
     )

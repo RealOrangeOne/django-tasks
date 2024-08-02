@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Optional, Self, TypeVar
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
@@ -170,7 +170,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             self.result = None
         self.save(update_fields=["status", "finished_at", "result"])
 
-    def duplicate(self):
+    def duplicate(self) -> Self:
         return type(self)(
             args_kwargs=self.args_kwargs,
             priority=self.priority,
