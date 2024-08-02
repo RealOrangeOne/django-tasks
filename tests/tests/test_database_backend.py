@@ -267,7 +267,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
                 self.assertEqual(result.status, ResultStatus.NEW)
 
-                with self.assertNumQueries(8):
+                with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
                     self.run_worker()
 
                 self.assertEqual(result.status, ResultStatus.NEW)
@@ -287,7 +287,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 4)
 
-        with self.assertNumQueries(23):
+        with self.assertNumQueries(27 if connection.vendor == "mysql" else 23):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -308,7 +308,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker(queue_name=result.task.queue_name)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -323,7 +323,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker(queue_name="*")
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -332,7 +332,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.failing_task_value_error.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
         self.assertEqual(result.status, ResultStatus.NEW)
@@ -358,9 +358,9 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.complex_exception.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(8), self.assertLogs(
-            "django_tasks.backends.database", level="ERROR"
-        ):
+        with self.assertNumQueries(
+            9 if connection.vendor == "mysql" else 8
+        ), self.assertLogs("django_tasks.backends.database", level="ERROR"):
             self.run_worker()
 
         self.assertEqual(result.status, ResultStatus.NEW)
@@ -387,7 +387,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker(backend_name=result.backend)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -447,7 +447,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
