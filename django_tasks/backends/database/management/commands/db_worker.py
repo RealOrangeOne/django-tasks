@@ -183,7 +183,7 @@ class Command(BaseCommand):
             nargs="?",
             default=1,
             type=valid_interval,
-            help="The interval (in seconds) at which to check for tasks to process (default: %(default)r)",
+            help="The interval (in seconds) to wait, when there are no tasks in the queue, before checking for tasks again (default: %(default)r)",
         )
         parser.add_argument(
             "--batch",
