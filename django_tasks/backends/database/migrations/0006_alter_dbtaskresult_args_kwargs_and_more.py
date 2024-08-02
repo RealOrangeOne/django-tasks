@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("django_tasks_database", "0005_alter_dbtaskresult_priority_and_more"),
     ]
