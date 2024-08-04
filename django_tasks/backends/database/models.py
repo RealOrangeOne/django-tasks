@@ -8,6 +8,7 @@ from django.db.models import F, Q
 from django.db.models.constraints import CheckConstraint
 from django.utils import timezone
 from django.utils.module_loading import import_string
+from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec
 
 from django_tasks.task import (
@@ -71,34 +72,35 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     status = models.CharField(
+        _("status"),
         choices=ResultStatus.choices,
         default=ResultStatus.NEW,
         max_length=max(len(value) for value in ResultStatus.values),
     )
 
-    enqueued_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True)
-    finished_at = models.DateTimeField(null=True)
+    enqueued_at = models.DateTimeField(_("enqueued at"), auto_now_add=True)
+    started_at = models.DateTimeField(_("started at"), null=True)
+    finished_at = models.DateTimeField(_("finished at"), null=True)
 
-    args_kwargs = models.JSONField()
+    args_kwargs = models.JSONField(_("args kwargs"))
 
-    priority = models.IntegerField(default=DEFAULT_PRIORITY)
+    priority = models.IntegerField(_("priority"), default=DEFAULT_PRIORITY)
 
-    task_path = models.TextField()
+    task_path = models.TextField(_("task path"))
 
-    queue_name = models.TextField(default=DEFAULT_QUEUE_NAME)
-    backend_name = models.TextField()
+    queue_name = models.TextField(_("queue name"), default=DEFAULT_QUEUE_NAME)
+    backend_name = models.TextField(_("backend name"))
 
-    run_after = models.DateTimeField(null=True)
+    run_after = models.DateTimeField(_("run after"), null=True)
 
-    result = models.JSONField(default=None, null=True)
+    result = models.JSONField(_("result"), default=None, null=True)
 
     objects = DBTaskResultQuerySet.as_manager()
 
     class Meta:
         ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
-        verbose_name = "Task Result"
-        verbose_name_plural = "Task Results"
+        verbose_name = _("Task Result")
+        verbose_name_plural = _("Task Results")
         constraints = [
             CheckConstraint(
                 check=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),
