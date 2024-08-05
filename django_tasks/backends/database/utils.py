@@ -2,7 +2,26 @@ from contextlib import contextmanager
 from typing import Any, Generator, Optional, Union
 from uuid import UUID
 
+import django
 from django.db import transaction
+from django.db.backends.base.base import BaseDatabaseWrapper
+
+
+def connection_requires_manual_exclusive_transaction(
+    connection: BaseDatabaseWrapper,
+) -> bool:
+    """
+    Determine whether the backend requires manual transaction handling.
+
+    Extracted from `exclusive_transaction` for unit testing purposes.
+    """
+    if connection.vendor != "sqlite":
+        return False
+
+    if django.VERSION < (5, 1):
+        return True
+
+    return connection.transaction_mode != "EXCLUSIVE"  # type:ignore[attr-defined,no-any-return]
 
 
 @contextmanager
@@ -12,12 +31,12 @@ def exclusive_transaction(using: Optional[str] = None) -> Generator[Any, Any, An
 
     This functionality is built-in to Django 5.1+.
     """
-    connection = transaction.get_connection(using)
+    connection: BaseDatabaseWrapper = transaction.get_connection(using)
 
-    if (
-        connection.vendor == "sqlite"
-        and getattr(connection, "transaction_mode", None) != "EXCLUSIVE"
-    ):
+    if connection_requires_manual_exclusive_transaction(connection):
+        if django.VERSION >= (5, 1):
+            raise RuntimeError("Transactions must be EXCLUSIVE")
+
         with connection.cursor() as c:
             c.execute("BEGIN EXCLUSIVE")
             try:

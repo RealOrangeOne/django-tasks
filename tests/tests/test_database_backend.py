@@ -7,12 +7,13 @@ from io import StringIO
 from typing import Sequence, Union, cast
 from unittest import mock, skipIf
 
+import django
 from django.core.exceptions import SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
 from django.db import connection, connections, transaction
 from django.db.models import QuerySet
 from django.db.utils import IntegrityError, OperationalError
-from django.test import TransactionTestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -22,7 +23,11 @@ from django_tasks.backends.database.management.commands.db_worker import (
     logger as db_worker_logger,
 )
 from django_tasks.backends.database.models import DBTaskResult
-from django_tasks.backends.database.utils import exclusive_transaction, normalize_uuid
+from django_tasks.backends.database.utils import (
+    connection_requires_manual_exclusive_transaction,
+    exclusive_transaction,
+    normalize_uuid,
+)
 from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
 
@@ -211,7 +216,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
     def test_check(self) -> None:
         errors = list(default_task_backend.check())
 
-        self.assertEqual(len(errors), 0)
+        self.assertEqual(len(errors), 0, errors)
 
     @override_settings(INSTALLED_APPS=[])
     def test_database_backend_app_missing(self) -> None:
@@ -873,8 +878,46 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                     normalize_uuid(result_2.id),
                 )
                 self.assertEqual(
-                    normalize_uuid(DBTaskResult.objects.get_locked().id),  # type:ignore[union-attr]
+                    normalize_uuid(DBTaskResult.objects.get_locked().id),  # type:ignore
                     normalize_uuid(result_2.id),
                 )
         finally:
             new_connection.close()
+
+
+class ConnectionExclusiveTranscationTestCase(TestCase):
+    def setUp(self) -> None:
+        self.connection = connections.create_connection("default")
+
+    def tearDown(self) -> None:
+        self.connection.close()
+
+    @skipIf(connection.vendor == "sqlite", "SQLite handled separately")
+    def test_non_sqlite(self) -> None:
+        self.assertFalse(
+            connection_requires_manual_exclusive_transaction(self.connection)
+        )
+
+    @skipIf(
+        django.VERSION >= (5, 1),
+        "Newer Django versions support custom transaction modes",
+    )
+    @skipIf(connection.vendor != "sqlite", "SQLite only")
+    def test_old_django_requires_manual_transaction(self) -> None:
+        self.assertTrue(
+            connection_requires_manual_exclusive_transaction(self.connection)
+        )
+
+    @skipIf(django.VERSION < (5, 1), "Old Django versions require manual transactions")
+    @skipIf(connection.vendor != "sqlite", "SQLite only")
+    def test_explicit_transaction(self) -> None:
+        # HACK: Set the attribute manually
+        self.connection.transaction_mode = None  # type:ignore[attr-defined]
+        self.assertTrue(
+            connection_requires_manual_exclusive_transaction(self.connection)
+        )
+
+        self.connection.transaction_mode = "EXCLUSIVE"  # type:ignore[attr-defined]
+        self.assertFalse(
+            connection_requires_manual_exclusive_transaction(self.connection)
+        )
