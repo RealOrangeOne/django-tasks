@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.staticfiles",
     "django_tasks",
+    "django_tasks.backends.celery",
     "django_tasks.backends.database",
     "tests",
 ]
