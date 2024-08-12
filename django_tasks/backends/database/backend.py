@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Iterable, TypeVar
 
+import django
 from django.apps import apps
 from django.core.checks import messages
 from django.core.exceptions import ValidationError
@@ -76,6 +77,7 @@ class DatabaseBackend(BaseTaskBackend):
 
     def check(self, **kwargs: Any) -> Iterable[messages.CheckMessage]:
         from .models import DBTaskResult
+        from .utils import connection_requires_manual_exclusive_transaction
 
         yield from super().check(**kwargs)
 
@@ -89,10 +91,12 @@ class DatabaseBackend(BaseTaskBackend):
             )
 
         db_connection = connections[router.db_for_read(DBTaskResult)]
+        # Manually called to set `transaction_mode`
+        db_connection.get_connection_params()
         if (
-            db_connection.vendor == "sqlite"
-            and hasattr(db_connection, "transaction_mode")
-            and db_connection.transaction_mode != "EXCLUSIVE"
+            # Versions below 5.1 can't be configured, so always assume exclusive transactions
+            django.VERSION >= (5, 1)
+            and connection_requires_manual_exclusive_transaction(db_connection)
         ):
             yield messages.CheckMessage(
                 messages.ERROR,
