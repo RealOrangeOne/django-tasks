@@ -13,7 +13,7 @@ from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.task import ResultStatus
 
-logger = logging.getLogger("django_tasks.backends.database.prune_db_tasks")
+logger = logging.getLogger("django_tasks.backends.database.prune_db_task_results")
 
 
 def valid_backend_name(val: str) -> DatabaseBackend:
@@ -34,7 +34,7 @@ def valid_positive_int(val: str) -> int:
 
 
 class Command(BaseCommand):
-    help = "Prune finished database tasks"
+    help = "Prune finished database task results"
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
@@ -57,19 +57,19 @@ class Command(BaseCommand):
             nargs="?",
             default=14,
             type=valid_positive_int,
-            help="The minimum age (in days) of a finished task to be pruned (default: %(default)r)",
+            help="The minimum age (in days) of a finished task result to be pruned (default: %(default)r)",
         )
         parser.add_argument(
             "--failed-min-age-days",
             nargs="?",
             default=None,
             type=valid_positive_int,
-            help="The minimum age (in days) of a failed task to be pruned (default: min-age-days)",
+            help="The minimum age (in days) of a failed task result to be pruned (default: min-age-days)",
         )
         parser.add_argument(
             "--dry-run",
             action="store_true",
-            help="Don't delete the tasks, just show how many would be deleted",
+            help="Don't delete the task results, just show how many would be deleted",
         )
 
     def configure_logging(self, verbosity: int) -> None:
@@ -105,22 +105,22 @@ class Command(BaseCommand):
             else None
         )
 
-        tasks = DBTaskResult.objects.finished().filter(backend_name=backend.alias)
+        results = DBTaskResult.objects.finished().filter(backend_name=backend.alias)
 
         queue_names = queue_name.split(",")
         if "*" not in queue_names:
-            tasks = tasks.filter(queue_name__in=queue_names)
+            results = results.filter(queue_name__in=queue_names)
 
         if failed_min_age is None:
-            tasks = tasks.filter(finished_at__lte=min_age)
+            results = results.filter(finished_at__lte=min_age)
         else:
-            tasks = tasks.filter(
+            results = results.filter(
                 Q(status=ResultStatus.COMPLETE, finished_at__lte=min_age)
                 | Q(status=ResultStatus.FAILED, finished_at__lte=failed_min_age)
             )
 
         if dry_run:
-            logger.info("Would delete %d task(s)", tasks.count())
+            logger.info("Would delete %d task result(s)", results.count())
         else:
-            deleted, _ = tasks.delete()
-            logger.info("Deleted %d task(s)", deleted)
+            deleted, _ = results.delete()
+            logger.info("Deleted %d task result(s)", deleted)

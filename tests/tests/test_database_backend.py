@@ -22,7 +22,7 @@ from django_tasks.backends.database import DatabaseBackend
 from django_tasks.backends.database.management.commands.db_worker import (
     logger as db_worker_logger,
 )
-from django_tasks.backends.database.management.commands.prune_db_tasks import (
+from django_tasks.backends.database.management.commands.prune_db_task_results import (
     logger as prune_db_tasks_logger,
 )
 from django_tasks.backends.database.models import DBTaskResult
@@ -935,8 +935,8 @@ class ConnectionExclusiveTranscationTestCase(TestCase):
         "dummy": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
     }
 )
-class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
-    prune_tasks = partial(call_command, "prune_db_tasks", verbosity=0)
+class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
+    prune_task_results = partial(call_command, "prune_db_task_results", verbosity=0)
 
     def tearDown(self) -> None:
         # Reset the logger after every run, to ensure the correct `stdout` is used
@@ -955,14 +955,14 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         stdout = StringIO()
 
         with self.assertNumQueries(3):
-            self.prune_tasks(min_age_days=0, stdout=stdout, verbosity=3)
+            self.prune_task_results(min_age_days=0, stdout=stdout, verbosity=3)
 
         self.assertEqual(DBTaskResult.objects.finished().count(), 0)
 
         with self.assertRaises(ResultDoesNotExist):
             result.refresh()
 
-        self.assertEqual(stdout.getvalue().strip(), "Deleted 1 task(s)")
+        self.assertEqual(stdout.getvalue().strip(), "Deleted 1 task result(s)")
 
     def test_doesnt_prune_new_tasks(self) -> None:
         result = test_tasks.noop_task.enqueue()
@@ -971,13 +971,13 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
 
         stdout = StringIO()
         with self.assertNumQueries(3):
-            self.prune_tasks(min_age_days=0, stdout=stdout, verbosity=3)
+            self.prune_task_results(min_age_days=0, stdout=stdout, verbosity=3)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
         result.refresh()
 
-        self.assertEqual(stdout.getvalue().strip(), "Deleted 0 task(s)")
+        self.assertEqual(stdout.getvalue().strip(), "Deleted 0 task result(s)")
 
     def test_doesnt_prune_running_tasks(self) -> None:
         result = test_tasks.noop_task.enqueue()
@@ -987,7 +987,7 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.running().count(), 1)
 
         with self.assertNumQueries(3):
-            self.prune_tasks(min_age_days=0)
+            self.prune_task_results(min_age_days=0)
 
         self.assertEqual(DBTaskResult.objects.running().count(), 1)
 
@@ -1004,7 +1004,7 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_tasks(queue_name="queue-1", min_age_days=0)
+            self.prune_task_results(queue_name="queue-1", min_age_days=0)
 
         self.assertEqual(DBTaskResult.objects.complete().count(), 1)
 
@@ -1024,7 +1024,7 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_tasks(queue_name="*", min_age_days=0)
+            self.prune_task_results(queue_name="*", min_age_days=0)
 
         self.assertEqual(DBTaskResult.objects.complete().count(), 0)
 
@@ -1043,12 +1043,12 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_tasks()
+            self.prune_task_results()
 
         self.assertEqual(DBTaskResult.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_tasks(min_age_days=3)
+            self.prune_task_results(min_age_days=3)
 
         self.assertEqual(DBTaskResult.objects.complete().count(), 1)
 
@@ -1058,7 +1058,7 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
             three_day_result.refresh()
 
         with self.assertNumQueries(3):
-            self.prune_tasks(min_age_days=1)
+            self.prune_task_results(min_age_days=1)
 
         self.assertEqual(DBTaskResult.objects.complete().count(), 0)
 
@@ -1077,12 +1077,12 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.finished().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_tasks()
+            self.prune_task_results()
 
         self.assertEqual(DBTaskResult.objects.finished().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_tasks(min_age_days=3, failed_min_age_days=5)
+            self.prune_task_results(min_age_days=3, failed_min_age_days=5)
 
         self.assertEqual(DBTaskResult.objects.finished().count(), 1)
 
@@ -1092,7 +1092,7 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
             completed_result.refresh()
 
         with self.assertNumQueries(3):
-            self.prune_tasks(min_age_days=3, failed_min_age_days=1)
+            self.prune_task_results(min_age_days=3, failed_min_age_days=1)
 
         with self.assertRaises(ResultDoesNotExist):
             failed_result.refresh()
@@ -1108,18 +1108,20 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
 
         stdout = StringIO()
         with self.assertNumQueries(1):
-            self.prune_tasks(min_age_days=0, dry_run=True, stdout=stdout, verbosity=3)
+            self.prune_task_results(
+                min_age_days=0, dry_run=True, stdout=stdout, verbosity=3
+            )
 
         self.assertEqual(DBTaskResult.objects.count(), 1)
 
-        self.assertEqual(stdout.getvalue().strip(), "Would delete 1 task(s)")
+        self.assertEqual(stdout.getvalue().strip(), "Would delete 1 task result(s)")
 
     def test_unknown_backend(self) -> None:
         output = StringIO()
         with redirect_stderr(output):
             with self.assertRaises(SystemExit):
                 execute_from_command_line(
-                    ["django-admin", "prune_db_tasks", "--backend", "unknown"]
+                    ["django-admin", "prune_db_task_results", "--backend", "unknown"]
                 )
         self.assertIn("The connection 'unknown' doesn't exist.", output.getvalue())
 
@@ -1128,7 +1130,7 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         with redirect_stderr(output):
             with self.assertRaises(SystemExit):
                 execute_from_command_line(
-                    ["django-admin", "prune_db_tasks", "--backend", "dummy"]
+                    ["django-admin", "prune_db_task_results", "--backend", "dummy"]
                 )
         self.assertIn("Backend 'dummy' is not a database backend", output.getvalue())
 
@@ -1137,6 +1139,6 @@ class DatabaseBackendPruneTasksTestCase(TransactionTestCase):
         with redirect_stderr(output):
             with self.assertRaises(SystemExit):
                 execute_from_command_line(
-                    ["django-admin", "prune_db_tasks", "--min-age-days", "-1"]
+                    ["django-admin", "prune_db_task_results", "--min-age-days", "-1"]
                 )
         self.assertIn("Must be greater than zero", output.getvalue())
