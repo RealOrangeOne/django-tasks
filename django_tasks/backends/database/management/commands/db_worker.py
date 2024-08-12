@@ -108,7 +108,7 @@ class Worker:
 
             # If ctrl-c has just interrupted a task, self.running was cleared,
             # and we should not sleep, but rather exit immediately.
-            if self.running:
+            if self.running and not task_result:
                 # Wait before checking for another task
                 time.sleep(self.interval)
 
@@ -187,7 +187,7 @@ class Command(BaseCommand):
             nargs="?",
             default=1,
             type=valid_interval,
-            help="The interval (in seconds) at which to check for tasks to process (default: %(default)r)",
+            help="The interval (in seconds) to wait, when there are no tasks in the queue, before checking for tasks again (default: %(default)r)",
         )
         parser.add_argument(
             "--batch",
