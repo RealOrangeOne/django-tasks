@@ -18,6 +18,7 @@ from typing import (
 from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
@@ -34,10 +35,10 @@ DEFAULT_PRIORITY = 0
 
 
 class ResultStatus(TextChoices):
-    NEW = ("NEW", "New")
-    RUNNING = ("RUNNING", "Running")
-    FAILED = ("FAILED", "Failed")
-    COMPLETE = ("COMPLETE", "Complete")
+    NEW = ("NEW", _("New"))
+    RUNNING = ("RUNNING", _("Running"))
+    FAILED = ("FAILED", _("Failed"))
+    COMPLETE = ("COMPLETE", _("Complete"))
 
 
 T = TypeVar("T")
