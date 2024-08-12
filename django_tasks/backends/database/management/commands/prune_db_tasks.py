@@ -34,7 +34,7 @@ def valid_positive_int(val: str) -> int:
 
 
 class Command(BaseCommand):
-    help = "Run a database background worker"
+    help = "Prune finished database tasks"
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
@@ -57,14 +57,14 @@ class Command(BaseCommand):
             nargs="?",
             default=14,
             type=valid_positive_int,
-            help="The minimum age of a task to be pruned (default: %(default)r)",
+            help="The minimum age (in days) of a finished task to be pruned (default: %(default)r)",
         )
         parser.add_argument(
             "--failed-min-age-days",
             nargs="?",
             default=None,
             type=valid_positive_int,
-            help="The minimum age of a failed task to be pruned (default: min-age-days)",
+            help="The minimum age (in days) of a failed task to be pruned (default: min-age-days)",
         )
         parser.add_argument(
             "--dry-run",
