@@ -157,6 +157,10 @@ Finally, you can run the `db_worker` command to run tasks as they're created. Ch
 ./manage.py db_worker
 ```
 
+### Pruning old tasks
+
+After a while, tasks may start to build up in your database. This can be managed using the `prune_db_task_results` management command, which deletes completed and failed tasks according to the given retention policy. Check the `--help` for the available options.
+
 ### Retrieving task result
 
 When enqueueing a task, you get a `TaskResult`, however it may be useful to retrieve said result from somewhere else (another request, another task etc). This can be done with `get_result` (or `aget_result`):
