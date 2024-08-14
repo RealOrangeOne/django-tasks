@@ -20,6 +20,7 @@ from django_tasks.exceptions import (
     InvalidTaskError,
     ResultDoesNotExist,
 )
+from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY
 from tests import tasks as test_tasks
 
 
@@ -35,7 +36,7 @@ from tests import tasks as test_tasks
 )
 class TaskTestCase(SimpleTestCase):
     def setUp(self) -> None:
-        default_task_backend.clear()
+        default_task_backend.clear()  # type:ignore[attr-defined]
 
     def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
@@ -54,7 +55,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
-        self.assertEqual(default_task_backend.results, [result])
+        self.assertEqual(default_task_backend.results, [result])  # type:ignore[attr-defined]
 
     async def test_enqueue_task_async(self) -> None:
         result = await test_tasks.noop_task.aenqueue()
@@ -64,7 +65,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
-        self.assertEqual(default_task_backend.results, [result])
+        self.assertEqual(default_task_backend.results, [result])  # type:ignore[attr-defined]
 
     def test_using_priority(self) -> None:
         self.assertEqual(test_tasks.noop_task.priority, 0)
@@ -113,7 +114,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertIsNot(new_task, test_tasks.noop_task)
 
     async def test_refresh_result(self) -> None:
-        result = test_tasks.noop_task.enqueue()
+        result = await test_tasks.noop_task.aenqueue()
 
         original_result = dataclasses.asdict(result)
 
@@ -133,9 +134,26 @@ class TaskTestCase(SimpleTestCase):
 
     def test_invalid_priority(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError, "priority must be zero or greater"
+            InvalidTaskError,
+            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
         ):
-            test_tasks.noop_task.using(priority=-1)
+            test_tasks.noop_task.using(priority=-101)
+
+        with self.assertRaisesMessage(
+            InvalidTaskError,
+            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
+        ):
+            test_tasks.noop_task.using(priority=101)
+
+        with self.assertRaisesMessage(
+            InvalidTaskError,
+            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
+        ):
+            test_tasks.noop_task.using(priority=3.1)  # type:ignore[arg-type]
+
+        test_tasks.noop_task.using(priority=100)
+        test_tasks.noop_task.using(priority=-100)
+        test_tasks.noop_task.using(priority=0)
 
     def test_call_task(self) -> None:
         self.assertEqual(test_tasks.calculate_meaning_of_life.call(), 42)
@@ -170,12 +188,13 @@ class TaskTestCase(SimpleTestCase):
         with self.assertRaises(ResultDoesNotExist):
             await test_tasks.noop_task.aget_result("123")
 
-    async def test_get_incorrect_result(self) -> None:
+    def test_get_incorrect_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task_async, (), {})
-
         with self.assertRaises(ResultDoesNotExist):
             test_tasks.noop_task.get_result(result.id)
 
+    async def test_get_incorrect_result_async(self) -> None:
+        result = await default_task_backend.aenqueue(test_tasks.noop_task_async, (), {})
         with self.assertRaises(ResultDoesNotExist):
             await test_tasks.noop_task.aget_result(result.id)
 

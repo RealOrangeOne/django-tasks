@@ -1,15 +1,29 @@
+import logging
 import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
-from django.db.models import F
+from django.db.models import F, Q
+from django.db.models.constraints import CheckConstraint
 from django.utils import timezone
 from django.utils.module_loading import import_string
+from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec
 
-from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus, Task
-from django_tasks.utils import retry
+from django_tasks.task import (
+    DEFAULT_PRIORITY,
+    DEFAULT_QUEUE_NAME,
+    MAX_PRIORITY,
+    MIN_PRIORITY,
+    ResultStatus,
+    Task,
+)
+from django_tasks.utils import exception_to_dict, retry
+
+from .utils import normalize_uuid
+
+logger = logging.getLogger("django_tasks.backends.database")
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -46,46 +60,59 @@ class DBTaskResultQuerySet(models.QuerySet):
     def failed(self) -> "DBTaskResultQuerySet":
         return self.filter(status=ResultStatus.FAILED)
 
+    def running(self) -> "DBTaskResultQuerySet":
+        return self.filter(status=ResultStatus.RUNNING)
+
+    def finished(self) -> "DBTaskResultQuerySet":
+        return self.failed() | self.complete()
+
     @retry()
     def get_locked(self) -> Optional["DBTaskResult"]:
         """
         Get a job, locking the row and accounting for deadlocks.
         """
-        return self.select_for_update().first()
+        return self.select_for_update(skip_locked=True).first()
 
 
 class DBTaskResult(GenericBase[P, T], models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     status = models.CharField(
+        _("status"),
         choices=ResultStatus.choices,
         default=ResultStatus.NEW,
         max_length=max(len(value) for value in ResultStatus.values),
     )
 
-    enqueued_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True)
-    finished_at = models.DateTimeField(null=True)
+    enqueued_at = models.DateTimeField(_("enqueued at"), auto_now_add=True)
+    started_at = models.DateTimeField(_("started at"), null=True)
+    finished_at = models.DateTimeField(_("finished at"), null=True)
 
-    args_kwargs = models.JSONField()
+    args_kwargs = models.JSONField(_("args kwargs"))
 
-    priority = models.PositiveSmallIntegerField(default=0)
+    priority = models.IntegerField(_("priority"), default=DEFAULT_PRIORITY)
 
-    task_path = models.TextField()
+    task_path = models.TextField(_("task path"))
 
-    queue_name = models.TextField(default=DEFAULT_QUEUE_NAME)
-    backend_name = models.TextField()
+    queue_name = models.TextField(_("queue name"), default=DEFAULT_QUEUE_NAME)
+    backend_name = models.TextField(_("backend name"))
 
-    run_after = models.DateTimeField(null=True)
+    run_after = models.DateTimeField(_("run after"), null=True)
 
-    result = models.JSONField(default=None, null=True)
+    result = models.JSONField(_("result"), default=None, null=True)
 
     objects = DBTaskResultQuerySet.as_manager()
 
     class Meta:
         ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
-        verbose_name = "Task Result"
-        verbose_name_plural = "Task Results"
+        verbose_name = _("Task Result")
+        verbose_name_plural = _("Task Results")
+        constraints = [
+            CheckConstraint(
+                check=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),
+                name="priority_range",
+            )
+        ]
 
     @property
     def task(self) -> Task[P, T]:
@@ -110,7 +137,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         result = TaskResult[T](
             db_result=self,
             task=self.task,
-            id=str(self.id),
+            id=normalize_uuid(self.id),
             status=ResultStatus[self.status],
             enqueued_at=self.enqueued_at,
             started_at=self.started_at,
@@ -141,7 +168,12 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.save(update_fields=["status", "result", "finished_at"])
 
     @retry()
-    def set_failed(self) -> None:
+    def set_failed(self, exc: BaseException) -> None:
         self.status = ResultStatus.FAILED
         self.finished_at = timezone.now()
-        self.save(update_fields=["status", "finished_at"])
+        try:
+            self.result = exception_to_dict(exc)
+        except Exception:
+            logger.exception("Task id=%s unable to save exception", self.id)
+            self.result = None
+        self.save(update_fields=["status", "finished_at", "result"])
