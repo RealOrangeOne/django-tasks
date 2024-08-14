@@ -5,8 +5,8 @@ import django
 from django.apps import apps
 from django.core.checks import messages
 from django.core.exceptions import ValidationError
-from django.utils.crypto import get_random_string
 from django.db import connections, router, transaction
+from django.utils.crypto import get_random_string
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
