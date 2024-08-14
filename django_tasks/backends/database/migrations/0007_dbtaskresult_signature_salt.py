@@ -5,7 +5,7 @@ class Migration(migrations.Migration):
     dependencies = [
         (
             "django_tasks_database",
-            "0004_dbtaskresult_started_at",
+            "0006_alter_dbtaskresult_args_kwargs_and_more",
         ),
     ]
 
