@@ -1,6 +1,8 @@
 import logging
+import math
 import random
 import signal
+import sys
 import time
 from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
@@ -8,11 +10,13 @@ from typing import List, Optional
 
 from django.core.exceptions import SuspiciousOperation
 from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.db import connections
+from django.db.utils import OperationalError
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus
 
@@ -38,16 +42,22 @@ class Worker:
         self.running_task = False
 
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
-        logger.warning(
-            "Received %s - shutting down gracefully.", signal.strsignal(signum)
-        )
+        if not self.running:
+            logger.warning(
+                "Received %s - shutting down immediately.", signal.strsignal(signum)
+            )
+            sys.exit(1)
 
+        logger.warning(
+            "Received %s - shutting down gracefully... (press Ctrl+C again to force)",
+            signal.strsignal(signum),
+        )
         self.running = False
 
         if not self.running_task:
             # If we're not currently running a task, exit immediately.
             # This is useful if we're currently in a `sleep`.
-            exit(0)
+            sys.exit(0)
 
     def configure_signals(self) -> None:
         signal.signal(signal.SIGINT, self.shutdown)
@@ -74,8 +84,16 @@ class Worker:
 
                 # During this transaction, all "ready" tasks are locked. Therefore, it's important
                 # it be as efficient as possible.
-                with transaction.atomic():
-                    task_result = tasks.get_locked()
+                with exclusive_transaction(tasks.db):
+                    try:
+                        task_result = tasks.get_locked()
+                    except OperationalError as e:
+                        # Ignore locked databases and keep trying.
+                        # It should unlock eventually.
+                        if "database is locked" in e.args[0]:
+                            task_result = None
+                        else:
+                            raise
 
                     if task_result is not None:
                         # "claim" the task, so it isn't run by another worker process
@@ -87,12 +105,18 @@ class Worker:
             finally:
                 self.running_task = False
 
+                for conn in connections.all(initialized_only=True):
+                    conn.close()
+
             if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
                 return None
 
-            # Wait before checking for another task
-            time.sleep(self.interval)
+            # If ctrl-c has just interrupted a task, self.running was cleared,
+            # and we should not sleep, but rather exit immediately.
+            if self.running and not task_result:
+                # Wait before checking for another task
+                time.sleep(self.interval)
 
     def run_task(self, db_task_result: DBTaskResult) -> None:
         """
@@ -137,7 +161,7 @@ class Worker:
                 db_task_result.task_path,
                 ResultStatus.FAILED,
             )
-            db_task_result.set_failed()
+            db_task_result.set_failed(e)
 
             # If the user tried to terminate, let them
             if isinstance(e, KeyboardInterrupt):
@@ -155,10 +179,9 @@ def valid_backend_name(val: str) -> str:
 
 
 def valid_interval(val: str) -> float:
-    # Cast to an int first to catch invalid values like 'inf'
-    int(val)
-
     num = float(val)
+    if not math.isfinite(num):
+        raise ArgumentTypeError("Must be a finite floating point value")
     if num < 0:
         raise ArgumentTypeError("Must be greater than zero")
     return num
@@ -180,7 +203,7 @@ class Command(BaseCommand):
             nargs="?",
             default=1,
             type=valid_interval,
-            help="The interval (in seconds) at which to check for tasks to process (default: %(default)r)",
+            help="The interval (in seconds) to wait, when there are no tasks in the queue, before checking for tasks again (default: %(default)r)",
         )
         parser.add_argument(
             "--batch",

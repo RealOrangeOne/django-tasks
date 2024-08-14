@@ -15,12 +15,16 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-        django-version: ["4.2", "5.0"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        django-version: ["4.2", "5.0", "5.1"]
         exclude:
           - django-version: "5.0"
             python-version: "3.8"
           - django-version: "5.0"
+            python-version: "3.9"
+          - django-version: "5.1"
+            python-version: "3.8"
+          - django-version: "5.1"
             python-version: "3.9"
           - os: windows-latest  # JSON1 is only built-in on 3.9+
             python-version: 3.8
@@ -60,13 +64,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        django-version: ["4.2", "5.0"]
+        django-version: ["4.2", "5.0", "5.1"]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: "3.12"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -95,13 +99,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        django-version: ["4.2", "5.0"]
+        django-version: ["4.2", "5.0", "5.1"]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: "3.12"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -139,7 +143,7 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Save built package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: package
         path: dist
@@ -147,4 +151,4 @@ jobs:
       if: ${{ github.ref_type	== 'tag' }}
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        print_hash: true
+        print-hash: true

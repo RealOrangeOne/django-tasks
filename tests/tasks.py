@@ -22,10 +22,35 @@ def calculate_meaning_of_life() -> int:
 
 
 @task()
-def failing_task() -> None:
-    raise ValueError("This task failed")
+def failing_task_value_error() -> None:
+    raise ValueError("This task failed due to ValueError")
+
+
+@task()
+def failing_task_system_exit() -> None:
+    raise SystemExit("This task failed due to SystemExit")
+
+
+@task()
+def failing_task_keyboard_interrupt() -> None:
+    raise KeyboardInterrupt("This task failed due to KeyboardInterrupt")
+
+
+@task()
+def complex_exception() -> None:
+    raise ValueError(ValueError("This task failed"))
 
 
 @task()
 def exit_task() -> None:
     exit(1)
+
+
+@task(enqueue_on_commit=True)
+def enqueue_on_commit_task() -> None:
+    pass
+
+
+@task(enqueue_on_commit=False)
+def never_enqueue_on_commit_task() -> None:
+    pass
