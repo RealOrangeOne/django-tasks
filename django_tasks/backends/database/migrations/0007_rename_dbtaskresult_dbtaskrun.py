@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_tasks_database', '0006_alter_dbtaskresult_args_kwargs_and_more'),
+        ("django_tasks_database", "0006_alter_dbtaskresult_args_kwargs_and_more"),
     ]
 
     operations = [
         migrations.RenameModel(
-            old_name='DBTaskResult',
-            new_name='DBTaskRun',
+            old_name="DBTaskResult",
+            new_name="DBTaskRun",
         ),
     ]
