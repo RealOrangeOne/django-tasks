@@ -5,7 +5,7 @@ from . import views
 
 urlpatterns = [
     path("meaning-of-life/", views.calculate_meaning_of_life, name="meaning-of-life"),
-    path("result/<str:result_id>", views.get_task_result, name="result"),
+    path("result/<str:result_id>", views.get_task_run, name="result"),
     path(
         "meaning-of-life-async/",
         views.calculate_meaning_of_life_async,

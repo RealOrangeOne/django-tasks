@@ -17,21 +17,21 @@ from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from django_tasks import ResultStatus, Task, default_task_backend, tasks
+from django_tasks import Task, TaskRunStatus, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
 from django_tasks.backends.database.management.commands.db_worker import (
     logger as db_worker_logger,
 )
-from django_tasks.backends.database.management.commands.prune_db_task_results import (
+from django_tasks.backends.database.management.commands.prune_db_task_runs import (
     logger as prune_db_tasks_logger,
 )
-from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.models import DBTaskRun
 from django_tasks.backends.database.utils import (
     connection_requires_manual_exclusive_transaction,
     exclusive_transaction,
     normalize_uuid,
 )
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.exceptions import TaskRunDoesNotExist
 from tests import tasks as test_tasks
 
 
@@ -51,7 +51,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         new_connection = connections.create_connection("default")
         try:
             with new_connection.cursor() as c:
-                c.execute(str(DBTaskResult.objects.values("id").query))
+                c.execute(str(DBTaskRun.objects.values("id").query))
                 return len(c.fetchall())
         finally:
             new_connection.close()
@@ -65,12 +65,12 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task), self.assertNumQueries(1):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, TaskRunStatus.NEW)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
-                self.assertIsNone(result.get_result())
+                self.assertIsNone(result.get_task_run())
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
@@ -80,29 +80,29 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, TaskRunStatus.NEW)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.result  # noqa:B018
-                self.assertIsNone(result.get_result())
+                self.assertIsNone(result.get_task_run())
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
 
-    def test_get_result(self) -> None:
+    def test_get_task_run(self) -> None:
         with self.assertNumQueries(1):
             result = default_task_backend.enqueue(test_tasks.noop_task, [], {})
 
         with self.assertNumQueries(1):
-            new_result = default_task_backend.get_result(result.id)
+            new_result = default_task_backend.get_task_run(result.id)
 
         self.assertEqual(result, new_result)
 
-    async def test_get_result_async(self) -> None:
+    async def test_get_task_run_async(self) -> None:
         result = await default_task_backend.aenqueue(test_tasks.noop_task, [], {})
 
-        new_result = await default_task_backend.aget_result(result.id)
+        new_result = await default_task_backend.aget_task_run(result.id)
 
         self.assertEqual(result, new_result)
 
@@ -111,55 +111,55 @@ class DatabaseBackendTestCase(TransactionTestCase):
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        DBTaskResult.objects.all().update(
-            status=ResultStatus.COMPLETE,
+        DBTaskRun.objects.all().update(
+            status=TaskRunStatus.COMPLETE,
             started_at=timezone.now(),
             finished_at=timezone.now(),
         )
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, TaskRunStatus.NEW)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
         with self.assertNumQueries(1):
             result.refresh()
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, TaskRunStatus.COMPLETE)
 
     async def test_refresh_result_async(self) -> None:
         result = await default_task_backend.aenqueue(
             test_tasks.calculate_meaning_of_life, (), {}
         )
 
-        await DBTaskResult.objects.all().aupdate(
-            status=ResultStatus.COMPLETE,
+        await DBTaskRun.objects.all().aupdate(
+            status=TaskRunStatus.COMPLETE,
             started_at=timezone.now(),
             finished_at=timezone.now(),
         )
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, TaskRunStatus.NEW)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
         await result.arefresh()
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, TaskRunStatus.COMPLETE)
 
     def test_get_missing_result(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
-            default_task_backend.get_result(str(uuid.uuid4()))
+        with self.assertRaises(TaskRunDoesNotExist):
+            default_task_backend.get_task_run(str(uuid.uuid4()))
 
     async def test_async_get_missing_result(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
-            await default_task_backend.aget_result(str(uuid.uuid4()))
+        with self.assertRaises(TaskRunDoesNotExist):
+            await default_task_backend.aget_task_run(str(uuid.uuid4()))
 
     def test_invalid_uuid(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
-            default_task_backend.get_result("123")
+        with self.assertRaises(TaskRunDoesNotExist):
+            default_task_backend.get_task_run("123")
 
     async def test_async_invalid_uuid(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
-            await default_task_backend.aget_result("123")
+        with self.assertRaises(TaskRunDoesNotExist):
+            await default_task_backend.aget_task_run("123")
 
     def test_meaning_of_life_view(self) -> None:
         for url in [
@@ -173,12 +173,12 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], None)
-                self.assertEqual(data["status"], ResultStatus.NEW)
+                self.assertEqual(data["status"], TaskRunStatus.NEW)
 
-                result = default_task_backend.get_result(data["result_id"])
-                self.assertEqual(result.status, ResultStatus.NEW)
+                result = default_task_backend.get_task_run(data["result_id"])
+                self.assertEqual(result.status, TaskRunStatus.NEW)
 
-    def test_get_result_from_different_request(self) -> None:
+    def test_get_task_run_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
         self.assertEqual(response.status_code, 200)
 
@@ -190,11 +190,11 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.assertEqual(
             json.loads(response.content),
-            {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
+            {"result_id": result_id, "result": None, "status": TaskRunStatus.NEW},
         )
 
     def test_invalid_task_path(self) -> None:
-        db_task_result = DBTaskResult.objects.create(
+        db_task_run = DBTaskRun.objects.create(
             args_kwargs={"args": [["exit", "1"]], "kwargs": {}},
             task_path="subprocess.check_output",
             backend_name="default",
@@ -202,19 +202,19 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         with self.assertRaisesMessage(
             SuspiciousOperation,
-            f"Task {db_task_result.id} does not point to a Task ({db_task_result.task_path})",
+            f"Task {db_task_run.id} does not point to a Task ({db_task_run.task_path})",
         ):
-            _ = db_task_result.task
+            _ = db_task_run.task
 
     def test_missing_task_path(self) -> None:
-        db_task_result = DBTaskResult.objects.create(
+        db_task_run = DBTaskRun.objects.create(
             args_kwargs={"args": [], "kwargs": {}},
             task_path="missing.func",
             backend_name="default",
         )
 
         with self.assertRaises(ImportError):
-            _ = db_task_result.task
+            _ = db_task_run.task
 
     def test_check(self) -> None:
         errors = list(default_task_backend.check())
@@ -230,29 +230,29 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
     def test_priority_range_check(self) -> None:
         with self.assertRaises(IntegrityError):
-            DBTaskResult.objects.create(
+            DBTaskRun.objects.create(
                 task_path="", backend_name="default", priority=-101, args_kwargs={}
             )
 
         with self.assertRaises(IntegrityError):
-            DBTaskResult.objects.create(
+            DBTaskRun.objects.create(
                 task_path="", backend_name="default", priority=101, args_kwargs={}
             )
 
         # Django accepts the float, but only stores an int
-        result = DBTaskResult.objects.create(
+        result = DBTaskRun.objects.create(
             task_path="", backend_name="default", priority=3.1, args_kwargs={}
         )
         result.refresh_from_db()
         self.assertEqual(result.priority, 3)
 
-        DBTaskResult.objects.create(
+        DBTaskRun.objects.create(
             task_path="", backend_name="default", priority=100, args_kwargs={}
         )
-        DBTaskResult.objects.create(
+        DBTaskRun.objects.create(
             task_path="", backend_name="default", priority=-100, args_kwargs={}
         )
-        DBTaskResult.objects.create(
+        DBTaskRun.objects.create(
             task_path="", backend_name="default", priority=0, args_kwargs={}
         )
 
@@ -274,7 +274,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         with transaction.atomic():
             test_tasks.noop_task.enqueue()
 
-            self.assertEqual(DBTaskResult.objects.count(), 0)
+            self.assertEqual(DBTaskRun.objects.count(), 0)
             self.assertEqual(self.get_task_count_in_new_connection(), 0)
 
         self.assertEqual(self.get_task_count_in_new_connection(), 1)
@@ -297,7 +297,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         with transaction.atomic():
             test_tasks.noop_task.enqueue()
 
-            self.assertEqual(DBTaskResult.objects.count(), 1)
+            self.assertEqual(DBTaskRun.objects.count(), 1)
             self.assertEqual(self.get_task_count_in_new_connection(), 0)
 
         self.assertEqual(self.get_task_count_in_new_connection(), 1)
@@ -357,36 +357,36 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         ]:
             with self.subTest(task):
                 result = cast(Task, task).enqueue()
-                self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+                self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, TaskRunStatus.NEW)
 
                 with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
                     self.run_worker()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, TaskRunStatus.NEW)
                 result.refresh()
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
-                self.assertEqual(result.status, ResultStatus.COMPLETE)
+                self.assertEqual(result.status, TaskRunStatus.COMPLETE)
 
-                self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+                self.assertEqual(DBTaskRun.objects.ready().count(), 0)
 
     def test_batch_processes_all_tasks(self) -> None:
         for _ in range(3):
             test_tasks.noop_task.enqueue()
         test_tasks.failing_task_value_error.enqueue()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 4)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 4)
 
         with self.assertNumQueries(27 if connection.vendor == "mysql" else 23):
             self.run_worker()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
-        self.assertEqual(DBTaskResult.objects.complete().count(), 3)
-        self.assertEqual(DBTaskResult.objects.failed().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 3)
+        self.assertEqual(DBTaskRun.objects.failed().count(), 1)
 
     def test_no_tasks(self) -> None:
         with self.assertNumQueries(3):
@@ -395,48 +395,48 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     def test_doesnt_process_different_queue(self) -> None:
         result = test_tasks.noop_task.using(queue_name="queue-1").enqueue()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(3):
             self.run_worker()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker(queue_name=result.task.queue_name)
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
 
     def test_process_all_queues(self) -> None:
         test_tasks.noop_task.using(queue_name="queue-1").enqueue()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(3):
             self.run_worker()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker(queue_name="*")
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
 
     def test_failing_task(self) -> None:
         result = test_tasks.failing_task_value_error.enqueue()
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, TaskRunStatus.NEW)
         result.refresh()
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
 
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
-        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.status, TaskRunStatus.FAILED)
 
         self.assertIsInstance(result.result, ValueError)
         assert result.traceback  # So that mypy knows the next line is allowed
@@ -446,45 +446,45 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             )
         )
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
 
     def test_complex_exception(self) -> None:
         result = test_tasks.complex_exception.enqueue()
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(
             9 if connection.vendor == "mysql" else 8
         ), self.assertLogs("django_tasks.backends.database", level="ERROR"):
             self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, TaskRunStatus.NEW)
         result.refresh()
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
 
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
-        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.status, TaskRunStatus.FAILED)
 
         self.assertIsNone(result.result)
         self.assertIsNone(result.traceback)
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
 
     def test_doesnt_process_different_backend(self) -> None:
         result = test_tasks.failing_task_value_error.enqueue()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(3):
             self.run_worker(backend_name="dummy")
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker(backend_name=result.backend)
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
 
     def test_unknown_backend(self) -> None:
         output = StringIO()
@@ -537,25 +537,25 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             run_after=timezone.now() + timedelta(hours=10)
         ).enqueue()
 
-        self.assertEqual(DBTaskResult.objects.count(), 1)
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
 
         with self.assertNumQueries(3):
             self.run_worker()
 
-        self.assertEqual(DBTaskResult.objects.count(), 1)
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
-        self.assertEqual(DBTaskResult.objects.complete().count(), 0)
+        self.assertEqual(DBTaskRun.objects.count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 0)
 
-        DBTaskResult.objects.filter(id=result.id).update(run_after=timezone.now())
+        DBTaskRun.objects.filter(id=result.id).update(run_after=timezone.now())
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 0)
-        self.assertEqual(DBTaskResult.objects.complete().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 0)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 1)
 
     def test_run_after_priority(self) -> None:
         far_future_result = test_tasks.noop_task.using(
@@ -576,7 +576,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         lower_priority_result = test_tasks.noop_task.using(priority=-2).enqueue()
 
         self.assertEqual(
-            [dbt.task_result for dbt in DBTaskResult.objects.all()],
+            [dbt.task_run for dbt in DBTaskRun.objects.all()],
             [
                 high_priority_far_future_result,
                 high_priority_result,
@@ -588,7 +588,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         )
 
         self.assertEqual(
-            [dbt.task_result for dbt in DBTaskResult.objects.ready()],
+            [dbt.task_run for dbt in DBTaskRun.objects.ready()],
             [
                 high_priority_result,
                 low_priority_result,
@@ -613,7 +613,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         )
 
     def test_invalid_task_path(self) -> None:
-        db_task_result = DBTaskResult.objects.create(
+        db_task_run = DBTaskRun.objects.create(
             args_kwargs={"args": [["exit", "1"]], "kwargs": {}},
             task_path="subprocess.check_output",
             backend_name="default",
@@ -621,12 +621,12 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.run_worker()
 
-        db_task_result.refresh_from_db()
+        db_task_run.refresh_from_db()
 
-        self.assertEqual(db_task_result.status, ResultStatus.FAILED)
+        self.assertEqual(db_task_run.status, TaskRunStatus.FAILED)
 
     def test_missing_task_path(self) -> None:
-        db_task_result = DBTaskResult.objects.create(
+        db_task_run = DBTaskRun.objects.create(
             args_kwargs={"args": [], "kwargs": {}},
             task_path="missing.func",
             backend_name="default",
@@ -634,9 +634,9 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.run_worker()
 
-        db_task_result.refresh_from_db()
+        db_task_run.refresh_from_db()
 
-        self.assertEqual(db_task_result.status, ResultStatus.FAILED)
+        self.assertEqual(db_task_run.status, TaskRunStatus.FAILED)
 
     def test_worker_doesnt_exit(self) -> None:
         result = test_tasks.exit_task.enqueue()
@@ -644,7 +644,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.run_worker()
 
         result.refresh()
-        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.status, TaskRunStatus.FAILED)
 
     @skipIf(connection.vendor == "sqlite", "SQLite locks the entire database")
     def test_worker_with_locked_rows(self) -> None:
@@ -652,7 +652,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         new_connection = connections.create_connection("default")
 
         with transaction.atomic():
-            locked_tasks_query = str(DBTaskResult.objects.select_for_update().query)
+            locked_tasks_query = str(DBTaskRun.objects.select_for_update().query)
 
         try:
             # Start a transaction in the other connection
@@ -675,8 +675,8 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result_1.refresh()
         result_2.refresh()
 
-        self.assertEqual(result_1.status, ResultStatus.NEW)
-        self.assertEqual(result_2.status, ResultStatus.COMPLETE)
+        self.assertEqual(result_1.status, TaskRunStatus.NEW)
+        self.assertEqual(result_2.status, TaskRunStatus.COMPLETE)
 
 
 @override_settings(
@@ -686,7 +686,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         },
     }
 )
-class DatabaseTaskResultTestCase(TransactionTestCase):
+class DatabaseTaskRunTestCase(TransactionTestCase):
     def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> Sequence:
         if isinstance(sql, QuerySet):
             sql = str(sql.query)
@@ -702,12 +702,12 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         test_tasks.noop_task.enqueue()
         test_tasks.noop_task.enqueue()
 
-        self.assertEqual(DBTaskResult.objects.count(), 2)
+        self.assertEqual(DBTaskRun.objects.count(), 2)
 
-        self.assertEqual(DBTaskResult.objects.using("default").count(), 2)
+        self.assertEqual(DBTaskRun.objects.using("default").count(), 2)
 
         self.assertEqual(
-            len(self.execute_in_new_connection(DBTaskResult.objects.all())),
+            len(self.execute_in_new_connection(DBTaskRun.objects.all())),
             2,
         )
 
@@ -720,32 +720,32 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
-                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                        DBTaskRun.objects.select_for_update(skip_locked=True)
                     )
                 ),
                 2,
             )
 
-            self.assertIsNotNone(DBTaskResult.objects.get_locked())
+            self.assertIsNotNone(DBTaskRun.objects.get_locked())
 
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
-                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                        DBTaskRun.objects.select_for_update(skip_locked=True)
                     )
                 ),
                 # MySQL likes to lock all the rows
                 0 if connection.vendor == "mysql" else 1,
             )
 
-            DBTaskResult.objects.get_locked()
+            DBTaskRun.objects.get_locked()
 
         with transaction.atomic():
             # The original transaction has closed, so the result is unlocked
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
-                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                        DBTaskRun.objects.select_for_update(skip_locked=True)
                     )
                 ),
                 2,
@@ -756,7 +756,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         result = test_tasks.noop_task.enqueue()
 
         with exclusive_transaction():
-            locked_result = DBTaskResult.objects.get_locked()
+            locked_result = DBTaskRun.objects.get_locked()
 
             self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
 
@@ -764,12 +764,12 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                 OperationalError, "database schema is locked: main"
             ):
                 self.execute_in_new_connection(
-                    DBTaskResult.objects.select_for_update(skip_locked=True)
+                    DBTaskRun.objects.select_for_update(skip_locked=True)
                 )
 
         # The original transaction has closed, so the database is unlocked
         self.execute_in_new_connection(
-            DBTaskResult.objects.select_for_update(skip_locked=True)
+            DBTaskRun.objects.select_for_update(skip_locked=True)
         )
 
     @skipIf(connection.vendor == "sqlite", "SQLite handles locks differently")
@@ -781,13 +781,13 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
-                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                        DBTaskRun.objects.select_for_update(skip_locked=True)
                     )
                 ),
                 2,
             )
 
-            locked_result = DBTaskResult.objects.filter(
+            locked_result = DBTaskRun.objects.filter(
                 priority=result.task.priority
             ).get_locked()
             self.assertEqual(str(locked_result.id), result.id)
@@ -795,7 +795,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
-                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                        DBTaskRun.objects.select_for_update(skip_locked=True)
                     )
                 ),
                 1,
@@ -806,7 +806,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             self.assertEqual(
                 len(
                     self.execute_in_new_connection(
-                        DBTaskResult.objects.select_for_update(skip_locked=True)
+                        DBTaskRun.objects.select_for_update(skip_locked=True)
                     )
                 ),
                 2,
@@ -818,7 +818,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         test_tasks.noop_task.enqueue()
 
         with exclusive_transaction():
-            locked_result = DBTaskResult.objects.filter(
+            locked_result = DBTaskRun.objects.filter(
                 priority=result.task.priority
             ).get_locked()
 
@@ -828,18 +828,18 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
                 OperationalError, "database schema is locked: main"
             ):
                 self.execute_in_new_connection(
-                    DBTaskResult.objects.select_for_update(skip_locked=True)
+                    DBTaskRun.objects.select_for_update(skip_locked=True)
                 )
 
         # The original transaction has closed, so the database is unlocked
         self.execute_in_new_connection(
-            DBTaskResult.objects.select_for_update(skip_locked=True)
+            DBTaskRun.objects.select_for_update(skip_locked=True)
         )
 
     @exclusive_transaction()
     def test_lock_no_rows(self) -> None:
-        self.assertEqual(DBTaskResult.objects.count(), 0)
-        self.assertIsNone(DBTaskResult.objects.all().get_locked())
+        self.assertEqual(DBTaskRun.objects.count(), 0)
+        self.assertIsNone(DBTaskRun.objects.all().get_locked())
 
     @skipIf(connection.vendor == "sqlite", "SQLite handles locks differently")
     def test_get_locked_with_locked_rows(self) -> None:
@@ -847,7 +847,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         new_connection = connections.create_connection("default")
 
         with transaction.atomic():
-            locked_tasks_query = str(DBTaskResult.objects.select_for_update().query)
+            locked_tasks_query = str(DBTaskRun.objects.select_for_update().query)
 
         try:
             # Start a transaction in the other connection
@@ -864,9 +864,9 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             with transaction.atomic():
                 # .count with skip_locked isn't supported
                 self.assertEqual(
-                    len(DBTaskResult.objects.select_for_update(skip_locked=True)), 0
+                    len(DBTaskRun.objects.select_for_update(skip_locked=True)), 0
                 )
-                self.assertIsNone(DBTaskResult.objects.get_locked())
+                self.assertIsNone(DBTaskRun.objects.get_locked())
 
             # Add another task which isn't locked
             result_2 = test_tasks.noop_task.enqueue()
@@ -874,14 +874,14 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             with transaction.atomic():
                 self.assertEqual(
                     normalize_uuid(
-                        DBTaskResult.objects.select_for_update(
+                        DBTaskRun.objects.select_for_update(
                             skip_locked=True
                         ).values_list("id", flat=True)[0]
                     ),
                     normalize_uuid(result_2.id),
                 )
                 self.assertEqual(
-                    normalize_uuid(DBTaskResult.objects.get_locked().id),  # type:ignore
+                    normalize_uuid(DBTaskRun.objects.get_locked().id),  # type:ignore
                     normalize_uuid(result_2.id),
                 )
         finally:
@@ -935,8 +935,8 @@ class ConnectionExclusiveTranscationTestCase(TestCase):
         "dummy": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
     }
 )
-class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
-    prune_task_results = partial(call_command, "prune_db_task_results", verbosity=0)
+class DatabaseBackendPruneTaskRunTestCase(TransactionTestCase):
+    prune_task_runs = partial(call_command, "prune_db_task_runs", verbosity=0)
 
     def tearDown(self) -> None:
         # Reset the logger after every run, to ensure the correct `stdout` is used
@@ -946,20 +946,20 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
     def test_prunes_tasks(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        DBTaskResult.objects.all().update(
-            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        DBTaskRun.objects.all().update(
+            status=TaskRunStatus.COMPLETE, finished_at=timezone.now()
         )
 
-        self.assertEqual(DBTaskResult.objects.finished().count(), 1)
+        self.assertEqual(DBTaskRun.objects.finished().count(), 1)
 
         stdout = StringIO()
 
         with self.assertNumQueries(3):
-            self.prune_task_results(min_age_days=0, stdout=stdout, verbosity=3)
+            self.prune_task_runs(min_age_days=0, stdout=stdout, verbosity=3)
 
-        self.assertEqual(DBTaskResult.objects.finished().count(), 0)
+        self.assertEqual(DBTaskRun.objects.finished().count(), 0)
 
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskRunDoesNotExist):
             result.refresh()
 
         self.assertEqual(stdout.getvalue().strip(), "Deleted 1 task result(s)")
@@ -967,13 +967,13 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
     def test_doesnt_prune_new_tasks(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         stdout = StringIO()
         with self.assertNumQueries(3):
-            self.prune_task_results(min_age_days=0, stdout=stdout, verbosity=3)
+            self.prune_task_runs(min_age_days=0, stdout=stdout, verbosity=3)
 
-        self.assertEqual(DBTaskResult.objects.ready().count(), 1)
+        self.assertEqual(DBTaskRun.objects.ready().count(), 1)
 
         result.refresh()
 
@@ -982,14 +982,14 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
     def test_doesnt_prune_running_tasks(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        DBTaskResult.objects.all().update(status=ResultStatus.RUNNING)
+        DBTaskRun.objects.all().update(status=TaskRunStatus.RUNNING)
 
-        self.assertEqual(DBTaskResult.objects.running().count(), 1)
+        self.assertEqual(DBTaskRun.objects.running().count(), 1)
 
         with self.assertNumQueries(3):
-            self.prune_task_results(min_age_days=0)
+            self.prune_task_runs(min_age_days=0)
 
-        self.assertEqual(DBTaskResult.objects.running().count(), 1)
+        self.assertEqual(DBTaskRun.objects.running().count(), 1)
 
         result.refresh()
 
@@ -997,122 +997,125 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         result = test_tasks.noop_task.enqueue()
         queue_1_result = test_tasks.noop_task.using(queue_name="queue-1").enqueue()
 
-        DBTaskResult.objects.all().update(
-            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        DBTaskRun.objects.all().update(
+            status=TaskRunStatus.COMPLETE, finished_at=timezone.now()
         )
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_task_results(queue_name="queue-1", min_age_days=0)
+            self.prune_task_runs(queue_name="queue-1", min_age_days=0)
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 1)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 1)
 
         result.refresh()
 
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskRunDoesNotExist):
             queue_1_result.refresh()
 
     def test_prune_all_queues(self) -> None:
         test_tasks.noop_task.enqueue()
         test_tasks.noop_task.using(queue_name="queue-1").enqueue()
 
-        DBTaskResult.objects.all().update(
-            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        DBTaskRun.objects.all().update(
+            status=TaskRunStatus.COMPLETE, finished_at=timezone.now()
         )
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_task_results(queue_name="*", min_age_days=0)
+            self.prune_task_runs(queue_name="*", min_age_days=0)
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 0)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 0)
 
     def test_min_age(self) -> None:
         one_day_result = test_tasks.noop_task.enqueue()
 
-        DBTaskResult.objects.ready().update(
-            status=ResultStatus.COMPLETE, finished_at=timezone.now() - timedelta(days=1)
+        DBTaskRun.objects.ready().update(
+            status=TaskRunStatus.COMPLETE,
+            finished_at=timezone.now() - timedelta(days=1),
         )
 
         three_day_result = test_tasks.noop_task.enqueue()
-        DBTaskResult.objects.ready().update(
-            status=ResultStatus.COMPLETE, finished_at=timezone.now() - timedelta(days=3)
+        DBTaskRun.objects.ready().update(
+            status=TaskRunStatus.COMPLETE,
+            finished_at=timezone.now() - timedelta(days=3),
         )
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_task_results()
+            self.prune_task_runs()
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 2)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_task_results(min_age_days=3)
+            self.prune_task_runs(min_age_days=3)
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 1)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 1)
 
         one_day_result.refresh()
 
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskRunDoesNotExist):
             three_day_result.refresh()
 
         with self.assertNumQueries(3):
-            self.prune_task_results(min_age_days=1)
+            self.prune_task_runs(min_age_days=1)
 
-        self.assertEqual(DBTaskResult.objects.complete().count(), 0)
+        self.assertEqual(DBTaskRun.objects.complete().count(), 0)
 
     def test_failed_min_age(self) -> None:
         completed_result = test_tasks.noop_task.enqueue()
 
-        DBTaskResult.objects.ready().update(
-            status=ResultStatus.COMPLETE, finished_at=timezone.now() - timedelta(days=3)
+        DBTaskRun.objects.ready().update(
+            status=TaskRunStatus.COMPLETE,
+            finished_at=timezone.now() - timedelta(days=3),
         )
 
         failed_result = test_tasks.noop_task.enqueue()
-        DBTaskResult.objects.ready().update(
-            status=ResultStatus.FAILED, finished_at=timezone.now() - timedelta(days=3)
+        DBTaskRun.objects.ready().update(
+            status=TaskRunStatus.FAILED, finished_at=timezone.now() - timedelta(days=3)
         )
 
-        self.assertEqual(DBTaskResult.objects.finished().count(), 2)
+        self.assertEqual(DBTaskRun.objects.finished().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_task_results()
+            self.prune_task_runs()
 
-        self.assertEqual(DBTaskResult.objects.finished().count(), 2)
+        self.assertEqual(DBTaskRun.objects.finished().count(), 2)
 
         with self.assertNumQueries(3):
-            self.prune_task_results(min_age_days=3, failed_min_age_days=5)
+            self.prune_task_runs(min_age_days=3, failed_min_age_days=5)
 
-        self.assertEqual(DBTaskResult.objects.finished().count(), 1)
+        self.assertEqual(DBTaskRun.objects.finished().count(), 1)
 
         failed_result.refresh()
 
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskRunDoesNotExist):
             completed_result.refresh()
 
         with self.assertNumQueries(3):
-            self.prune_task_results(min_age_days=3, failed_min_age_days=1)
+            self.prune_task_runs(min_age_days=3, failed_min_age_days=1)
 
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskRunDoesNotExist):
             failed_result.refresh()
 
     def test_dry_run(self) -> None:
         test_tasks.noop_task.enqueue()
 
-        DBTaskResult.objects.all().update(
-            status=ResultStatus.COMPLETE, finished_at=timezone.now()
+        DBTaskRun.objects.all().update(
+            status=TaskRunStatus.COMPLETE, finished_at=timezone.now()
         )
 
-        self.assertEqual(DBTaskResult.objects.count(), 1)
+        self.assertEqual(DBTaskRun.objects.count(), 1)
 
         stdout = StringIO()
         with self.assertNumQueries(1):
-            self.prune_task_results(
+            self.prune_task_runs(
                 min_age_days=0, dry_run=True, stdout=stdout, verbosity=3
             )
 
-        self.assertEqual(DBTaskResult.objects.count(), 1)
+        self.assertEqual(DBTaskRun.objects.count(), 1)
 
         self.assertEqual(stdout.getvalue().strip(), "Would delete 1 task result(s)")
 
@@ -1121,7 +1124,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         with redirect_stderr(output):
             with self.assertRaises(SystemExit):
                 execute_from_command_line(
-                    ["django-admin", "prune_db_task_results", "--backend", "unknown"]
+                    ["django-admin", "prune_db_task_runs", "--backend", "unknown"]
                 )
         self.assertIn("The connection 'unknown' doesn't exist.", output.getvalue())
 
@@ -1130,7 +1133,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         with redirect_stderr(output):
             with self.assertRaises(SystemExit):
                 execute_from_command_line(
-                    ["django-admin", "prune_db_task_results", "--backend", "dummy"]
+                    ["django-admin", "prune_db_task_runs", "--backend", "dummy"]
                 )
         self.assertIn("Backend 'dummy' is not a database backend", output.getvalue())
 
@@ -1139,6 +1142,6 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         with redirect_stderr(output):
             with self.assertRaises(SystemExit):
                 execute_from_command_line(
-                    ["django-admin", "prune_db_task_results", "--min-age-days", "-1"]
+                    ["django-admin", "prune_db_task_runs", "--min-age-days", "-1"]
                 )
         self.assertIn("Must be greater than zero", output.getvalue())

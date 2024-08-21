@@ -9,11 +9,11 @@ from django.utils import timezone
 
 from django_tasks import DEFAULT_QUEUE_NAME, DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.backend import DatabaseBackend
-from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.models import DBTaskRun
 from django_tasks.exceptions import InvalidTaskBackendError
-from django_tasks.task import ResultStatus
+from django_tasks.task import TaskRunStatus
 
-logger = logging.getLogger("django_tasks.backends.database.prune_db_task_results")
+logger = logging.getLogger("django_tasks.backends.database.prune_db_task_runs")
 
 
 def valid_backend_name(val: str) -> DatabaseBackend:
@@ -105,7 +105,7 @@ class Command(BaseCommand):
             else None
         )
 
-        results = DBTaskResult.objects.finished().filter(backend_name=backend.alias)
+        results = DBTaskRun.objects.finished().filter(backend_name=backend.alias)
 
         queue_names = queue_name.split(",")
         if "*" not in queue_names:
@@ -115,8 +115,8 @@ class Command(BaseCommand):
             results = results.filter(finished_at__lte=min_age)
         else:
             results = results.filter(
-                Q(status=ResultStatus.COMPLETE, finished_at__lte=min_age)
-                | Q(status=ResultStatus.FAILED, finished_at__lte=failed_min_age)
+                Q(status=TaskRunStatus.COMPLETE, finished_at__lte=min_age)
+                | Q(status=TaskRunStatus.FAILED, finished_at__lte=failed_min_age)
             )
 
         if dry_run:

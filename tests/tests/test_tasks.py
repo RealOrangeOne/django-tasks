@@ -7,8 +7,8 @@ from django.utils.module_loading import import_string
 
 from django_tasks import (
     DEFAULT_QUEUE_NAME,
-    ResultStatus,
     Task,
+    TaskRunStatus,
     default_task_backend,
     task,
     tasks,
@@ -18,7 +18,7 @@ from django_tasks.backends.immediate import ImmediateBackend
 from django_tasks.exceptions import (
     InvalidTaskBackendError,
     InvalidTaskError,
-    ResultDoesNotExist,
+    TaskRunDoesNotExist,
 )
 from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY
 from tests import tasks as test_tasks
@@ -50,7 +50,7 @@ class TaskTestCase(SimpleTestCase):
     def test_enqueue_task(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, TaskRunStatus.NEW)
         self.assertIs(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
@@ -60,7 +60,7 @@ class TaskTestCase(SimpleTestCase):
     async def test_enqueue_task_async(self) -> None:
         result = await test_tasks.noop_task.aenqueue()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, TaskRunStatus.NEW)
         self.assertIs(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
@@ -167,36 +167,36 @@ class TaskTestCase(SimpleTestCase):
     def test_call_async_task_sync(self) -> None:
         self.assertIsNone(test_tasks.noop_task_async.call())
 
-    def test_get_result(self) -> None:
+    def test_get_task_run(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task, (), {})
 
-        new_result = test_tasks.noop_task.get_result(result.id)
+        new_result = test_tasks.noop_task.get_task_run(result.id)
 
         self.assertEqual(result, new_result)
 
-    async def test_get_result_async(self) -> None:
+    async def test_get_task_run_async(self) -> None:
         result = await default_task_backend.aenqueue(test_tasks.noop_task, (), {})
 
-        new_result = await test_tasks.noop_task.aget_result(result.id)
+        new_result = await test_tasks.noop_task.aget_task_run(result.id)
 
         self.assertEqual(result, new_result)
 
     async def test_get_missing_result(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
-            test_tasks.noop_task.get_result("123")
+        with self.assertRaises(TaskRunDoesNotExist):
+            test_tasks.noop_task.get_task_run("123")
 
-        with self.assertRaises(ResultDoesNotExist):
-            await test_tasks.noop_task.aget_result("123")
+        with self.assertRaises(TaskRunDoesNotExist):
+            await test_tasks.noop_task.aget_task_run("123")
 
     def test_get_incorrect_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task_async, (), {})
-        with self.assertRaises(ResultDoesNotExist):
-            test_tasks.noop_task.get_result(result.id)
+        with self.assertRaises(TaskRunDoesNotExist):
+            test_tasks.noop_task.get_task_run(result.id)
 
     async def test_get_incorrect_result_async(self) -> None:
         result = await default_task_backend.aenqueue(test_tasks.noop_task_async, (), {})
-        with self.assertRaises(ResultDoesNotExist):
-            await test_tasks.noop_task.aget_result(result.id)
+        with self.assertRaises(TaskRunDoesNotExist):
+            await test_tasks.noop_task.aget_task_run(result.id)
 
     def test_invalid_function(self) -> None:
         for invalid_function in [any, self.test_invalid_function]:

@@ -21,7 +21,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
 
-from .exceptions import ResultDoesNotExist
+from .exceptions import TaskRunDoesNotExist
 from .utils import SerializedExceptionDict, exception_from_dict, get_module_path
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
 
 
-class ResultStatus(TextChoices):
+class TaskRunStatus(TextChoices):
     NEW = ("NEW", _("New"))
     RUNNING = ("RUNNING", _("Running"))
     FAILED = ("FAILED", _("Failed"))
@@ -107,39 +107,39 @@ class Task(Generic[P, T]):
 
         return task
 
-    def enqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskResult[T]":
+    def enqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskRun[T]":
         """
         Queue up the task to be executed
         """
         return self.get_backend().enqueue(self, args, kwargs)
 
-    async def aenqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskResult[T]":
+    async def aenqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskRun[T]":
         """
         Queue up a task function (or coroutine) to be executed
         """
         return await self.get_backend().aenqueue(self, args, kwargs)
 
-    def get_result(self, result_id: str) -> "TaskResult[T]":
+    def get_task_run(self, run_id: str) -> "TaskRun[T]":
         """
-        Retrieve the result for a task of this type by its id (if one exists).
-        If one doesn't, or is the wrong type, raises ResultDoesNotExist.
+        Retrieve the run for a task of this type by its id (if one exists).
+        If one doesn't, or is the wrong type, raises TaskRunDoesNotExist.
         """
-        result = self.get_backend().get_result(result_id)
+        result = self.get_backend().get_task_run(run_id)
 
         if result.task.func != self.func:
-            raise ResultDoesNotExist
+            raise TaskRunDoesNotExist
 
         return result
 
-    async def aget_result(self, result_id: str) -> "TaskResult[T]":
+    async def aget_task_run(self, run_id: str) -> "TaskRun[T]":
         """
-        Retrieve the result for a task of this type by its id (if one exists).
-        If one doesn't, or is the wrong type, raises ResultDoesNotExist.
+        Retrieve the run for a task of this type by its id (if one exists).
+        If one doesn't, or is the wrong type, raises TaskRunDoesNotExist.
         """
-        result = await self.get_backend().aget_result(result_id)
+        result = await self.get_backend().aget_task_run(run_id)
 
         if result.task.func != self.func:
-            raise ResultDoesNotExist
+            raise TaskRunDoesNotExist
 
         return result
 
@@ -211,24 +211,24 @@ def task(
 
 
 @dataclass
-class TaskResult(Generic[T]):
+class TaskRun(Generic[T]):
     task: Task
-    """The task for which this is a result"""
+    """The task associated with this run"""
 
     id: str
-    """A unique identifier for the task result"""
+    """A unique identifier for the task run"""
 
-    status: ResultStatus
-    """The status of the running task"""
+    status: TaskRunStatus
+    """The status of the task run"""
 
     enqueued_at: datetime
-    """The time this task was enqueued"""
+    """The time this task run was enqueued"""
 
     started_at: Optional[datetime]
-    """The time this task was started"""
+    """The time this task run was started"""
 
     finished_at: Optional[datetime]
-    """The time this task was finished"""
+    """The time this task run was finished"""
 
     args: list
     """The arguments to pass to the task function"""
@@ -245,9 +245,9 @@ class TaskResult(Generic[T]):
 
     @property
     def result(self) -> Optional[Union[T, BaseException]]:
-        if self.status == ResultStatus.COMPLETE:
+        if self.status == TaskRunStatus.COMPLETE:
             return cast(T, self._result)
-        elif self.status == ResultStatus.FAILED:
+        elif self.status == TaskRunStatus.FAILED:
             return (
                 exception_from_dict(cast(SerializedExceptionDict, self._result))
                 if self._result is not None
@@ -261,22 +261,22 @@ class TaskResult(Generic[T]):
         """
         Return the string representation of the traceback of the task if it failed
         """
-        if self.status == ResultStatus.FAILED and self._result is not None:
+        if self.status == TaskRunStatus.FAILED and self._result is not None:
             return cast(SerializedExceptionDict, self._result)["exc_traceback"]
 
         return None
 
-    def get_result(self) -> Optional[T]:
+    def get_task_run(self) -> Optional[T]:
         """
         A convenience method to get the result, or None if it's not ready yet or has failed.
         """
-        return cast(T, self.result) if self.status == ResultStatus.COMPLETE else None
+        return cast(T, self.result) if self.status == TaskRunStatus.COMPLETE else None
 
     def refresh(self) -> None:
         """
         Reload the cached task data from the task store
         """
-        refreshed_task = self.task.get_backend().get_result(self.id)
+        refreshed_task = self.task.get_backend().get_task_run(self.id)
 
         # status, started_at, finished_at and result are the only refreshable attributes
         self.status = refreshed_task.status
@@ -288,7 +288,7 @@ class TaskResult(Generic[T]):
         """
         Reload the cached task data from the task store
         """
-        refreshed_task = await self.task.get_backend().aget_result(self.id)
+        refreshed_task = await self.task.get_backend().aget_task_run(self.id)
 
         # status, started_at, finished_at and result are the only refreshable attributes
         self.status = refreshed_task.status

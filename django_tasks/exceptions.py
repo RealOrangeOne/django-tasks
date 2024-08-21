@@ -11,5 +11,5 @@ class InvalidTaskBackendError(ImproperlyConfigured):
     pass
 
 
-class ResultDoesNotExist(ObjectDoesNotExist):
+class TaskRunDoesNotExist(ObjectDoesNotExist):
     pass

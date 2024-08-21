@@ -14,8 +14,8 @@ from .exceptions import InvalidTaskBackendError
 from .task import (
     DEFAULT_QUEUE_NAME,
     DEFAULT_TASK_BACKEND_ALIAS,
-    ResultStatus,
     Task,
+    TaskRunStatus,
     task,
 )
 
@@ -26,7 +26,7 @@ __all__ = [
     "DEFAULT_TASK_BACKEND_ALIAS",
     "DEFAULT_QUEUE_NAME",
     "task",
-    "ResultStatus",
+    "TaskRunStatus",
     "Task",
 ]
 

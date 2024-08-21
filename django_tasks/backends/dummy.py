@@ -7,8 +7,8 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
-from django_tasks.exceptions import ResultDoesNotExist
-from django_tasks.task import ResultStatus, Task, TaskResult
+from django_tasks.exceptions import TaskRunDoesNotExist
+from django_tasks.task import Task, TaskRun, TaskRunStatus
 from django_tasks.utils import json_normalize
 
 from .base import BaseTaskBackend
@@ -20,22 +20,20 @@ P = ParamSpec("P")
 class DummyBackend(BaseTaskBackend):
     supports_defer = True
     supports_async_task = True
-    results: List[TaskResult]
+    results: List[TaskRun]
 
     def __init__(self, options: dict) -> None:
         super().__init__(options)
 
         self.results = []
 
-    def enqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
-    ) -> TaskResult[T]:
+    def enqueue(self, task: Task[P, T], args: P.args, kwargs: P.kwargs) -> TaskRun[T]:
         self.validate_task(task)
 
-        result = TaskResult[T](
+        result = TaskRun[T](
             task=task,
             id=str(uuid4()),
-            status=ResultStatus.NEW,
+            status=TaskRunStatus.NEW,
             enqueued_at=timezone.now(),
             started_at=None,
             finished_at=None,
@@ -52,12 +50,12 @@ class DummyBackend(BaseTaskBackend):
 
         return result
 
-    # We don't set `supports_get_result` as the results are scoped to the current thread
-    def get_result(self, result_id: str) -> TaskResult:
+    # We don't set `supports_get_task_run` as the results are scoped to the current thread
+    def get_task_run(self, result_id: str) -> TaskRun:
         try:
             return next(result for result in self.results if result.id == result_id)
         except StopIteration:
-            raise ResultDoesNotExist(result_id) from None
+            raise TaskRunDoesNotExist(result_id) from None
 
     def clear(self) -> None:
         self.results.clear()

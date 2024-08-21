@@ -82,10 +82,10 @@ In addition to the above attributes, `run_after` can be passed to specify a spec
 To execute a task, call the `enqueue` method on it:
 
 ```python
-result = calculate_meaning_of_life.enqueue()
+task_run = calculate_meaning_of_life.enqueue()
 ```
 
-The returned `TaskResult` can be interrogated to query the current state of the running task, as well as its return value.
+The returned `TaskRun` can be interrogated to query the current state of the running task, as well as its return value.
 
 If the task takes arguments, these can be passed as-is to `enqueue`.
 
@@ -159,42 +159,42 @@ Finally, you can run the `db_worker` command to run tasks as they're created. Ch
 
 ### Pruning old tasks
 
-After a while, tasks may start to build up in your database. This can be managed using the `prune_db_task_results` management command, which deletes completed and failed tasks according to the given retention policy. Check the `--help` for the available options.
+After a while, tasks may start to build up in your database. This can be managed using the `prune_db_task_runs` management command, which deletes completed and failed tasks according to the given retention policy. Check the `--help` for the available options.
 
 ### Retrieving task result
 
-When enqueueing a task, you get a `TaskResult`, however it may be useful to retrieve said result from somewhere else (another request, another task etc). This can be done with `get_result` (or `aget_result`):
+When enqueueing a task, you get a `TaskRun`, however it may be useful to retrieve it from somewhere else (another request, another task etc). This can be done with `get_task_run` (or `aget_task_run`):
 
 ```python
-result_id = result.id
+task_run_id = task_run.id
 
 # Later, somewhere else...
-calculate_meaning_of_life.get_result(result_id)
+calculate_meaning_of_life.get_task_run(task_run_id)
 ```
 
-Only tasks of the same type can be retrieved this way. To retrieve the result of any task, you can call `get_result` on the backend:
+Only tasks of the same type can be retrieved this way. To retrieve the result of any task, you can call `get_task_run` on the backend:
 
 ```python
 from django_tasks import default_task_backend
 
-default_task_backend.get_result(result_id)
+default_task_backend.get_task_run(task_run_id)
 ```
 
 ### Return values
 
-If your task returns something, it can be retrieved from the `.result` attribute on a `TaskResult`. Accessing this property on an unfinished task (ie not `COMPLETE` or `FAILED`) will raise a `ValueError`.
+If your task returns something, it can be retrieved from the `.result` attribute on a `TaskRun`. Accessing this property on an unfinished task (ie not `COMPLETE` or `FAILED`) will raise a `ValueError`.
 
 ```python
-assert result.status == ResultStatus.COMPLETE
+assert result.status == TaskRunStatus.COMPLETE
 assert result.result == 42
 ```
 
-If a result has been updated in the background, you can call `refresh` on it to update its values. Results obtained using `get_result` will always be up-to-date.
+If a task run has been updated in the background, you can call `refresh` on it to update its values. Results obtained using `get_task_run` will always be up-to-date.
 
 ```python
-assert result.status == ResultStatus.NEW
-result.refresh()
-assert result.status == ResultStatus.COMPLETE
+assert task_run.status == TaskRunStatus.NEW
+task_run.refresh()
+assert task_run.status == TaskRunStatus.COMPLETE
 ```
 
 #### Exceptions
@@ -221,12 +221,12 @@ Because `django-tasks` enables support for multiple different backends, those ba
 
 - `supports_defer`: Can tasks be enqueued with the `run_after` attribute?
 - `supports_async_task`: Can coroutines be enqueued?
-- `supports_get_result`: Can results be retrieved after the fact (from **any** thread / process)?
+- `supports_get_task_run`: Can task runs be retrieved after the fact (from **any** thread / process)?
 
 ```python
 from django_tasks import default_task_backend
 
-assert default_task_backend.supports_get_result
+assert default_task_backend.supports_get_task_run
 ```
 
 This is particularly useful in combination with Django's [system check framework](https://docs.djangoproject.com/en/stable/topics/checks/).

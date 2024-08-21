@@ -14,10 +14,10 @@ from django.db.utils import OperationalError
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.backend import DatabaseBackend
-from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.models import DBTaskRun
 from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
-from django_tasks.task import DEFAULT_QUEUE_NAME, ResultStatus
+from django_tasks.task import DEFAULT_QUEUE_NAME, TaskRunStatus
 
 logger = logging.getLogger("django_tasks.backends.database.db_worker")
 
@@ -69,7 +69,7 @@ class Worker:
             time.sleep(random.random())
 
         while self.running:
-            tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
+            tasks = DBTaskRun.objects.ready().filter(backend_name=self.backend_name)
             if not self.process_all_queues:
                 tasks = tasks.filter(queue_name__in=self.queue_names)
 
@@ -80,21 +80,21 @@ class Worker:
                 # it be as efficient as possible.
                 with exclusive_transaction(tasks.db):
                     try:
-                        task_result = tasks.get_locked()
+                        task_run = tasks.get_locked()
                     except OperationalError as e:
                         # Ignore locked databases and keep trying.
                         # It should unlock eventually.
                         if "database is locked" in e.args[0]:
-                            task_result = None
+                            task_run = None
                         else:
                             raise
 
-                    if task_result is not None:
+                    if task_run is not None:
                         # "claim" the task, so it isn't run by another worker process
-                        task_result.claim()
+                        task_run.claim()
 
-                if task_result is not None:
-                    self.run_task(task_result)
+                if task_run is not None:
+                    self.run_task(task_run)
 
             finally:
                 self.running_task = False
@@ -102,50 +102,50 @@ class Worker:
                 for conn in connections.all(initialized_only=True):
                     conn.close()
 
-            if self.batch and task_result is None:
+            if self.batch and task_run is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
                 return None
 
             # If ctrl-c has just interrupted a task, self.running was cleared,
             # and we should not sleep, but rather exit immediately.
-            if self.running and not task_result:
+            if self.running and not task_run:
                 # Wait before checking for another task
                 time.sleep(self.interval)
 
-    def run_task(self, db_task_result: DBTaskResult) -> None:
+    def run_task(self, db_task_run: DBTaskRun) -> None:
         """
         Run the given task, marking it as complete or failed.
         """
         try:
-            task = db_task_result.task
-            task_result = db_task_result.task_result
+            task = db_task_run.task
+            task_run = db_task_run.task_run
 
             logger.info(
                 "Task id=%s path=%s state=%s",
-                db_task_result.id,
-                db_task_result.task_path,
-                ResultStatus.RUNNING,
+                db_task_run.id,
+                db_task_run.task_path,
+                TaskRunStatus.RUNNING,
             )
-            return_value = task.call(*task_result.args, **task_result.kwargs)
+            return_value = task.call(*task_run.args, **task_run.kwargs)
 
             # Setting the return and success value inside the error handling,
             # So errors setting it (eg JSON encode) can still be recorded
-            db_task_result.set_result(return_value)
+            db_task_run.set_result(return_value)
             logger.info(
                 "Task id=%s path=%s state=%s",
-                db_task_result.id,
-                db_task_result.task_path,
-                ResultStatus.COMPLETE,
+                db_task_run.id,
+                db_task_run.task_path,
+                TaskRunStatus.COMPLETE,
             )
         except BaseException as e:
             # Use `.exception` to integrate with error monitoring tools (eg Sentry)
             logger.exception(
                 "Task id=%s path=%s state=%s",
-                db_task_result.id,
-                db_task_result.task_path,
-                ResultStatus.FAILED,
+                db_task_run.id,
+                db_task_run.task_path,
+                TaskRunStatus.FAILED,
             )
-            db_task_result.set_failed(e)
+            db_task_run.set_failed(e)
 
             # If the user tried to terminate, let them
             if isinstance(e, KeyboardInterrupt):

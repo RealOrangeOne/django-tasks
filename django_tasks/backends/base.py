@@ -10,7 +10,7 @@ from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.exceptions import InvalidTaskError
-from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY, Task, TaskResult
+from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY, Task, TaskRun
 from django_tasks.utils import is_global_function
 
 T = TypeVar("T")
@@ -29,7 +29,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
     supports_async_task = False
     """Can coroutines be enqueued"""
 
-    supports_get_result = False
+    supports_get_task_run = False
     """Can results be retrieved after the fact (from **any** thread / process)"""
 
     def __init__(self, options: dict) -> None:
@@ -92,9 +92,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
             )
 
     @abstractmethod
-    def enqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
-    ) -> TaskResult[T]:
+    def enqueue(self, task: Task[P, T], args: P.args, kwargs: P.kwargs) -> TaskRun[T]:
         """
         Queue up a task to be executed
         """
@@ -102,7 +100,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
     async def aenqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
-    ) -> TaskResult[T]:
+    ) -> TaskRun[T]:
         """
         Queue up a task function (or coroutine) to be executed
         """
@@ -110,7 +108,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
             task=task, args=args, kwargs=kwargs
         )
 
-    def get_result(self, result_id: str) -> TaskResult:
+    def get_task_run(self, result_id: str) -> TaskRun:
         """
         Retrieve a result by its id (if one exists).
         If one doesn't, raises ResultDoesNotExist.
@@ -119,11 +117,11 @@ class BaseTaskBackend(metaclass=ABCMeta):
             "This backend does not support retrieving or refreshing results."
         )
 
-    async def aget_result(self, result_id: str) -> TaskResult:
+    async def aget_task_run(self, result_id: str) -> TaskRun:
         """
         Queue up a task function (or coroutine) to be executed
         """
-        return await sync_to_async(self.get_result, thread_sensitive=True)(
+        return await sync_to_async(self.get_task_run, thread_sensitive=True)(
             result_id=result_id
         )
 
