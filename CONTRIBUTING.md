@@ -13,17 +13,20 @@ git clone git@github.com:your-username/django-tasks.git
 ```
 
 Set up a venv:
+Use the [just](https://just.systems/man/en/) command runner to build the virtual environment:
 
 ```sh
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[dev]'
+just setup-env
 ```
 
 > [!TIP]
-> Add an extra name for each database you want to develop with (e.g. `[dev,mysql]`,  `[dev,postgres]` or `[dev,mysql,postgres]`). This is optional.
+> Add an extra name for each database you want to develop with (e.g. `mysql`,  `postgres` or even `mysql postgres`). This is optional:
 
-Then you can run the tests with the [just](https://just.systems/man/en/) command runner:
+```sh
+just setup-env postgres mysql
+```
+
+Then you can run the tests:
 
 ```sh
 just test
