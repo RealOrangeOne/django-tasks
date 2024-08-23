@@ -134,6 +134,7 @@ class Worker:
             # Setting the return and success value inside the error handling,
             # So errors setting it (eg JSON encode) can still be recorded
             db_task_result.set_complete(return_value)
+            task_result.task.finished.send(sender=None, task_result=task_result)
             task_finished.send(
                 sender=type(task.get_backend()), task_result=db_task_result.task_result
             )
@@ -145,6 +146,7 @@ class Worker:
             except (ModuleNotFoundError, SuspiciousOperation):
                 logger.exception("Task id=%s failed unexpectedly", db_task_result.id)
             else:
+                task_result.task.finished.send(sender=None, task_result=task_result)
                 task_finished.send(
                     sender=sender,
                     task_result=task_result,

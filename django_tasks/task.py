@@ -17,6 +17,7 @@ from typing import (
 
 from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
+from django.dispatch import Signal
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
@@ -77,6 +78,9 @@ class Task(Generic[P, T]):
     immediately, or whatever the backend decides
     """
 
+    finished: Signal = field(init=False, default_factory=Signal)
+    """A signal, fired when the task finished"""
+
     def __post_init__(self) -> None:
         self.get_backend().validate_task(self)
 
@@ -113,6 +117,28 @@ class Task(Generic[P, T]):
             task.backend = backend
 
         task.get_backend().validate_task(task)
+
+        return task
+
+    def __deepcopy__(self, memo: Dict) -> Self:
+        """
+        Copy a task, transplanting the `finished` signal.
+
+        Signals can't be deepcopied, so it needs to bypass the copy.
+        """
+        finished_signal = self.finished
+        deepcopy_method = self.__deepcopy__
+
+        try:
+            self.finished = None  # type: ignore[assignment]
+            self.__deepcopy__ = None  # type: ignore[assignment]
+            task = deepcopy(self, memo)
+        finally:
+            self.__deepcopy__ = deepcopy_method  # type: ignore[method-assign]
+            self.finished = finished_signal
+
+        task.finished = finished_signal
+        task.__deepcopy__ = deepcopy_method  # type: ignore[method-assign]
 
         return task
 

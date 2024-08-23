@@ -1,6 +1,7 @@
-import dataclasses
+from copy import deepcopy
 from datetime import datetime, timedelta
 
+from django.dispatch import Signal
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 from django.utils.module_loading import import_string
@@ -116,15 +117,15 @@ class TaskTestCase(SimpleTestCase):
     async def test_refresh_result(self) -> None:
         result = await test_tasks.noop_task.aenqueue()
 
-        original_result = dataclasses.asdict(result)
+        original_result = deepcopy(result)
 
         result.refresh()
 
-        self.assertEqual(dataclasses.asdict(result), original_result)
+        self.assertEqual(result, original_result)
 
         await result.arefresh()
 
-        self.assertEqual(dataclasses.asdict(result), original_result)
+        self.assertEqual(result, original_result)
 
     def test_naive_datetime(self) -> None:
         with self.assertRaisesMessage(
@@ -245,3 +246,9 @@ class TaskTestCase(SimpleTestCase):
     def test_is_modified(self) -> None:
         self.assertFalse(test_tasks.noop_task.is_modified)
         self.assertTrue(test_tasks.noop_task.using(priority=10).is_modified)
+
+    def test_finished_signal(self) -> None:
+        self.assertIsInstance(test_tasks.noop_task.finished, Signal)
+        self.assertIs(
+            test_tasks.noop_task.using().finished, test_tasks.noop_task.finished
+        )
