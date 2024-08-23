@@ -29,7 +29,7 @@ class DummyBackend(BaseTaskBackend):
         self.results = []
 
     def _store_result(self, result: TaskResult) -> None:
-        result.enqueued_at = timezone.now()
+        object.__setattr__(result, "enqueued_at", timezone.now())
         self.results.append(result)
         task_enqueued.send(type(self), task_result=result)
 

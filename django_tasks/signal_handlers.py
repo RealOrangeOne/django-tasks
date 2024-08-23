@@ -5,9 +5,9 @@ from asgiref.local import Local
 from django.core.signals import setting_changed
 from django.dispatch import receiver
 
-from django_tasks import BaseTaskBackend, TaskResult
+from django_tasks import BaseTaskBackend, ResultStatus, TaskResult
 
-from .signals import task_enqueued
+from .signals import task_enqueued, task_finished
 
 logger = logging.getLogger("django_tasks")
 
@@ -33,4 +33,22 @@ def log_task_enqueued(
         task_result.id,
         task_result.task.module_path,
         task_result.backend,
+    )
+
+
+@receiver(task_finished)
+def log_task_finished(
+    sender: Type[BaseTaskBackend], task_result: TaskResult, **kwargs: dict
+) -> None:
+    if task_result.status == ResultStatus.FAILED:
+        # Use `.exception` to integrate with error monitoring tools (eg Sentry)
+        log_method = logger.exception
+    else:
+        log_method = logger.info
+
+    log_method(
+        "Task id=%s path=%s state=%s",
+        task_result.id,
+        task_result.task.module_path,
+        task_result.status,
     )
