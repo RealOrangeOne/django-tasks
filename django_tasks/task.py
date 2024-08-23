@@ -272,7 +272,10 @@ class TaskResult(Generic[T]):
     @property
     def return_value(self) -> Optional[T]:
         """
-        Get the return value, or None if it's not ready yet or has failed.
+        Get the return value of the task.
+
+        If the task didn't complete successfully, an exception is raised.
+        This is to distinguish against the task returning None.
         """
         if self.status == ResultStatus.FAILED:
             raise ValueError("Task failed")
