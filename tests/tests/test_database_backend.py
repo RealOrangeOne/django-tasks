@@ -330,6 +330,14 @@ class DatabaseBackendTestCase(TransactionTestCase):
             )
         )
 
+    def test_enqueue_logs(self) -> None:
+        with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
+            result = test_tasks.noop_task.enqueue()
+
+        self.assertEqual(len(captured_logs.output), 1)
+        self.assertIn("enqueued", captured_logs.output[0])
+        self.assertIn(result.id, captured_logs.output[0])
+
 
 @override_settings(
     TASKS={
@@ -366,7 +374,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 result.refresh()
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
-                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
+                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
 

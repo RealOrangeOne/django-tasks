@@ -10,6 +10,7 @@ from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.signals import task_enqueued
 from django_tasks.task import Task
 from django_tasks.task import TaskResult as BaseTaskResult
 from django_tasks.utils import json_normalize
@@ -52,10 +53,14 @@ class DatabaseBackend(BaseTaskBackend):
 
         db_result = self._task_to_db_task(task, args, kwargs)
 
-        if self._get_enqueue_on_commit_for_task(task):
-            transaction.on_commit(db_result.save)
-        else:
+        def save_result() -> None:
             db_result.save()
+            task_enqueued.send(type(self), task_result=db_result.task_result)
+
+        if self._get_enqueue_on_commit_for_task(task):
+            transaction.on_commit(save_result)
+        else:
+            save_result()
 
         return db_result.task_result
 

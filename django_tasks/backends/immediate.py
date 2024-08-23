@@ -9,6 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
+from django_tasks.signals import task_enqueued
 from django_tasks.task import ResultStatus, Task, TaskResult
 from django_tasks.utils import exception_to_dict, json_normalize
 
@@ -28,6 +29,9 @@ class ImmediateBackend(BaseTaskBackend):
         """
         Execute the task for the given `TaskResult`, mutating it with the outcome
         """
+        task_result.enqueued_at = timezone.now()
+        task_enqueued.send(type(self), task_result=task_result)
+
         task = task_result.task
 
         calling_task_func = (
@@ -75,7 +79,7 @@ class ImmediateBackend(BaseTaskBackend):
             task=task,
             id=str(uuid4()),
             status=ResultStatus.NEW,
-            enqueued_at=timezone.now(),
+            enqueued_at=None,
             started_at=None,
             finished_at=None,
             args=json_normalize(args),

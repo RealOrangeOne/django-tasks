@@ -16,6 +16,7 @@ from .task import (
     DEFAULT_TASK_BACKEND_ALIAS,
     ResultStatus,
     Task,
+    TaskResult,
     task,
 )
 
@@ -28,6 +29,7 @@ __all__ = [
     "task",
     "ResultStatus",
     "Task",
+    "TaskResult",
 ]
 
 

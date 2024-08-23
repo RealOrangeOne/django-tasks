@@ -229,7 +229,7 @@ class TaskResult(Generic[T]):
     status: ResultStatus
     """The status of the running task"""
 
-    enqueued_at: datetime
+    enqueued_at: Optional[datetime]
     """The time this task was enqueued"""
 
     started_at: Optional[datetime]
