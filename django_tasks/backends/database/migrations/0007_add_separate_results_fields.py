@@ -9,10 +9,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name="dbtaskresult",
-            name="result",
-        ),
         migrations.AddField(
             model_name="dbtaskresult",
             name="exception_data",
