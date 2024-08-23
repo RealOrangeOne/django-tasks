@@ -18,6 +18,7 @@ from typing import (
 from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils import timezone
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
 
@@ -169,6 +170,17 @@ class Task(Generic[P, T]):
     @property
     def module_path(self) -> str:
         return get_module_path(self.func)
+
+    @property
+    def original(self) -> Self:
+        return cast(Self, import_string(self.module_path))
+
+    @property
+    def is_modified(self) -> bool:
+        """
+        Has this task been modified with `.using`.
+        """
+        return self != self.original
 
 
 # Bare decorator usage

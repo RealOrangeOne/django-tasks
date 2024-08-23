@@ -232,3 +232,16 @@ class TaskTestCase(SimpleTestCase):
             import_string(test_tasks.noop_task_async.module_path),
             test_tasks.noop_task_async,
         )
+
+    def test_original(self) -> None:
+        self.assertEqual(test_tasks.noop_task, test_tasks.noop_task.original)
+        self.assertNotEqual(
+            test_tasks.noop_task.using(priority=10), test_tasks.noop_task
+        )
+        self.assertEqual(
+            test_tasks.noop_task.using(priority=10).original, test_tasks.noop_task
+        )
+
+    def test_is_modified(self) -> None:
+        self.assertFalse(test_tasks.noop_task.is_modified)
+        self.assertTrue(test_tasks.noop_task.using(priority=10).is_modified)
