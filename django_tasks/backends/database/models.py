@@ -99,7 +99,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     run_after = models.DateTimeField(_("run after"), null=True)
 
-    result = models.JSONField(_("result"), default=None, null=True)
+    return_value = models.JSONField(_("return value"), default=None, null=True)
+    exception_data = models.JSONField(_("exception data"), default=None, null=True)
 
     objects = DBTaskResultQuerySet.as_manager()
 
@@ -147,7 +148,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             backend=self.backend_name,
         )
 
-        result._result = self.result
+        result._return_value = self.return_value
+        result._exception_data = self.exception_data
 
         return result
 
@@ -161,19 +163,25 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.save(update_fields=["status", "started_at"])
 
     @retry()
-    def set_result(self, result: Any) -> None:
+    def set_result(self, return_value: Any) -> None:
         self.status = ResultStatus.COMPLETE
         self.finished_at = timezone.now()
-        self.result = result
-        self.save(update_fields=["status", "result", "finished_at"])
+        self.return_value = return_value
+        self.exception_data = None
+        self.save(
+            update_fields=["status", "return_value", "finished_at", "exception_data"]
+        )
 
     @retry()
     def set_failed(self, exc: BaseException) -> None:
         self.status = ResultStatus.FAILED
         self.finished_at = timezone.now()
         try:
-            self.result = exception_to_dict(exc)
+            self.exception_data = exception_to_dict(exc)
         except Exception:
             logger.exception("Task id=%s unable to save exception", self.id)
-            self.result = None
-        self.save(update_fields=["status", "finished_at", "result"])
+            self.exception_data = None
+        self.return_value = None
+        self.save(
+            update_fields=["status", "finished_at", "exception_data", "return_value"]
+        )

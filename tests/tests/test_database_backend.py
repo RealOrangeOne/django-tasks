@@ -69,8 +69,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-                    result.result  # noqa:B018
-                self.assertIsNone(result.get_result())
+                    result.return_value  # noqa:B018
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
@@ -84,8 +83,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-                    result.result  # noqa:B018
-                self.assertIsNone(result.get_result())
+                    result.return_value  # noqa:B018
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
@@ -438,7 +436,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
 
-        self.assertIsInstance(result.result, ValueError)
+        self.assertIsInstance(result.exception, ValueError)
         assert result.traceback  # So that mypy knows the next line is allowed
         self.assertTrue(
             result.traceback.endswith(
@@ -466,7 +464,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
 
-        self.assertIsNone(result.result)
+        self.assertIsNone(result.exception)
         self.assertIsNone(result.traceback)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)

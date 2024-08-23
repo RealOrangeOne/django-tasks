@@ -36,16 +36,15 @@ class ImmediateBackend(BaseTaskBackend):
 
         task_result.started_at = timezone.now()
         try:
-            task_result._result = json_normalize(
+            task_result._return_value = json_normalize(
                 calling_task_func(*task_result.args, **task_result.kwargs)
             )
         except BaseException as e:
             task_result.finished_at = timezone.now()
             try:
-                task_result._result = exception_to_dict(e)
+                task_result._exception_data = exception_to_dict(e)
             except Exception:
                 logger.exception("Task id=%s unable to save exception", task_result.id)
-                task_result._result = None
 
             # Use `.exception` to integrate with error monitoring tools (eg Sentry)
             logger.exception(

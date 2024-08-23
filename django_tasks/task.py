@@ -33,6 +33,14 @@ MIN_PRIORITY = -100
 MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
 
+TASK_REFRESH_ATTRS = {
+    "_exception_data",
+    "_return_value",
+    "finished_at",
+    "started_at",
+    "status",
+}
+
 
 class ResultStatus(TextChoices):
     NEW = ("NEW", _("New"))
@@ -239,38 +247,40 @@ class TaskResult(Generic[T]):
     backend: str
     """The name of the backend the task will run on"""
 
-    _result: Optional[Union[T, SerializedExceptionDict]] = field(
-        init=False, default=None
-    )
+    _return_value: Optional[T] = field(init=False, default=None)
+    _exception_data: Optional[SerializedExceptionDict] = field(init=False, default=None)
 
     @property
-    def result(self) -> Optional[Union[T, BaseException]]:
-        if self.status == ResultStatus.COMPLETE:
-            return cast(T, self._result)
-        elif self.status == ResultStatus.FAILED:
-            return (
-                exception_from_dict(cast(SerializedExceptionDict, self._result))
-                if self._result is not None
-                else None
-            )
-
-        raise ValueError("Task has not finished yet")
+    def exception(self) -> Optional[BaseException]:
+        return (
+            exception_from_dict(cast(SerializedExceptionDict, self._exception_data))
+            if self.status == ResultStatus.FAILED and self._exception_data is not None
+            else None
+        )
 
     @property
     def traceback(self) -> Optional[str]:
         """
         Return the string representation of the traceback of the task if it failed
         """
-        if self.status == ResultStatus.FAILED and self._result is not None:
-            return cast(SerializedExceptionDict, self._result)["exc_traceback"]
+        return (
+            cast(SerializedExceptionDict, self._exception_data)["exc_traceback"]
+            if self.status == ResultStatus.FAILED and self._exception_data is not None
+            else None
+        )
 
-        return None
+    @property
+    def return_value(self) -> Optional[T]:
+        """
+        Get the return value, or None if it's not ready yet or has failed.
+        """
+        if self.status == ResultStatus.FAILED:
+            raise ValueError("Task failed")
 
-    def get_result(self) -> Optional[T]:
-        """
-        A convenience method to get the result, or None if it's not ready yet or has failed.
-        """
-        return cast(T, self.result) if self.status == ResultStatus.COMPLETE else None
+        elif self.status != ResultStatus.COMPLETE:
+            raise ValueError("Task has not finished yet")
+
+        return cast(T, self._return_value)
 
     def refresh(self) -> None:
         """
@@ -278,11 +288,8 @@ class TaskResult(Generic[T]):
         """
         refreshed_task = self.task.get_backend().get_result(self.id)
 
-        # status, started_at, finished_at and result are the only refreshable attributes
-        self.status = refreshed_task.status
-        self.started_at = refreshed_task.started_at
-        self.finished_at = refreshed_task.finished_at
-        self._result = refreshed_task._result
+        for attr in TASK_REFRESH_ATTRS:
+            setattr(self, attr, getattr(refreshed_task, attr))
 
     async def arefresh(self) -> None:
         """
@@ -290,8 +297,5 @@ class TaskResult(Generic[T]):
         """
         refreshed_task = await self.task.get_backend().aget_result(self.id)
 
-        # status, started_at, finished_at and result are the only refreshable attributes
-        self.status = refreshed_task.status
-        self.started_at = refreshed_task.started_at
-        self.finished_at = refreshed_task.finished_at
-        self._result = refreshed_task._result
+        for attr in TASK_REFRESH_ATTRS:
+            setattr(self, attr, getattr(refreshed_task, attr))

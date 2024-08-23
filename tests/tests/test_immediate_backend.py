@@ -30,7 +30,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
-                self.assertIsNone(result.result)
+                self.assertIsNone(result.return_value)
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
@@ -45,8 +45,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
-                self.assertIsNone(result.result)
-                self.assertIsNone(result.get_result())
+                self.assertIsNone(result.return_value)
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
@@ -80,12 +79,11 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
-                self.assertIsInstance(result.result, exception)
+                self.assertIsInstance(result.exception, exception)
                 self.assertTrue(
                     result.traceback
                     and result.traceback.endswith(f"{exception.__name__}: {message}\n")
                 )
-                self.assertIsNone(result.get_result())
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
@@ -115,10 +113,9 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
 
-        self.assertIsNone(result.result)
+        self.assertIsNone(result._return_value)
         self.assertIsNone(result.traceback)
 
-        self.assertIsNone(result.get_result())
         self.assertEqual(result.task, test_tasks.complex_exception)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
@@ -129,7 +126,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         )
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
-        self.assertEqual(result.result, 42)
+        self.assertEqual(result.return_value, 42)
 
     async def test_result_async(self) -> None:
         result = await default_task_backend.aenqueue(
@@ -137,7 +134,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         )
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
-        self.assertEqual(result.result, 42)
+        self.assertEqual(result.return_value, 42)
 
     async def test_cannot_get_result(self) -> None:
         with self.assertRaisesMessage(
