@@ -9,6 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
+from django_tasks.signals import task_enqueued, task_finished
 from django_tasks.task import ResultStatus, Task, TaskResult
 from django_tasks.utils import exception_to_dict, json_normalize
 
@@ -28,6 +29,9 @@ class ImmediateBackend(BaseTaskBackend):
         """
         Execute the task for the given `TaskResult`, mutating it with the outcome
         """
+        object.__setattr__(task_result, "enqueued_at", timezone.now())
+        task_enqueued.send(type(self), task_result=task_result)
+
         task = task_result.task
 
         calling_task_func = (
@@ -44,27 +48,24 @@ class ImmediateBackend(BaseTaskBackend):
                 ),
             )
         except BaseException as e:
+            # If the user tried to terminate, let them
+            if isinstance(e, KeyboardInterrupt):
+                raise
+
             object.__setattr__(task_result, "finished_at", timezone.now())
             try:
                 object.__setattr__(task_result, "_exception_data", exception_to_dict(e))
             except Exception:
                 logger.exception("Task id=%s unable to save exception", task_result.id)
 
-            # Use `.exception` to integrate with error monitoring tools (eg Sentry)
-            logger.exception(
-                "Task id=%s path=%s state=%s",
-                task_result.id,
-                task.module_path,
-                ResultStatus.FAILED,
-            )
             object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
-            # If the user tried to terminate, let them
-            if isinstance(e, KeyboardInterrupt):
-                raise
+            task_finished.send(type(self), task_result=task_result)
         else:
             object.__setattr__(task_result, "finished_at", timezone.now())
             object.__setattr__(task_result, "status", ResultStatus.COMPLETE)
+
+            task_finished.send(type(self), task_result=task_result)
 
     def enqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs
@@ -75,7 +76,7 @@ class ImmediateBackend(BaseTaskBackend):
             task=task,
             id=str(uuid4()),
             status=ResultStatus.NEW,
-            enqueued_at=timezone.now(),
+            enqueued_at=None,
             started_at=None,
             finished_at=None,
             args=json_normalize(args),

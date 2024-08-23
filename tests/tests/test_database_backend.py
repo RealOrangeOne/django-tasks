@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from contextlib import redirect_stderr
 from datetime import timedelta
@@ -19,9 +20,6 @@ from django.utils import timezone
 
 from django_tasks import ResultStatus, Task, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
-from django_tasks.backends.database.management.commands.db_worker import (
-    logger as db_worker_logger,
-)
 from django_tasks.backends.database.management.commands.prune_db_task_results import (
     logger as prune_db_tasks_logger,
 )
@@ -330,6 +328,14 @@ class DatabaseBackendTestCase(TransactionTestCase):
             )
         )
 
+    def test_enqueue_logs(self) -> None:
+        with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
+            result = test_tasks.noop_task.enqueue()
+
+        self.assertEqual(len(captured_logs.output), 1)
+        self.assertIn("enqueued", captured_logs.output[0])
+        self.assertIn(result.id, captured_logs.output[0])
+
 
 @override_settings(
     TASKS={
@@ -344,9 +350,11 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
 
     def tearDown(self) -> None:
+        logger = logging.getLogger("django_tasks")
+
         # Reset the logger after every run, to ensure the correct `stdout` is used
-        for handler in db_worker_logger.handlers:
-            db_worker_logger.removeHandler(handler)
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
 
     def test_run_enqueued_task(self) -> None:
         for task in [
@@ -366,7 +374,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 result.refresh()
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
-                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
+                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
 

@@ -51,7 +51,7 @@ class TaskTestCase(SimpleTestCase):
         result = test_tasks.noop_task.enqueue()
 
         self.assertEqual(result.status, ResultStatus.NEW)
-        self.assertIs(result.task, test_tasks.noop_task)
+        self.assertEqual(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
@@ -61,7 +61,7 @@ class TaskTestCase(SimpleTestCase):
         result = await test_tasks.noop_task.aenqueue()
 
         self.assertEqual(result.status, ResultStatus.NEW)
-        self.assertIs(result.task, test_tasks.noop_task)
+        self.assertEqual(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
