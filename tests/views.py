@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 
 from django_tasks import ResultStatus, default_task_backend
@@ -7,7 +9,7 @@ from django_tasks.task import TaskResult
 from . import tasks
 
 
-def get_result_value(result: TaskResult):
+def get_result_value(result: TaskResult) -> Any:
     if result.status == ResultStatus.COMPLETE:
         return result.return_value
     elif result.status == ResultStatus.FAILED:
