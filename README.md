@@ -231,6 +231,19 @@ assert default_task_backend.supports_get_result
 
 This is particularly useful in combination with Django's [system check framework](https://docs.djangoproject.com/en/stable/topics/checks/).
 
+### Signals
+
+A few [Signals](https://docs.djangoproject.com/en/stable/topics/signals/) are provided to more easily respond to certain task events.
+
+Whilst signals are available, they may not be the most maintainable approach.
+
+- `django_tasks.signals.task_enqueued`: Called when a task is enqueued. The sender is the backend class. Also called with the enqueued `task_result`.
+- `django_tasks.signals.task_finished`: Called when a task finishes (`COMPLETE` or `FAILED`). The sender is the backend class. Also called with the finished `task_result`.
+
+Additionally, each `Task` has its own signals. These signals are only sent for the given `Task`, whilst the above will be called for all `Task`s.
+
+- `Task.finished`: Called when the task finishes (`COMPLETE` or `FAILED`). There is no sender (`None`), however the handler is called with the finished `task_result`.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to contribute.
