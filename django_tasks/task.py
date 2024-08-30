@@ -1,6 +1,6 @@
-from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from functools import lru_cache
 from inspect import iscoroutinefunction
 from typing import (
     TYPE_CHECKING,
@@ -24,7 +24,11 @@ from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
-from .utils import SerializedExceptionDict, exception_from_dict, get_module_path
+from .utils import (
+    SerializedExceptionDict,
+    exception_from_dict,
+    get_module_path,
+)
 
 if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
@@ -51,11 +55,22 @@ class ResultStatus(TextChoices):
     COMPLETE = ("COMPLETE", _("Complete"))
 
 
+# Use a large number to ensure `lru_cache` still uses a lock
+@lru_cache(maxsize=100000)
+def _get_task_signal(task: "Task", name: str) -> Signal:
+    """
+    Allow a Task to have a signal, without storing it on the task itself.
+
+    This allows the Task to still be hashable, picklable and deepcopyable.
+    """
+    return Signal()
+
+
 T = TypeVar("T")
 P = ParamSpec("P")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Task(Generic[P, T]):
     priority: int
     """The priority of the task"""
@@ -77,9 +92,6 @@ class Task(Generic[P, T]):
     Whether the task will be enqueued when the current transaction commits,
     immediately, or whatever the backend decides
     """
-
-    finished: Signal = field(init=False, default_factory=Signal)
-    """A signal, fired when the task finished"""
 
     def __post_init__(self) -> None:
         self.get_backend().validate_task(self)
@@ -103,44 +115,21 @@ class Task(Generic[P, T]):
         Create a new task with modified defaults
         """
 
-        task = deepcopy(self)
+        changes: Dict[str, Any] = {}
+
         if priority is not None:
-            task.priority = priority
+            changes["priority"] = priority
         if queue_name is not None:
-            task.queue_name = queue_name
+            changes["queue_name"] = queue_name
         if run_after is not None:
             if isinstance(run_after, timedelta):
-                task.run_after = timezone.now() + run_after
+                changes["run_after"] = timezone.now() + run_after
             else:
-                task.run_after = run_after
+                changes["run_after"] = run_after
         if backend is not None:
-            task.backend = backend
+            changes["backend"] = backend
 
-        task.get_backend().validate_task(task)
-
-        return task
-
-    def __deepcopy__(self, memo: Dict) -> Self:
-        """
-        Copy a task, transplanting the `finished` signal.
-
-        Signals can't be deepcopied, so it needs to bypass the copy.
-        """
-        finished_signal = self.finished
-        deepcopy_method = self.__deepcopy__
-
-        try:
-            self.finished = None  # type: ignore[assignment]
-            self.__deepcopy__ = None  # type: ignore[assignment]
-            task = deepcopy(self, memo)
-        finally:
-            self.__deepcopy__ = deepcopy_method  # type: ignore[method-assign]
-            self.finished = finished_signal
-
-        task.finished = finished_signal
-        task.__deepcopy__ = deepcopy_method  # type: ignore[method-assign]
-
-        return task
+        return replace(self, **changes)
 
     def enqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskResult[T]":
         """
@@ -207,6 +196,11 @@ class Task(Generic[P, T]):
         Has this task been modified with `.using`.
         """
         return self != self.original
+
+    @property
+    def finished(self) -> Signal:
+        """A signal, fired when the task finished"""
+        return _get_task_signal(self, "finished")
 
 
 # Bare decorator usage
