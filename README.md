@@ -182,11 +182,11 @@ default_task_backend.get_result(result_id)
 
 ### Return values
 
-If your task returns something, it can be retrieved from the `.result` attribute on a `TaskResult`. Accessing this property on an unfinished task (ie not `COMPLETE` or `FAILED`) will raise a `ValueError`.
+If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unfinished task (ie not `COMPLETE` or `FAILED`) will raise a `ValueError`.
 
 ```python
 assert result.status == ResultStatus.COMPLETE
-assert result.result == 42
+assert result.return_value == 42
 ```
 
 If a result has been updated in the background, you can call `refresh` on it to update its values. Results obtained using `get_result` will always be up-to-date.
@@ -199,10 +199,10 @@ assert result.status == ResultStatus.COMPLETE
 
 #### Exceptions
 
-If a task raised an exception, its `.result` will be the exception raised:
+If a task raised an exception, its `.exception` will be the exception raised:
 
 ```python
-assert isinstance(result.result, ValueError)
+assert isinstance(result.exception, ValueError)
 ```
 
 As part of the serialization process for exceptions, some information is lost. The traceback information is reduced to a string that you can print to help debugging:
