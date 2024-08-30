@@ -163,7 +163,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.save(update_fields=["status", "started_at"])
 
     @retry()
-    def set_result(self, return_value: Any) -> None:
+    def set_complete(self, return_value: Any) -> None:
         self.status = ResultStatus.COMPLETE
         self.finished_at = timezone.now()
         self.return_value = return_value

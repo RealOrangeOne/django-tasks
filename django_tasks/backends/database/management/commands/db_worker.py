@@ -130,7 +130,7 @@ class Worker:
 
             # Setting the return and success value inside the error handling,
             # So errors setting it (eg JSON encode) can still be recorded
-            db_task_result.set_result(return_value)
+            db_task_result.set_complete(return_value)
             logger.info(
                 "Task id=%s path=%s state=%s",
                 db_task_result.id,
