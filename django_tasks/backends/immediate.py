@@ -34,15 +34,19 @@ class ImmediateBackend(BaseTaskBackend):
             async_to_sync(task.func) if iscoroutinefunction(task.func) else task.func
         )
 
-        task_result.started_at = timezone.now()
+        object.__setattr__(task_result, "started_at", timezone.now())
         try:
-            task_result._return_value = json_normalize(
-                calling_task_func(*task_result.args, **task_result.kwargs)
+            object.__setattr__(
+                task_result,
+                "_return_value",
+                json_normalize(
+                    calling_task_func(*task_result.args, **task_result.kwargs)
+                ),
             )
         except BaseException as e:
-            task_result.finished_at = timezone.now()
+            object.__setattr__(task_result, "finished_at", timezone.now())
             try:
-                task_result._exception_data = exception_to_dict(e)
+                object.__setattr__(task_result, "_exception_data", exception_to_dict(e))
             except Exception:
                 logger.exception("Task id=%s unable to save exception", task_result.id)
 
@@ -53,14 +57,14 @@ class ImmediateBackend(BaseTaskBackend):
                 task.module_path,
                 ResultStatus.FAILED,
             )
-            task_result.status = ResultStatus.FAILED
+            object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
             # If the user tried to terminate, let them
             if isinstance(e, KeyboardInterrupt):
                 raise
         else:
-            task_result.finished_at = timezone.now()
-            task_result.status = ResultStatus.COMPLETE
+            object.__setattr__(task_result, "finished_at", timezone.now())
+            object.__setattr__(task_result, "status", ResultStatus.COMPLETE)
 
     def enqueue(
         self, task: Task[P, T], args: P.args, kwargs: P.kwargs

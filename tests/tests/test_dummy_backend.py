@@ -74,7 +74,7 @@ class DummyBackendTestCase(SimpleTestCase):
         )
 
         enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
-        enqueued_result.status = ResultStatus.COMPLETE
+        object.__setattr__(enqueued_result, "status", ResultStatus.COMPLETE)
 
         self.assertEqual(result.status, ResultStatus.NEW)
         result.refresh()
@@ -86,7 +86,7 @@ class DummyBackendTestCase(SimpleTestCase):
         )
 
         enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
-        enqueued_result.status = ResultStatus.COMPLETE
+        object.__setattr__(enqueued_result, "status", ResultStatus.COMPLETE)
 
         self.assertEqual(result.status, ResultStatus.NEW)
         await result.arefresh()
