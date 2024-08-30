@@ -148,8 +148,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             backend=self.backend_name,
         )
 
-        result._return_value = self.return_value
-        result._exception_data = self.exception_data
+        object.__setattr__(result, "_return_value", self.return_value)
+        object.__setattr__(result, "_exception_data", self.exception_data)
 
         return result
 

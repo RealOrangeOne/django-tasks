@@ -218,7 +218,7 @@ def task(
     return wrapper
 
 
-@dataclass
+@dataclass(frozen=True)
 class TaskResult(Generic[T]):
     task: Task
     """The task for which this is a result"""
@@ -292,7 +292,7 @@ class TaskResult(Generic[T]):
         refreshed_task = self.task.get_backend().get_result(self.id)
 
         for attr in TASK_REFRESH_ATTRS:
-            setattr(self, attr, getattr(refreshed_task, attr))
+            object.__setattr__(self, attr, getattr(refreshed_task, attr))
 
     async def arefresh(self) -> None:
         """
@@ -301,4 +301,4 @@ class TaskResult(Generic[T]):
         refreshed_task = await self.task.get_backend().aget_result(self.id)
 
         for attr in TASK_REFRESH_ATTRS:
-            setattr(self, attr, getattr(refreshed_task, attr))
+            object.__setattr__(self, attr, getattr(refreshed_task, attr))
