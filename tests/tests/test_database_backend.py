@@ -1,17 +1,16 @@
 import json
 import logging
-import multiprocessing
 import os
 import signal
+import subprocess
 import sys
-import tempfile
 import time
 import uuid
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr
 from datetime import timedelta
 from functools import partial
 from io import StringIO
-from typing import Any, List, Sequence, Union, cast
+from typing import List, Optional, Sequence, Union, cast
 from unittest import mock, skipIf
 
 import django
@@ -364,7 +363,14 @@ class DatabaseBackendTestCase(TransactionTestCase):
     }
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
-    run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
+    run_worker = partial(
+        call_command,
+        "db_worker",
+        verbosity=0,
+        batch=True,
+        interval=0,
+        startup_delay=False,
+    )
 
     def tearDown(self) -> None:
         logger = logging.getLogger("django_tasks")
@@ -1174,38 +1180,49 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
     WORKER_STARTUP_TIME = 0.5
 
     def setUp(self) -> None:
-        self.processes: List[multiprocessing.Process] = []
-
-        # The "fork" method must be used to ensure the child processes
-        # are configured correctly for testing.
-        self.initial_start_method = multiprocessing.get_start_method()
-        multiprocessing.set_start_method("fork", force=True)
+        self.processes: List[subprocess.Popen] = []
 
     def tearDown(self) -> None:
         # Try n times to kill any remaining child processes
         for _ in range(3):
             for process in self.processes:
-                if process.is_alive():
-                    process.terminate()
+                if process.poll() is None:
+                    process.kill()
                     time.sleep(0.01)
 
-        multiprocessing.set_start_method(self.initial_start_method, force=True)
+    def start_worker(
+        self, args: Optional[List[str]] = None, debug: bool = False
+    ) -> subprocess.Popen:
+        if args is None:
+            args = []
 
-    def start_worker(self, **kwargs: Any) -> multiprocessing.Process:
-        p = multiprocessing.Process(
-            target=call_command,
-            daemon=True,
-            args=["db_worker"],
-            kwargs={"verbosity": 0, "batch": True, "interval": 0, **kwargs},
+        p = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "manage",
+                "db_worker",
+                "--verbosity",
+                "3",
+                "--no-startup-delay",
+                *args,
+            ],
+            stdout=None if debug else subprocess.PIPE,
+            stderr=None if debug else subprocess.PIPE,
+            env={
+                **os.environ,
+                "DJANGO_SETTINGS_MODULE": "tests.db_worker_test_settings",
+            },
+            text=True,
         )
         self.processes.append(p)
-        p.start()
         return p
 
-    def test_run_multiprocess(self) -> None:
+    def test_run_subprocess(self) -> None:
         result = test_tasks.noop_task.enqueue()
-        process = self.start_worker()
-        process.join()
+        process = self.start_worker(["--batch"])
+        process.wait()
+        self.assertEqual(process.returncode, 0)
 
         self.assertEqual(result.status, ResultStatus.NEW)
 
@@ -1214,27 +1231,24 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertEqual(result.status, ResultStatus.COMPLETE)
 
     def test_interrupt_no_tasks(self) -> None:
-        process = self.start_worker(batch=False, interval=1)
+        process = self.start_worker()
 
         time.sleep(self.WORKER_STARTUP_TIME)
 
         process.terminate()
 
-        process.join(timeout=0.5)
-        self.assertFalse(process.is_alive())
-        self.assertEqual(process.exitcode, 0)
+        process.wait(timeout=0.5)
+        self.assertEqual(process.returncode, 0)
 
-    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     def test_interrupt_signals(self) -> None:
         for sig in [
             signal.SIGINT,  # ctrl-c
             signal.SIGTERM,
         ]:
             with self.subTest(sig):
-                result = test_tasks.sleep_for.enqueue(0.5)
+                result = test_tasks.sleep_for.enqueue(1)
 
-                # Unset "batch" so the worker would never normally terminate
-                process = self.start_worker(batch=False)
+                process = self.start_worker()
 
                 # Make sure the task is running by now
                 time.sleep(self.WORKER_STARTUP_TIME)
@@ -1242,23 +1256,20 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 result.refresh()
                 self.assertEqual(result.status, ResultStatus.RUNNING)
 
-                os.kill(process.pid, sig)  # type:ignore[arg-type]
+                process.send_signal(sig)
 
-                process.join(timeout=1)
+                process.wait(timeout=1)
 
-                self.assertFalse(process.is_alive())
-                self.assertEqual(process.exitcode, 0)
+                self.assertEqual(process.returncode, 0)
 
                 result.refresh()
 
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
 
-    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     def test_repeat_ctrl_c(self) -> None:
         result = test_tasks.hang.enqueue()
 
-        # Unset "batch" so the worker would never normally terminate
-        process = self.start_worker(batch=False)
+        process = self.start_worker()
 
         # Make sure the task is running by now
         time.sleep(self.WORKER_STARTUP_TIME)
@@ -1266,25 +1277,24 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
 
-        os.kill(process.pid, signal.SIGINT)  # type:ignore[arg-type]
+        process.send_signal(signal.SIGINT)
+
         time.sleep(0.5)
 
-        self.assertTrue(process.is_alive())
+        self.assertIsNone(process.poll())
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
 
-        os.kill(process.pid, signal.SIGINT)  # type:ignore[arg-type]
+        process.send_signal(signal.SIGINT)
 
-        process.join(timeout=2)
+        process.wait(timeout=2)
 
-        self.assertFalse(process.is_alive())
-        self.assertEqual(process.exitcode, 0)
+        self.assertEqual(process.returncode, 0)
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsInstance(result.exception, SystemExit)
 
-    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
     def test_kill(self) -> None:
         # Required to keep mypy happy
@@ -1292,8 +1302,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result = test_tasks.hang.enqueue()
 
-        # Unset "batch" so the worker would never normally terminate
-        process = self.start_worker(batch=False)
+        process = self.start_worker()
 
         # Make sure the task is running by now
         time.sleep(self.WORKER_STARTUP_TIME)
@@ -1303,64 +1312,63 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         process.kill()
 
-        process.join(timeout=2)
+        process.wait(timeout=2)
 
-        self.assertFalse(process.is_alive())
-        self.assertEqual(process.exitcode, -signal.SIGKILL)
+        self.assertEqual(process.returncode, -signal.SIGKILL)
 
         result.refresh()
+
         # TODO: https://github.com/RealOrangeOne/django-tasks/issues/46
         self.assertEqual(result.status, ResultStatus.RUNNING)
 
     def test_system_exit_task(self) -> None:
         result = test_tasks.failing_task_system_exit.enqueue()
 
-        process = self.start_worker()
-        process.join(timeout=2)
+        process = self.start_worker(["--batch"])
+        process.wait(timeout=2)
 
-        self.assertEqual(process.exitcode, 0)
+        self.assertEqual(process.returncode, 0)
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsInstance(result.exception, SystemExit)
 
     def test_keyboard_interrupt_task(self) -> None:
-        result = test_tasks.failing_task_system_exit.enqueue()
+        result = test_tasks.failing_task_keyboard_interrupt.enqueue()
 
-        process = self.start_worker()
-        process.join(timeout=2)
+        process = self.start_worker(["--batch"])
+        process.wait(timeout=2)
 
-        self.assertEqual(process.exitcode, 0)
+        self.assertEqual(process.returncode, 0)
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertIsInstance(result.exception, SystemExit)
+        self.assertIsInstance(result.exception, KeyboardInterrupt)
 
-    @skipIf(connection.vendor != "sqlite", "SQLite only for now")
     def test_multiple_workers(self) -> None:
         results = [test_tasks.noop_task.enqueue() for _ in range(10)]
 
-        with tempfile.TemporaryFile(mode="w+") as output:
-            with redirect_stdout(output):
-                for _ in range(3):
-                    self.start_worker(batch=False, verbosity=3)
+        for _ in range(3):
+            self.start_worker()
 
-                time.sleep(self.WORKER_STARTUP_TIME * 3)
+        time.sleep(self.WORKER_STARTUP_TIME)
 
-                for process in self.processes:
-                    process.terminate()
-                    process.join(timeout=3)
-                    self.assertFalse(process.is_alive())
+        for process in self.processes:
+            process.terminate()
+            process.wait(timeout=3)
+            self.assertIsNotNone(process.returncode)
 
-            for result in results:
-                result.refresh()
-                self.assertEqual(result.status, ResultStatus.COMPLETE)
+        for result in results:
+            result.refresh()
+            self.assertEqual(result.status, ResultStatus.COMPLETE)
 
-            output.seek(0)
-            output_text = output.read()
+        all_output = ""
 
-        self.assertEqual(output_text.count("shutting down gracefully"), 3)
+        for process in self.processes:
+            stdout_text = process.stdout.read()  # type:ignore[union-attr]
+            all_output += stdout_text
+            self.assertIn("shutting down gracefully", stdout_text)
 
         for result in results:
             # Running and complete
-            self.assertEqual(output_text.count(result.id), 2)
+            self.assertEqual(all_output.count(result.id), 2)
