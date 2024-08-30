@@ -1174,6 +1174,11 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
     def setUp(self) -> None:
         self.processes: List[multiprocessing.Process] = []
 
+        # The "fork" method must be used to ensure the child processes
+        # are configured correctly for testing.
+        self.initial_start_method = multiprocessing.get_start_method()
+        multiprocessing.set_start_method("fork", force=True)
+
     def tearDown(self) -> None:
         # Try n times to kill any remaining child processes
         for _ in range(3):
@@ -1181,6 +1186,8 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 if process.is_alive():
                     process.terminate()
                     time.sleep(0.01)
+
+        multiprocessing.set_start_method(self.initial_start_method, force=True)
 
     def start_worker(self, **kwargs: Any) -> multiprocessing.Process:
         p = multiprocessing.Process(
