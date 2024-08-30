@@ -3,6 +3,7 @@ import logging
 import multiprocessing
 import os
 import signal
+import sys
 import tempfile
 import time
 import uuid
@@ -1275,7 +1276,11 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertIsInstance(result.exception, SystemExit)
 
     @skipIf(connection.vendor != "sqlite", "SQLite only for now")
+    @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
     def test_kill(self) -> None:
+        # Required to keep mypy happy
+        assert hasattr(signal, "SIGKILL")
+
         result = test_tasks.hang.enqueue()
 
         # Unset "batch" so the worker would never normally terminate
