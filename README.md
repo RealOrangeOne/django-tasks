@@ -202,7 +202,7 @@ assert result.status == ResultStatus.COMPLETE
 If a task raised an exception, its `.exception` will be the exception raised:
 
 ```python
-assert isinstance(result.return_value, ValueError)
+assert isinstance(result.exception, ValueError)
 ```
 
 As part of the serialization process for exceptions, some information is lost. The traceback information is reduced to a string that you can print to help debugging:
