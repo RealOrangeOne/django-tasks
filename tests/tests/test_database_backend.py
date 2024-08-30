@@ -1171,6 +1171,8 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
     }
 )
 class DatabaseWorkerProcessTestCase(TransactionTestCase):
+    WORKER_STARTUP_TIME = 0.5
+
     def setUp(self) -> None:
         self.processes: List[multiprocessing.Process] = []
 
@@ -1214,7 +1216,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
     def test_interrupt_no_tasks(self) -> None:
         process = self.start_worker(batch=False, interval=1)
 
-        time.sleep(0.01)
+        time.sleep(self.WORKER_STARTUP_TIME)
 
         process.terminate()
 
@@ -1235,7 +1237,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 process = self.start_worker(batch=False)
 
                 # Make sure the task is running by now
-                time.sleep(0.01)
+                time.sleep(self.WORKER_STARTUP_TIME)
 
                 result.refresh()
                 self.assertEqual(result.status, ResultStatus.RUNNING)
@@ -1259,13 +1261,13 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process = self.start_worker(batch=False)
 
         # Make sure the task is running by now
-        time.sleep(0.01)
+        time.sleep(self.WORKER_STARTUP_TIME)
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
 
         os.kill(process.pid, signal.SIGINT)  # type:ignore[arg-type]
-        time.sleep(0.01)
+        time.sleep(0.5)
 
         self.assertTrue(process.is_alive())
         result.refresh()
@@ -1294,7 +1296,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process = self.start_worker(batch=False)
 
         # Make sure the task is running by now
-        time.sleep(0.01)
+        time.sleep(self.WORKER_STARTUP_TIME)
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
@@ -1343,7 +1345,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 for _ in range(3):
                     self.start_worker(batch=False, verbosity=3)
 
-                time.sleep(1)
+                time.sleep(self.WORKER_STARTUP_TIME * 3)
 
                 for process in self.processes:
                     process.terminate()
