@@ -19,6 +19,7 @@ from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.dispatch import Signal
 from django.utils import timezone
+from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
@@ -186,7 +187,7 @@ class Task(Generic[P, T]):
     def module_path(self) -> str:
         return get_module_path(self.func)
 
-    @property
+    @cached_property
     def original(self) -> Self:
         return cast(Self, import_string(self.module_path))
 
@@ -200,7 +201,7 @@ class Task(Generic[P, T]):
     @property
     def finished(self) -> Signal:
         """A signal, fired when the task finished"""
-        return _get_task_signal(self, "finished")
+        return _get_task_signal(self.original, "finished")
 
 
 # Bare decorator usage

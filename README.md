@@ -244,6 +244,8 @@ Additionally, each `Task` has its own signals. These signals are only sent for t
 
 - `Task.finished`: Called when the task finishes (`COMPLETE` or `FAILED`). There is no sender (`None`), however the handler is called with the finished `task_result`.
 
+Tasks which are modified by `.using` have the same signal.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to contribute.

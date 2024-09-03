@@ -266,5 +266,9 @@ class TaskTestCase(SimpleTestCase):
             test_tasks.noop_task.using().finished, test_tasks.noop_task.finished
         )
         self.assertIs(
+            test_tasks.noop_task.using(priority=10).finished,
+            test_tasks.noop_task.finished,
+        )
+        self.assertIs(
             deepcopy(test_tasks.noop_task).finished, test_tasks.noop_task.finished
         )
