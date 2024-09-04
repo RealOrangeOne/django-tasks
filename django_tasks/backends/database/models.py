@@ -2,6 +2,7 @@ import logging
 import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
+import django
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
 from django.db.models import F, Q
@@ -108,12 +109,21 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
         verbose_name = _("Task Result")
         verbose_name_plural = _("Task Results")
-        constraints = [
-            CheckConstraint(
-                check=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),
-                name="priority_range",
-            )
-        ]
+
+        if django.VERSION >= (5, 1):
+            constraints = [
+                CheckConstraint(
+                    condition=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),
+                    name="priority_range",
+                )
+            ]
+        else:
+            constraints = [
+                CheckConstraint(
+                    check=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),
+                    name="priority_range",
+                )
+            ]
 
     @property
     def task(self) -> Task[P, T]:
