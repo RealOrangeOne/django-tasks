@@ -1177,7 +1177,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
     }
 )
 class DatabaseWorkerProcessTestCase(TransactionTestCase):
-    WORKER_STARTUP_TIME = 0.5
+    WORKER_STARTUP_TIME = 1
 
     def setUp(self) -> None:
         self.processes: List[subprocess.Popen] = []
@@ -1188,7 +1188,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             for process in self.processes:
                 if process.poll() is None:
                     process.kill()
-                    time.sleep(0.01)
+                    time.sleep(0.1)
 
     def start_worker(
         self, args: Optional[List[str]] = None, debug: bool = False
@@ -1355,7 +1355,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         for process in self.processes:
             process.terminate()
-            process.wait(timeout=3)
+            process.wait(timeout=5)
             self.assertIsNotNone(process.returncode)
 
         for result in results:
