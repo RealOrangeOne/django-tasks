@@ -1208,7 +1208,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 *args,
             ],
             stdout=None if debug else subprocess.PIPE,
-            stderr=None if debug else subprocess.PIPE,
+            stderr=None if debug else subprocess.STDOUT,
             env={
                 **os.environ,
                 "DJANGO_SETTINGS_MODULE": "tests.db_worker_test_settings",
