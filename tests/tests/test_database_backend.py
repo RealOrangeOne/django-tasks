@@ -1258,7 +1258,9 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             signal.SIGTERM,
         ]:
             with self.subTest(sig):
-                result = test_tasks.sleep_for.enqueue(1)
+                result = test_tasks.sleep_for.enqueue(2)
+
+                self.assertGreater(result.args[0], self.WORKER_STARTUP_TIME)
 
                 process = self.start_worker()
 
@@ -1270,7 +1272,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
                 process.send_signal(sig)
 
-                process.wait(timeout=1)
+                process.wait(timeout=2)
 
                 self.assertEqual(process.returncode, 0)
 
