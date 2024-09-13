@@ -1230,6 +1230,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
 
+    @skipIf(sys.platform == "win32", "Terminate is always forceful on Windows")
     def test_interrupt_no_tasks(self) -> None:
         process = self.start_worker()
 
@@ -1240,6 +1241,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process.wait(timeout=0.5)
         self.assertEqual(process.returncode, 0)
 
+    @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_interrupt_signals(self) -> None:
         for sig in [
             signal.SIGINT,  # ctrl-c
@@ -1266,6 +1268,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
 
+    @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_repeat_ctrl_c(self) -> None:
         result = test_tasks.hang.enqueue()
 
@@ -1346,15 +1349,14 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertIsInstance(result.exception, KeyboardInterrupt)
 
     def test_multiple_workers(self) -> None:
-        results = [test_tasks.noop_task.enqueue() for _ in range(10)]
+        results = [test_tasks.sleep_for.enqueue(0.1) for _ in range(10)]
 
         for _ in range(3):
-            self.start_worker()
+            self.start_worker(["--batch"])
 
         time.sleep(self.WORKER_STARTUP_TIME)
 
         for process in self.processes:
-            process.terminate()
             process.wait(timeout=5)
             self.assertIsNotNone(process.returncode)
 
@@ -1367,7 +1369,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         for process in self.processes:
             stdout_text = process.stdout.read()  # type:ignore[union-attr]
             all_output += stdout_text
-            self.assertIn("shutting down gracefully", stdout_text)
+            self.assertIn("gracefully", stdout_text)
 
         for result in results:
             # Running and complete
