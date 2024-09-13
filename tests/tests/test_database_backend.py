@@ -10,7 +10,7 @@ from contextlib import redirect_stderr
 from datetime import timedelta
 from functools import partial
 from io import StringIO
-from typing import List, Optional, Sequence, Union, cast
+from typing import Any, List, Optional, Sequence, Union, cast
 from unittest import mock, skipIf
 
 import django
@@ -20,6 +20,7 @@ from django.db import connection, connections, transaction
 from django.db.models import QuerySet
 from django.db.utils import IntegrityError, OperationalError
 from django.test import TestCase, TransactionTestCase, override_settings
+from django.test.testcases import _deferredSkip  # type:ignore[attr-defined]
 from django.urls import reverse
 from django.utils import timezone
 
@@ -36,6 +37,14 @@ from django_tasks.backends.database.utils import (
 )
 from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
+
+
+def skipIfInMemoryDB() -> Any:  # noqa:N802
+    return _deferredSkip(
+        lambda: connection.vendor == "sqlite" and connection.is_in_memory_db(),  # type:ignore[attr-defined]
+        "Tests cannot run on in-memory DB",
+        "skipIfInMemoryDB",
+    )
 
 
 @override_settings(
@@ -789,7 +798,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
             self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
 
-            with self.assertRaisesMessage(OperationalError, "database is locked"):
+            with self.assertRaisesMessage(OperationalError, "is locked"):
                 self.execute_in_new_connection(
                     DBTaskResult.objects.select_for_update(skip_locked=True)
                 )
@@ -851,7 +860,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
             self.assertEqual(result.id, str(locked_result.id))
 
-            with self.assertRaisesMessage(OperationalError, "database is locked"):
+            with self.assertRaisesMessage(OperationalError, "is locked"):
                 self.execute_in_new_connection(
                     DBTaskResult.objects.select_for_update(skip_locked=True)
                 )
@@ -1176,6 +1185,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         },
     }
 )
+@skipIfInMemoryDB()
 class DatabaseWorkerProcessTestCase(TransactionTestCase):
     WORKER_STARTUP_TIME = 1
 

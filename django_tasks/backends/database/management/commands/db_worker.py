@@ -94,7 +94,7 @@ class Worker:
                     except OperationalError as e:
                         # Ignore locked databases and keep trying.
                         # It should unlock eventually.
-                        if "database is locked" in e.args[0]:
+                        if "is locked" in e.args[0]:
                             task_result = None
                         else:
                             raise

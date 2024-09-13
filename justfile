@@ -9,6 +9,9 @@ test *ARGS:
     python -m coverage report
     python -m coverage html
 
+test-fast *ARGS:
+    python -m manage test --shuffle --noinput --settings tests.settings_fast {{ ARGS }}
+
 format:
     python -m ruff check django_tasks tests --fix
     python -m ruff format django_tasks tests
