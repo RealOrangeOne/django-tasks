@@ -27,13 +27,20 @@ logger = logging.getLogger("django_tasks.backends.database.db_worker")
 
 class Worker:
     def __init__(
-        self, *, queue_names: List[str], interval: float, batch: bool, backend_name: str
+        self,
+        *,
+        queue_names: List[str],
+        interval: float,
+        batch: bool,
+        backend_name: str,
+        startup_delay: bool,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
         self.interval = interval
         self.batch = batch
         self.backend_name = backend_name
+        self.startup_delay = startup_delay
 
         self.running = True
         self.running_task = False
@@ -41,7 +48,7 @@ class Worker:
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
         if not self.running:
             logger.warning(
-                "Received %s - shutting down immediately.", signal.strsignal(signum)
+                "Received %s - terminating current task.", signal.strsignal(signum)
             )
             sys.exit(1)
 
@@ -67,7 +74,7 @@ class Worker:
 
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
 
-        if self.interval:
+        if self.startup_delay and self.interval:
             # Add a random small delay before starting the loop to avoid a thundering herd
             time.sleep(random.random())
 
@@ -87,7 +94,7 @@ class Worker:
                     except OperationalError as e:
                         # Ignore locked databases and keep trying.
                         # It should unlock eventually.
-                        if "database is locked" in e.args[0]:
+                        if "is locked" in e.args[0]:
                             task_result = None
                         else:
                             raise
@@ -150,10 +157,6 @@ class Worker:
                     task_result=task_result,
                 )
 
-            # If the user tried to terminate, let them
-            if isinstance(e, KeyboardInterrupt):
-                raise
-
 
 def valid_backend_name(val: str) -> str:
     try:
@@ -205,6 +208,12 @@ class Command(BaseCommand):
             dest="backend_name",
             help="The backend to operate on (default: %(default)r)",
         )
+        parser.add_argument(
+            "--no-startup-delay",
+            action="store_false",
+            dest="startup_delay",
+            help="Don't add a small delay at startup.",
+        )
 
     def configure_logging(self, verbosity: int) -> None:
         if verbosity == 0:
@@ -229,6 +238,7 @@ class Command(BaseCommand):
         interval: float,
         batch: bool,
         backend_name: str,
+        startup_delay: bool,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -238,6 +248,7 @@ class Command(BaseCommand):
             interval=interval,
             batch=batch,
             backend_name=backend_name,
+            startup_delay=startup_delay,
         )
 
         worker.start()

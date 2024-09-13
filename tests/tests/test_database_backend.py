@@ -1,11 +1,16 @@
 import json
 import logging
+import os
+import signal
+import subprocess
+import sys
+import time
 import uuid
 from contextlib import redirect_stderr
 from datetime import timedelta
 from functools import partial
 from io import StringIO
-from typing import Sequence, Union, cast
+from typing import Any, List, Optional, Sequence, Union, cast
 from unittest import mock, skipIf
 
 import django
@@ -15,6 +20,7 @@ from django.db import connection, connections, transaction
 from django.db.models import QuerySet
 from django.db.utils import IntegrityError, OperationalError
 from django.test import TestCase, TransactionTestCase, override_settings
+from django.test.testcases import _deferredSkip  # type:ignore[attr-defined]
 from django.urls import reverse
 from django.utils import timezone
 
@@ -31,6 +37,14 @@ from django_tasks.backends.database.utils import (
 )
 from django_tasks.exceptions import ResultDoesNotExist
 from tests import tasks as test_tasks
+
+
+def skipIfInMemoryDB() -> Any:  # noqa:N802
+    return _deferredSkip(
+        lambda: connection.vendor == "sqlite" and connection.is_in_memory_db(),  # type:ignore[attr-defined]
+        "Tests cannot run on in-memory DB",
+        "skipIfInMemoryDB",
+    )
 
 
 @override_settings(
@@ -358,7 +372,14 @@ class DatabaseBackendTestCase(TransactionTestCase):
     }
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
-    run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
+    run_worker = partial(
+        call_command,
+        "db_worker",
+        verbosity=0,
+        batch=True,
+        interval=0,
+        startup_delay=False,
+    )
 
     def tearDown(self) -> None:
         logger = logging.getLogger("django_tasks")
@@ -777,9 +798,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
             self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
 
-            with self.assertRaisesMessage(
-                OperationalError, "database schema is locked: main"
-            ):
+            with self.assertRaisesMessage(OperationalError, "is locked"):
                 self.execute_in_new_connection(
                     DBTaskResult.objects.select_for_update(skip_locked=True)
                 )
@@ -841,9 +860,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
 
             self.assertEqual(result.id, str(locked_result.id))
 
-            with self.assertRaisesMessage(
-                OperationalError, "database schema is locked: main"
-            ):
+            with self.assertRaisesMessage(OperationalError, "is locked"):
                 self.execute_in_new_connection(
                     DBTaskResult.objects.select_for_update(skip_locked=True)
                 )
@@ -1159,3 +1176,213 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
                     ["django-admin", "prune_db_task_results", "--min-age-days", "-1"]
                 )
         self.assertIn("Must be greater than zero", output.getvalue())
+
+
+@override_settings(
+    TASKS={
+        "default": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+        },
+    }
+)
+@skipIfInMemoryDB()
+class DatabaseWorkerProcessTestCase(TransactionTestCase):
+    WORKER_STARTUP_TIME = 1
+
+    def setUp(self) -> None:
+        self.processes: List[subprocess.Popen] = []
+
+    def tearDown(self) -> None:
+        # Try n times to kill any remaining child processes
+        for _ in range(3):
+            for process in self.processes:
+                if process.poll() is None:
+                    process.kill()
+                    time.sleep(0.1)
+
+    def start_worker(
+        self, args: Optional[List[str]] = None, debug: bool = False
+    ) -> subprocess.Popen:
+        if args is None:
+            args = []
+
+        p = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "manage",
+                "db_worker",
+                "--verbosity",
+                "3",
+                "--no-startup-delay",
+                *args,
+            ],
+            stdout=None if debug else subprocess.PIPE,
+            stderr=None if debug else subprocess.STDOUT,
+            env={
+                **os.environ,
+                "DJANGO_SETTINGS_MODULE": "tests.db_worker_test_settings",
+            },
+            text=True,
+        )
+        self.processes.append(p)
+        return p
+
+    def test_run_subprocess(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+        process = self.start_worker(["--batch"])
+        process.wait()
+        self.assertEqual(process.returncode, 0)
+
+        self.assertEqual(result.status, ResultStatus.NEW)
+
+        result.refresh()
+
+        self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+    @skipIf(sys.platform == "win32", "Terminate is always forceful on Windows")
+    def test_interrupt_no_tasks(self) -> None:
+        process = self.start_worker()
+
+        time.sleep(self.WORKER_STARTUP_TIME)
+
+        process.terminate()
+
+        process.wait(timeout=0.5)
+        self.assertEqual(process.returncode, 0)
+
+    @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
+    def test_interrupt_signals(self) -> None:
+        for sig in [
+            signal.SIGINT,  # ctrl-c
+            signal.SIGTERM,
+        ]:
+            with self.subTest(sig):
+                result = test_tasks.sleep_for.enqueue(2)
+
+                self.assertGreater(result.args[0], self.WORKER_STARTUP_TIME)
+
+                process = self.start_worker()
+
+                # Make sure the task is running by now
+                time.sleep(self.WORKER_STARTUP_TIME)
+
+                result.refresh()
+                self.assertEqual(result.status, ResultStatus.RUNNING)
+
+                process.send_signal(sig)
+
+                process.wait(timeout=2)
+
+                self.assertEqual(process.returncode, 0)
+
+                result.refresh()
+
+                self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+    @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
+    def test_repeat_ctrl_c(self) -> None:
+        result = test_tasks.hang.enqueue()
+
+        process = self.start_worker()
+
+        # Make sure the task is running by now
+        time.sleep(self.WORKER_STARTUP_TIME)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+        process.send_signal(signal.SIGINT)
+
+        time.sleep(0.5)
+
+        self.assertIsNone(process.poll())
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+        process.send_signal(signal.SIGINT)
+
+        process.wait(timeout=2)
+
+        self.assertEqual(process.returncode, 0)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.exception, SystemExit)
+
+    @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
+    def test_kill(self) -> None:
+        # Required to keep mypy happy
+        assert hasattr(signal, "SIGKILL")
+
+        result = test_tasks.hang.enqueue()
+
+        process = self.start_worker()
+
+        # Make sure the task is running by now
+        time.sleep(self.WORKER_STARTUP_TIME)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+        process.kill()
+
+        process.wait(timeout=2)
+
+        self.assertEqual(process.returncode, -signal.SIGKILL)
+
+        result.refresh()
+
+        # TODO: https://github.com/RealOrangeOne/django-tasks/issues/46
+        self.assertEqual(result.status, ResultStatus.RUNNING)
+
+    def test_system_exit_task(self) -> None:
+        result = test_tasks.failing_task_system_exit.enqueue()
+
+        process = self.start_worker(["--batch"])
+        process.wait(timeout=2)
+
+        self.assertEqual(process.returncode, 0)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.exception, SystemExit)
+
+    def test_keyboard_interrupt_task(self) -> None:
+        result = test_tasks.failing_task_keyboard_interrupt.enqueue()
+
+        process = self.start_worker(["--batch"])
+        process.wait(timeout=2)
+
+        self.assertEqual(process.returncode, 0)
+
+        result.refresh()
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsInstance(result.exception, KeyboardInterrupt)
+
+    def test_multiple_workers(self) -> None:
+        results = [test_tasks.sleep_for.enqueue(0.1) for _ in range(10)]
+
+        for _ in range(3):
+            self.start_worker(["--batch"])
+
+        time.sleep(self.WORKER_STARTUP_TIME)
+
+        for process in self.processes:
+            process.wait(timeout=5)
+            self.assertIsNotNone(process.returncode)
+
+        for result in results:
+            result.refresh()
+            self.assertEqual(result.status, ResultStatus.COMPLETE)
+
+        all_output = ""
+
+        for process in self.processes:
+            stdout_text = process.stdout.read()  # type:ignore[union-attr]
+            all_output += stdout_text
+            self.assertIn("gracefully", stdout_text)
+
+        for result in results:
+            # Running and complete
+            self.assertEqual(all_output.count(result.id), 2)
