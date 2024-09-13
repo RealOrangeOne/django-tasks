@@ -260,7 +260,6 @@ class DatabaseBackendTestCase(TransactionTestCase):
             }
         }
     )
-    @skipIf(connection.vendor == "sqlite", "SQLite locks the entire database")
     def test_wait_until_transaction_commit(self) -> None:
         self.assertTrue(default_task_backend.enqueue_on_commit)
         self.assertTrue(
@@ -268,12 +267,19 @@ class DatabaseBackendTestCase(TransactionTestCase):
         )
 
         with transaction.atomic():
-            test_tasks.noop_task.enqueue()
+            result = test_tasks.noop_task.enqueue()
+
+            self.assertIsNone(result.enqueued_at)
 
             self.assertEqual(DBTaskResult.objects.count(), 0)
-            self.assertEqual(self.get_task_count_in_new_connection(), 0)
+            # SQLite locks the table during this transaction
+            if connection.vendor != "sqlite":
+                self.assertEqual(self.get_task_count_in_new_connection(), 0)
 
-        self.assertEqual(self.get_task_count_in_new_connection(), 1)
+        if connection.vendor != "sqlite":
+            self.assertEqual(self.get_task_count_in_new_connection(), 1)
+        result.refresh()
+        self.assertIsNotNone(result.enqueued_at)
 
     @override_settings(
         TASKS={
@@ -283,7 +289,6 @@ class DatabaseBackendTestCase(TransactionTestCase):
             }
         }
     )
-    @skipIf(connection.vendor == "sqlite", "SQLite locks the entire database")
     def test_doesnt_wait_until_transaction_commit(self) -> None:
         self.assertFalse(default_task_backend.enqueue_on_commit)
         self.assertFalse(
@@ -291,12 +296,18 @@ class DatabaseBackendTestCase(TransactionTestCase):
         )
 
         with transaction.atomic():
-            test_tasks.noop_task.enqueue()
+            result = test_tasks.noop_task.enqueue()
+
+            self.assertIsNotNone(result.enqueued_at)
 
             self.assertEqual(DBTaskResult.objects.count(), 1)
-            self.assertEqual(self.get_task_count_in_new_connection(), 0)
 
-        self.assertEqual(self.get_task_count_in_new_connection(), 1)
+            # SQLite locks the table during this transaction
+            if connection.vendor != "sqlite":
+                self.assertEqual(self.get_task_count_in_new_connection(), 0)
+
+        if connection.vendor != "sqlite":
+            self.assertEqual(self.get_task_count_in_new_connection(), 1)
 
     @override_settings(
         TASKS={

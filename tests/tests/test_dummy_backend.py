@@ -184,7 +184,9 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         )
 
         with transaction.atomic():
-            test_tasks.noop_task.enqueue()
+            result = test_tasks.noop_task.enqueue()
+
+            self.assertIsNotNone(result.enqueued_at)
 
             self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
 
@@ -204,11 +206,16 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         )
 
         with transaction.atomic():
-            test_tasks.noop_task.enqueue()
+            result = test_tasks.noop_task.enqueue()
+
+            self.assertIsNone(result.enqueued_at)
 
             self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
 
         self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
+        self.assertIsNone(result.enqueued_at)
+        result.refresh()
+        self.assertIsNotNone(result.enqueued_at)
 
     @override_settings(
         TASKS={
@@ -228,8 +235,13 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         )
 
         with transaction.atomic():
-            test_tasks.enqueue_on_commit_task.enqueue()
+            result = test_tasks.enqueue_on_commit_task.enqueue()
+
+            self.assertIsNone(result.enqueued_at)
 
             self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
 
         self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
+        self.assertIsNone(result.enqueued_at)
+        result.refresh()
+        self.assertIsNotNone(result.enqueued_at)

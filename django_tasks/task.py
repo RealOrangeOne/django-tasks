@@ -38,6 +38,7 @@ TASK_REFRESH_ATTRS = {
     "finished_at",
     "started_at",
     "status",
+    "enqueued_at",
 }
 
 

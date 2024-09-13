@@ -230,9 +230,11 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
 
+            self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertIsNotNone(result.enqueued_at)
 
     @override_settings(
         TASKS={
@@ -250,6 +252,8 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
 
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
+
+            self.assertIsNotNone(result.enqueued_at)
 
             self.assertEqual(result.status, ResultStatus.COMPLETE)
 
@@ -271,6 +275,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
 
+            self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
@@ -295,6 +300,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             result = test_tasks.enqueue_on_commit_task.enqueue()
 
+            self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
