@@ -60,13 +60,11 @@ class ImmediateBackend(BaseTaskBackend):
 
             object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
-            task_result.task.finished.send(sender=None, task_result=task_result)
             task_finished.send(type(self), task_result=task_result)
         else:
             object.__setattr__(task_result, "finished_at", timezone.now())
             object.__setattr__(task_result, "status", ResultStatus.COMPLETE)
 
-            task_result.task.finished.send(sender=None, task_result=task_result)
             task_finished.send(type(self), task_result=task_result)
 
     def enqueue(

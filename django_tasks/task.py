@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
-from functools import lru_cache
 from inspect import iscoroutinefunction
 from typing import (
     TYPE_CHECKING,
@@ -17,7 +16,6 @@ from typing import (
 
 from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
-from django.dispatch import Signal
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
@@ -54,17 +52,6 @@ class ResultStatus(TextChoices):
     RUNNING = ("RUNNING", _("Running"))
     FAILED = ("FAILED", _("Failed"))
     COMPLETE = ("COMPLETE", _("Complete"))
-
-
-# Use a large number to ensure `lru_cache` still uses a lock
-@lru_cache(maxsize=100000)
-def _get_task_signal(task: "Task", name: str) -> Signal:
-    """
-    Allow a Task to have a signal, without storing it on the task itself.
-
-    This allows the Task to still be hashable, picklable and deepcopyable.
-    """
-    return Signal()
 
 
 T = TypeVar("T")
@@ -197,11 +184,6 @@ class Task(Generic[P, T]):
         Has this task been modified with `.using`.
         """
         return self != self.original
-
-    @property
-    def finished(self) -> Signal:
-        """A signal, fired when the task finished"""
-        return _get_task_signal(self.original, "finished")
 
 
 # Bare decorator usage
