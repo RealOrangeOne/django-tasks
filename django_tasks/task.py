@@ -1,5 +1,4 @@
-from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from inspect import iscoroutinefunction
 from typing import (
@@ -53,7 +52,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Task(Generic[P, T]):
     priority: int
     """The priority of the task"""
@@ -98,22 +97,21 @@ class Task(Generic[P, T]):
         Create a new task with modified defaults
         """
 
-        task = deepcopy(self)
+        changes: Dict[str, Any] = {}
+
         if priority is not None:
-            task.priority = priority
+            changes["priority"] = priority
         if queue_name is not None:
-            task.queue_name = queue_name
+            changes["queue_name"] = queue_name
         if run_after is not None:
             if isinstance(run_after, timedelta):
-                task.run_after = timezone.now() + run_after
+                changes["run_after"] = timezone.now() + run_after
             else:
-                task.run_after = run_after
+                changes["run_after"] = run_after
         if backend is not None:
-            task.backend = backend
+            changes["backend"] = backend
 
-        task.get_backend().validate_task(task)
-
-        return task
+        return replace(self, **changes)
 
     def enqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskResult[T]":
         """
