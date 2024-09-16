@@ -1,3 +1,5 @@
+import time
+
 from django_tasks import task
 
 
@@ -54,3 +56,16 @@ def enqueue_on_commit_task() -> None:
 @task(enqueue_on_commit=False)
 def never_enqueue_on_commit_task() -> None:
     pass
+
+
+@task()
+def hang() -> None:
+    """
+    Do nothing for 5 minutes
+    """
+    time.sleep(300)
+
+
+@task()
+def sleep_for(seconds: float) -> None:
+    time.sleep(seconds)

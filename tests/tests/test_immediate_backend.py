@@ -28,7 +28,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
-                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
+                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
                 self.assertIsNone(result.return_value)
                 self.assertEqual(result.task, task)
@@ -43,7 +43,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.COMPLETE)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
-                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
+                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
                 self.assertIsNone(result.return_value)
                 self.assertEqual(result.task, task)
@@ -65,7 +65,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         ]
         for task, exception, message in test_data:
             with self.subTest(task), self.assertLogs(
-                "django_tasks.backends.immediate", level="ERROR"
+                "django_tasks", level="ERROR"
             ) as captured_logs:
                 result = task.enqueue()
 
@@ -77,7 +77,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.FAILED)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
-                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
+                self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
                 self.assertIsInstance(result.exception, exception)
                 self.assertTrue(
@@ -90,27 +90,22 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
     def test_throws_keyboard_interrupt(self) -> None:
         with self.assertRaises(KeyboardInterrupt):
-            with self.assertLogs(
-                "django_tasks.backends.immediate", level="ERROR"
-            ) as captured_logs:
+            with self.assertLogs("django_tasks", level="ERROR") as captured_logs:
                 default_task_backend.enqueue(
                     test_tasks.failing_task_keyboard_interrupt, [], {}
                 )
 
         # assert logging
-        self.assertEqual(len(captured_logs.output), 1)
-        self.assertIn(
-            "This task failed due to KeyboardInterrupt", captured_logs.output[0]
-        )
+        self.assertEqual(len(captured_logs.output), 0)
 
     def test_complex_exception(self) -> None:
-        with self.assertLogs("django_tasks.backends.immediate", level="ERROR"):
+        with self.assertLogs("django_tasks", level="ERROR"):
             result = test_tasks.complex_exception.enqueue()
 
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type]
+        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
 
         self.assertIsNone(result._return_value)
@@ -209,6 +204,13 @@ class ImmediateBackendTestCase(SimpleTestCase):
             )
         )
 
+    def test_enqueue_logs(self) -> None:
+        with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
+            result = test_tasks.noop_task.enqueue()
+
+        self.assertIn("enqueued", captured_logs.output[0])
+        self.assertIn(result.id, captured_logs.output[0])
+
 
 class ImmediateBackendTransactionTestCase(TransactionTestCase):
     @override_settings(
@@ -228,9 +230,11 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
 
+            self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertIsNotNone(result.enqueued_at)
 
     @override_settings(
         TASKS={
@@ -248,6 +252,8 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
 
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
+
+            self.assertIsNotNone(result.enqueued_at)
 
             self.assertEqual(result.status, ResultStatus.COMPLETE)
 
@@ -269,6 +275,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
 
+            self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)
@@ -293,6 +300,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
         with transaction.atomic():
             result = test_tasks.enqueue_on_commit_task.enqueue()
 
+            self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
         self.assertEqual(result.status, ResultStatus.COMPLETE)

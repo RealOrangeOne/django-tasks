@@ -42,3 +42,9 @@ just test-sqlite
 # To run all of the above:
 just test-dbs
 ```
+
+Due to database worker process' tests, tests cannot run using an in-memory database, which means tests run quite slow locally. If you're not modifying the worker, and want you tests run run quicker, run:
+
+```sh
+just test-fast
+```

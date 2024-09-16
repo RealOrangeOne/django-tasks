@@ -49,6 +49,8 @@ jobs:
         run: just lint
       - name: Run tests
         run: just test
+      - name: Run fast tests
+        run: just test-fast
 
   test-postgres:
     runs-on: ubuntu-latest
