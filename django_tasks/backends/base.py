@@ -5,7 +5,6 @@ from typing import Any, Iterable, TypeVar
 from asgiref.sync import sync_to_async
 from django.core.checks import messages
 from django.db import connections
-from django.test.testcases import _DatabaseFailure
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
@@ -48,11 +47,6 @@ class BaseTaskBackend(metaclass=ABCMeta):
         # If this project doesn't use a database, there's nothing to commit to
         if not connections.settings:
             return False
-
-        # If connections are disabled during tests, there's nothing to commit to
-        for conn in connections.all():
-            if isinstance(conn.connect, _DatabaseFailure):
-                return False
 
         if task.enqueue_on_commit is not None:
             return task.enqueue_on_commit
