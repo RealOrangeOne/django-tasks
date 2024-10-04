@@ -13,7 +13,12 @@ from tests import tasks as test_tasks
 
 
 @override_settings(
-    TASKS={"default": {"BACKEND": "django_tasks.backends.immediate.ImmediateBackend"}}
+    TASKS={
+        "default": {
+            "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+            "ENQUEUE_ON_COMMIT": False,
+        }
+    }
 )
 class ImmediateBackendTestCase(SimpleTestCase):
     def test_using_correct_backend(self) -> None:
