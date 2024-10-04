@@ -51,10 +51,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
             }
 
     def create_connection(self, alias: str) -> BaseTaskBackend:
-        params = self.settings[alias].copy()
-
-        # Added back to allow a backend to self-identify
-        params["ALIAS"] = alias
+        params = self.settings[alias]
 
         backend = params["BACKEND"]
 
@@ -65,7 +62,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
                 f"Could not find backend '{backend}': {e}"
             ) from e
 
-        return backend_cls(params)  # type:ignore[no-any-return]
+        return backend_cls({**params, "ALIAS": alias})  # type:ignore[no-any-return]
 
 
 tasks = TasksHandler()
