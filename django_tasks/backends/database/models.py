@@ -113,7 +113,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         if django.VERSION >= (5, 1):
             constraints = [
                 CheckConstraint(
-                    condition=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),  # type: ignore
+                    condition=Q(priority__range=(MIN_PRIORITY, MAX_PRIORITY)),
                     name="priority_range",
                 )
             ]
