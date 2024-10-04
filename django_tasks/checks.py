@@ -12,7 +12,4 @@ def check_tasks(
     """Checks all registered task backends."""
 
     for backend in tasks.all():
-        try:
-            yield from backend.check()
-        except NotImplementedError:
-            pass
+        yield from backend.check()
