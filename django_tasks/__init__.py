@@ -24,6 +24,7 @@ __version__ = importlib.metadata.version(__name__)
 
 __all__ = [
     "tasks",
+    "default_task_backend",
     "DEFAULT_TASK_BACKEND_ALIAS",
     "DEFAULT_QUEUE_NAME",
     "task",
