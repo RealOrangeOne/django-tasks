@@ -54,7 +54,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
             if isinstance(conn.connect, _DatabaseFailure):
                 return False
 
-        if isinstance(task.enqueue_on_commit, bool):
+        if task.enqueue_on_commit is not None:
             return task.enqueue_on_commit
 
         return self.enqueue_on_commit
