@@ -110,6 +110,16 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         verbose_name = _("Task Result")
         verbose_name_plural = _("Task Results")
 
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["queue_name"]),
+            models.Index(
+                F("priority").desc(),
+                F("run_after").desc(nulls_last=True),
+                name="idx_task_ordering",
+            ),
+        ]
+
         if django.VERSION >= (5, 1):
             constraints = [
                 CheckConstraint(
