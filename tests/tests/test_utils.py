@@ -48,22 +48,6 @@ class IsGlobalFunctionTestCase(SimpleTestCase):
         self.assertFalse(is_global_function_fixture.inner_func_is_global_function)
 
 
-class IsJSONSerializableTestCase(SimpleTestCase):
-    def test_serializable(self) -> None:
-        for example in [123, 12.3, "123", {"123": 456}, [], None]:
-            with self.subTest(example):
-                self.assertTrue(utils.is_json_serializable(example))
-
-    def test_not_serializable(self) -> None:
-        for example in [
-            self,
-            any,
-            datetime.datetime.now(),
-        ]:
-            with self.subTest(example):
-                self.assertFalse(utils.is_json_serializable(example))
-
-
 class JSONNormalizeTestCase(SimpleTestCase):
     def test_round_trip(self) -> None:
         self.assertEqual(utils.json_normalize({}), {})
@@ -74,7 +58,6 @@ class JSONNormalizeTestCase(SimpleTestCase):
     def test_encode_error(self) -> None:
         for example in [self, any, datetime.datetime.now()]:
             with self.subTest(example):
-                self.assertFalse(utils.is_json_serializable(example))
                 self.assertRaises(TypeError, utils.json_normalize, example)
 
 

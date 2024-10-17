@@ -1,7 +1,6 @@
 import inspect
 import json
 import time
-from collections import deque
 from functools import wraps
 from traceback import format_exception
 from typing import Any, Callable, List, TypedDict, TypeVar
@@ -34,18 +33,6 @@ def is_global_function(func: Callable) -> bool:
         return False
 
     return True
-
-
-def is_json_serializable(obj: Any) -> bool:
-    """
-    Determine, as efficiently as possible, whether an object is JSON-serializable.
-    """
-    try:
-        # HACK: JSON-encode an object, without loading it all into memory
-        deque(json.JSONEncoder().iterencode(obj), maxlen=0)
-        return True
-    except (TypeError, OverflowError):
-        return False
 
 
 def json_normalize(obj: Any) -> Any:
