@@ -62,7 +62,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
                 f"Could not find backend '{backend}': {e}"
             ) from e
 
-        return backend_cls({**params, "ALIAS": alias})  # type:ignore[no-any-return]
+        return backend_cls(alias=alias, params=params)  # type:ignore[no-any-return]
 
 
 tasks = TasksHandler()

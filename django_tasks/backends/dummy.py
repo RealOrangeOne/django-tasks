@@ -23,8 +23,8 @@ class DummyBackend(BaseTaskBackend):
     supports_async_task = True
     results: List[TaskResult]
 
-    def __init__(self, options: dict) -> None:
-        super().__init__(options)
+    def __init__(self, alias: str, params: dict) -> None:
+        super().__init__(alias, params)
 
         self.results = []
 
