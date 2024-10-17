@@ -25,7 +25,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-def is_global_function(func: Callable) -> bool:
+def is_module_level_function(func: Callable) -> bool:
     if not inspect.isfunction(func) or inspect.isbuiltin(func):
         return False
 

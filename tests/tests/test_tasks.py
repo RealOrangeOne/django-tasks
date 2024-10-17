@@ -216,7 +216,7 @@ class TaskTestCase(SimpleTestCase):
             with self.subTest(invalid_function):
                 with self.assertRaisesMessage(
                     InvalidTaskError,
-                    "Task function must be a globally importable function",
+                    "Task function must be defined at a module level",
                 ):
                     task()(invalid_function)  # type:ignore[arg-type]
 

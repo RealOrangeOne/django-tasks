@@ -10,7 +10,7 @@ from typing_extensions import ParamSpec
 
 from django_tasks.exceptions import InvalidTaskError
 from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY, Task, TaskResult
-from django_tasks.utils import is_global_function
+from django_tasks.utils import is_module_level_function
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -57,10 +57,8 @@ class BaseTaskBackend(metaclass=ABCMeta):
         """
         Determine whether the provided task is one which can be executed by the backend.
         """
-        if not is_global_function(task.func):
-            raise InvalidTaskError(
-                "Task function must be a globally importable function"
-            )
+        if not is_module_level_function(task.func):
+            raise InvalidTaskError("Task function must be defined at a module level")
 
         if not self.supports_async_task and iscoroutinefunction(task.func):
             raise InvalidTaskError("Backend does not support async tasks")
