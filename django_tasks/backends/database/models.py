@@ -118,7 +118,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             models.Index(
                 F("priority").desc(),
                 F("run_after").desc(nulls_last=True),
-                name="idx_task_ordering",
+                name="django_task_ordering_idx",
             ),
         ]
 

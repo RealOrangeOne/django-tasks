@@ -30,8 +30,8 @@ class Migration(migrations.Migration):
             model_name="dbtaskresult",
             index=models.Index(
                 models.OrderBy(models.F("priority"), descending=True),
-                models.OrderBy(models.F("run_after"), descending=True, nulls_last=True),
-                name="idx_task_ordering",
+                models.OrderBy(models.F("run_after"), descending=True),
+                name="django_task_ordering_idx",
             ),
         ),
     ]
