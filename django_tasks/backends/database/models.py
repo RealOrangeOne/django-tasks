@@ -95,7 +95,9 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     task_path = models.TextField(_("task path"))
 
-    queue_name = models.TextField(_("queue name"), default=DEFAULT_QUEUE_NAME)
+    queue_name = models.CharField(
+        _("queue name"), default=DEFAULT_QUEUE_NAME, max_length=64
+    )
     backend_name = models.TextField(_("backend name"))
 
     run_after = models.DateTimeField(_("run after"), null=True)
