@@ -29,7 +29,7 @@ def merge_results_field(
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("django_tasks_database", "0009_remove_results_field"),
+        ("django_tasks_database", "0010_alter_dbtaskresult_status"),
     ]
 
     operations = [migrations.RunPython(separate_results_field, merge_results_field)]
