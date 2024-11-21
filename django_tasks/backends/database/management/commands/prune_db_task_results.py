@@ -115,7 +115,7 @@ class Command(BaseCommand):
             results = results.filter(finished_at__lte=min_age)
         else:
             results = results.filter(
-                Q(status=ResultStatus.COMPLETE, finished_at__lte=min_age)
+                Q(status=ResultStatus.SUCCEEDED, finished_at__lte=min_age)
                 | Q(status=ResultStatus.FAILED, finished_at__lte=failed_min_age)
             )
 

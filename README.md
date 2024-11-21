@@ -159,7 +159,7 @@ Finally, you can run the `db_worker` command to run tasks as they're created. Ch
 
 ### Pruning old tasks
 
-After a while, tasks may start to build up in your database. This can be managed using the `prune_db_task_results` management command, which deletes completed and failed tasks according to the given retention policy. Check the `--help` for the available options.
+After a while, tasks may start to build up in your database. This can be managed using the `prune_db_task_results` management command, which deletes completed tasks according to the given retention policy. Check the `--help` for the available options.
 
 ### Retrieving task result
 
@@ -184,10 +184,10 @@ default_task_backend.get_result(result_id)
 
 ### Return values
 
-If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unfinished task (ie not `COMPLETE` or `FAILED`) will raise a `ValueError`.
+If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unfinished task (ie not `SUCCEEDED` or `FAILED`) will raise a `ValueError`.
 
 ```python
-assert result.status == ResultStatus.COMPLETE
+assert result.status == ResultStatus.SUCCEEDED
 assert result.return_value == 42
 ```
 
@@ -196,7 +196,7 @@ If a result has been updated in the background, you can call `refresh` on it to 
 ```python
 assert result.status == ResultStatus.NEW
 result.refresh()
-assert result.status == ResultStatus.COMPLETE
+assert result.status == ResultStatus.SUCCEEDED
 ```
 
 #### Exceptions
@@ -240,7 +240,7 @@ A few [Signals](https://docs.djangoproject.com/en/stable/topics/signals/) are pr
 Whilst signals are available, they may not be the most maintainable approach.
 
 - `django_tasks.signals.task_enqueued`: Called when a task is enqueued. The sender is the backend class. Also called with the enqueued `task_result`.
-- `django_tasks.signals.task_finished`: Called when a task finishes (`COMPLETE` or `FAILED`). The sender is the backend class. Also called with the finished `task_result`.
+- `django_tasks.signals.task_finished`: Called when a task finishes (`SUCCEEDED` or `FAILED`). The sender is the backend class. Also called with the finished `task_result`.
 
 ## Contributing
 

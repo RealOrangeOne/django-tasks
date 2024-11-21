@@ -30,7 +30,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.COMPLETE)
+                self.assertEqual(result.status, ResultStatus.SUCCEEDED)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
@@ -45,7 +45,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.COMPLETE)
+                self.assertEqual(result.status, ResultStatus.SUCCEEDED)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
@@ -125,7 +125,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, [], {}
         )
 
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertEqual(result.return_value, 42)
 
     async def test_result_async(self) -> None:
@@ -133,7 +133,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, [], {}
         )
 
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertEqual(result.return_value, 42)
 
     async def test_cannot_get_result(self) -> None:
@@ -187,7 +187,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], 42)
-                self.assertEqual(data["status"], ResultStatus.COMPLETE)
+                self.assertEqual(data["status"], ResultStatus.SUCCEEDED)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -238,7 +238,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
             self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertIsNotNone(result.enqueued_at)
 
     @override_settings(
@@ -260,9 +260,9 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
 
             self.assertIsNotNone(result.enqueued_at)
 
-            self.assertEqual(result.status, ResultStatus.COMPLETE)
+            self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
     @override_settings(
         TASKS={
@@ -283,7 +283,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
             self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
     @override_settings(
         TASKS={
@@ -308,4 +308,4 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
             self.assertIsNone(result.enqueued_at)
             self.assertEqual(result.status, ResultStatus.NEW)
 
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
