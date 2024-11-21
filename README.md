@@ -172,6 +172,8 @@ result_id = result.id
 calculate_meaning_of_life.get_result(result_id)
 ```
 
+A result `id` should be considered an opaque string, whose length could be up to 64 characters. ID generation is backend-specific.
+
 Only tasks of the same type can be retrieved this way. To retrieve the result of any task, you can call `get_result` on the backend:
 
 ```python
