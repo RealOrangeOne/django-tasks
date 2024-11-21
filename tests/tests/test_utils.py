@@ -163,3 +163,13 @@ class ExceptionSerializationTestCase(SimpleTestCase):
             with self.subTest(data):
                 with self.assertRaises((TypeError, ImportError)):
                     utils.exception_from_dict(data)
+
+
+class RandomIdTestCase(SimpleTestCase):
+    def test_correct_length(self) -> None:
+        self.assertEqual(len(utils.get_random_id()), 32)
+
+    def test_random_ish(self) -> None:
+        random_ids = [utils.get_random_id() for _ in range(1000)]
+
+        self.assertEqual(len(random_ids), len(set(random_ids)))

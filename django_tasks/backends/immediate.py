@@ -2,7 +2,6 @@ import logging
 from functools import partial
 from inspect import iscoroutinefunction
 from typing import TypeVar
-from uuid import uuid4
 
 from asgiref.sync import async_to_sync
 from django.db import transaction
@@ -11,7 +10,7 @@ from typing_extensions import ParamSpec
 
 from django_tasks.signals import task_enqueued, task_finished
 from django_tasks.task import ResultStatus, Task, TaskResult
-from django_tasks.utils import exception_to_dict, json_normalize
+from django_tasks.utils import exception_to_dict, get_random_id, json_normalize
 
 from .base import BaseTaskBackend
 
@@ -74,7 +73,7 @@ class ImmediateBackend(BaseTaskBackend):
 
         task_result = TaskResult[T](
             task=task,
-            id=str(uuid4()),
+            id=get_random_id(),
             status=ResultStatus.NEW,
             enqueued_at=None,
             started_at=None,

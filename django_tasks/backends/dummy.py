@@ -1,7 +1,6 @@
 from copy import deepcopy
 from functools import partial
 from typing import List, TypeVar
-from uuid import uuid4
 
 from django.db import transaction
 from django.utils import timezone
@@ -10,7 +9,7 @@ from typing_extensions import ParamSpec
 from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.signals import task_enqueued
 from django_tasks.task import ResultStatus, Task, TaskResult
-from django_tasks.utils import json_normalize
+from django_tasks.utils import get_random_id, json_normalize
 
 from .base import BaseTaskBackend
 
@@ -40,7 +39,7 @@ class DummyBackend(BaseTaskBackend):
 
         result = TaskResult[T](
             task=task,
-            id=str(uuid4()),
+            id=get_random_id(),
             status=ResultStatus.NEW,
             enqueued_at=None,
             started_at=None,
