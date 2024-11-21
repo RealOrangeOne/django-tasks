@@ -124,7 +124,7 @@ class Worker:
 
     def run_task(self, db_task_result: DBTaskResult) -> None:
         """
-        Run the given task, marking it as complete or failed.
+        Run the given task, marking it as succeeded or failed.
         """
         try:
             task = db_task_result.task
@@ -140,7 +140,7 @@ class Worker:
 
             # Setting the return and success value inside the error handling,
             # So errors setting it (eg JSON encode) can still be recorded
-            db_task_result.set_complete(return_value)
+            db_task_result.set_succeeded(return_value)
             task_finished.send(
                 sender=type(task.get_backend()), task_result=db_task_result.task_result
             )

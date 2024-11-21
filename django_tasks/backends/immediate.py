@@ -63,7 +63,7 @@ class ImmediateBackend(BaseTaskBackend):
             task_finished.send(type(self), task_result=task_result)
         else:
             object.__setattr__(task_result, "finished_at", timezone.now())
-            object.__setattr__(task_result, "status", ResultStatus.COMPLETE)
+            object.__setattr__(task_result, "status", ResultStatus.SUCCEEDED)
 
             task_finished.send(type(self), task_result=task_result)
 

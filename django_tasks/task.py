@@ -46,7 +46,7 @@ class ResultStatus(TextChoices):
     NEW = ("NEW", _("New"))
     RUNNING = ("RUNNING", _("Running"))
     FAILED = ("FAILED", _("Failed"))
-    COMPLETE = ("COMPLETE", _("Complete"))
+    SUCCEEDED = ("SUCCEEDED", _("Succeeded"))
 
 
 T = TypeVar("T")
@@ -273,13 +273,13 @@ class TaskResult(Generic[T]):
         """
         Get the return value of the task.
 
-        If the task didn't complete successfully, an exception is raised.
+        If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
         """
         if self.status == ResultStatus.FAILED:
             raise ValueError("Task failed")
 
-        elif self.status != ResultStatus.COMPLETE:
+        elif self.status != ResultStatus.SUCCEEDED:
             raise ValueError("Task has not finished yet")
 
         return cast(T, self._return_value)

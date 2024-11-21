@@ -55,8 +55,8 @@ class DBTaskResultQuerySet(models.QuerySet):
             status=ResultStatus.NEW,
         ).filter(models.Q(run_after=None) | models.Q(run_after__lte=timezone.now()))
 
-    def complete(self) -> "DBTaskResultQuerySet":
-        return self.filter(status=ResultStatus.COMPLETE)
+    def succeeded(self) -> "DBTaskResultQuerySet":
+        return self.filter(status=ResultStatus.SUCCEEDED)
 
     def failed(self) -> "DBTaskResultQuerySet":
         return self.filter(status=ResultStatus.FAILED)
@@ -65,7 +65,7 @@ class DBTaskResultQuerySet(models.QuerySet):
         return self.filter(status=ResultStatus.RUNNING)
 
     def finished(self) -> "DBTaskResultQuerySet":
-        return self.failed() | self.complete()
+        return self.failed() | self.succeeded()
 
     @retry()
     def get_locked(self) -> Optional["DBTaskResult"]:
@@ -173,8 +173,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.save(update_fields=["status", "started_at"])
 
     @retry()
-    def set_complete(self, return_value: Any) -> None:
-        self.status = ResultStatus.COMPLETE
+    def set_succeeded(self, return_value: Any) -> None:
+        self.status = ResultStatus.SUCCEEDED
         self.finished_at = timezone.now()
         self.return_value = return_value
         self.exception_data = None
