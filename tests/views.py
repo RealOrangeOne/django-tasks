@@ -13,7 +13,7 @@ def get_result_value(result: TaskResult) -> Any:
     if result.status == ResultStatus.SUCCEEDED:
         return result.return_value
     elif result.status == ResultStatus.FAILED:
-        return result._exception_data
+        return result.traceback
 
     return None
 

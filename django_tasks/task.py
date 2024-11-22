@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Generic,
     Optional,
+    Type,
     TypeVar,
     Union,
     cast,
@@ -22,8 +23,6 @@ from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
 from .utils import (
-    SerializedExceptionDict,
-    exception_from_dict,
     get_module_path,
     json_normalize,
 )
@@ -38,7 +37,8 @@ MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
 
 TASK_REFRESH_ATTRS = {
-    "_exception_data",
+    "exception_class",
+    "traceback",
     "_return_value",
     "finished_at",
     "started_at",
@@ -255,27 +255,13 @@ class TaskResult(Generic[T]):
     backend: str
     """The name of the backend the task will run on"""
 
+    exception_class: Optional[Type[BaseException]]
+    """The exception raised by the task function"""
+
+    traceback: Optional[str]
+    """The traceback of the exception if the task failed"""
+
     _return_value: Optional[T] = field(init=False, default=None)
-    _exception_data: Optional[SerializedExceptionDict] = field(init=False, default=None)
-
-    @property
-    def exception(self) -> Optional[BaseException]:
-        return (
-            exception_from_dict(cast(SerializedExceptionDict, self._exception_data))
-            if self.status == ResultStatus.FAILED and self._exception_data is not None
-            else None
-        )
-
-    @property
-    def traceback(self) -> Optional[str]:
-        """
-        Return the string representation of the traceback of the task if it failed
-        """
-        return (
-            cast(SerializedExceptionDict, self._exception_data)["exc_traceback"]
-            if self.status == ResultStatus.FAILED and self._exception_data is not None
-            else None
-        )
 
     @property
     def return_value(self) -> Optional[T]:

@@ -201,21 +201,17 @@ assert result.status == ResultStatus.SUCCEEDED
 
 #### Exceptions
 
-If a task raised an exception, its `.exception` will be the exception raised:
+If a task raised an exception, its `.exception_class` will be the exception class raised:
 
 ```python
-assert isinstance(result.exception, ValueError)
+assert result.exception == ValueError
 ```
 
-As part of the serialization process for exceptions, some information is lost. The traceback information is reduced to a string that you can print to help debugging:
+Note that this is just the type of exception, and contains no other values. The traceback information is reduced to a string that you can print to help debugging:
 
 ```python
 assert isinstance(result.traceback, str)
 ```
-
-The stack frames, `globals()` and `locals()` are not available.
-
-If the exception could not be serialized, the `.result` is `None`.
 
 ### Backend introspecting
 

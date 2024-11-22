@@ -20,7 +20,7 @@ from django_tasks.task import (
     ResultStatus,
     Task,
 )
-from django_tasks.utils import exception_to_dict, retry
+from django_tasks.utils import get_exception_traceback, get_module_path, retry
 
 from .utils import normalize_uuid
 
@@ -101,7 +101,9 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     run_after = models.DateTimeField(_("run after"), null=True)
 
     return_value = models.JSONField(_("return value"), default=None, null=True)
-    exception_data = models.JSONField(_("exception data"), default=None, null=True)
+
+    exception_class_path = models.TextField(_("exception class path"))
+    traceback = models.TextField(_("traceback"))
 
     objects = DBTaskResultQuerySet.as_manager()
 
@@ -145,7 +147,12 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     def task_result(self) -> "TaskResult[T]":
         from .backend import TaskResult
 
-        result = TaskResult[T](
+        try:
+            exception_class = import_string(self.exception_class_path)
+        except ImportError:
+            exception_class = None
+
+        return TaskResult[T](
             db_result=self,
             task=self.task,
             id=normalize_uuid(self.id),
@@ -156,12 +163,9 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],
             backend=self.backend_name,
+            exception_class=exception_class,
+            traceback=self.traceback or None,
         )
-
-        object.__setattr__(result, "_return_value", self.return_value)
-        object.__setattr__(result, "_exception_data", self.exception_data)
-
-        return result
 
     @retry(backoff_delay=0)
     def claim(self) -> None:
@@ -177,21 +181,31 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.status = ResultStatus.SUCCEEDED
         self.finished_at = timezone.now()
         self.return_value = return_value
-        self.exception_data = None
+        self.exception_class_path = ""
+        self.traceback = ""
         self.save(
-            update_fields=["status", "return_value", "finished_at", "exception_data"]
+            update_fields=[
+                "status",
+                "return_value",
+                "finished_at",
+                "exception_class_path",
+                "traceback",
+            ]
         )
 
     @retry()
     def set_failed(self, exc: BaseException) -> None:
         self.status = ResultStatus.FAILED
         self.finished_at = timezone.now()
-        try:
-            self.exception_data = exception_to_dict(exc)
-        except Exception:
-            logger.exception("Task id=%s unable to save exception", self.id)
-            self.exception_data = None
+        self.exception_class_path = get_module_path(type(exc))
+        self.traceback = get_exception_traceback(exc)
         self.return_value = None
         self.save(
-            update_fields=["status", "finished_at", "exception_data", "return_value"]
+            update_fields=[
+                "status",
+                "return_value",
+                "finished_at",
+                "exception_class_path",
+                "traceback",
+            ]
         )

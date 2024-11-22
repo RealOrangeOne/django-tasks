@@ -10,7 +10,7 @@ from typing_extensions import ParamSpec
 
 from django_tasks.signals import task_enqueued, task_finished
 from django_tasks.task import ResultStatus, Task, TaskResult
-from django_tasks.utils import exception_to_dict, get_random_id, json_normalize
+from django_tasks.utils import get_exception_traceback, get_random_id, json_normalize
 
 from .base import BaseTaskBackend
 
@@ -52,10 +52,9 @@ class ImmediateBackend(BaseTaskBackend):
                 raise
 
             object.__setattr__(task_result, "finished_at", timezone.now())
-            try:
-                object.__setattr__(task_result, "_exception_data", exception_to_dict(e))
-            except Exception:
-                logger.exception("Task id=%s unable to save exception", task_result.id)
+
+            object.__setattr__(task_result, "traceback", get_exception_traceback(e))
+            object.__setattr__(task_result, "exception_class", type(e))
 
             object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
@@ -81,6 +80,8 @@ class ImmediateBackend(BaseTaskBackend):
             args=args,
             kwargs=kwargs,
             backend=self.alias,
+            exception_class=None,
+            traceback=None,
         )
 
         if self._get_enqueue_on_commit_for_task(task) is not False:
