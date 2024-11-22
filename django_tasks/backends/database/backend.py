@@ -13,7 +13,6 @@ from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.signals import task_enqueued
 from django_tasks.task import Task
 from django_tasks.task import TaskResult as BaseTaskResult
-from django_tasks.utils import json_normalize
 
 if TYPE_CHECKING:
     from .models import DBTaskResult
@@ -38,7 +37,7 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         return DBTaskResult(
-            args_kwargs=json_normalize({"args": args, "kwargs": kwargs}),
+            args_kwargs={"args": args, "kwargs": kwargs},
             priority=task.priority,
             task_path=task.module_path,
             queue_name=task.queue_name,

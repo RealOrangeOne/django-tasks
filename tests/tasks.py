@@ -1,20 +1,21 @@
 import time
+from typing import Any
 
 from django_tasks import task
 
 
 @task()
-def noop_task(*args: tuple, **kwargs: dict) -> None:
+def noop_task(*args: Any, **kwargs: Any) -> None:
     return None
 
 
 @task
-def noop_task_from_bare_decorator(*args: tuple, **kwargs: dict) -> None:
+def noop_task_from_bare_decorator(*args: Any, **kwargs: Any) -> None:
     return None
 
 
 @task()
-async def noop_task_async(*args: tuple, **kwargs: dict) -> None:
+async def noop_task_async(*args: Any, **kwargs: Any) -> None:
     return None
 
 

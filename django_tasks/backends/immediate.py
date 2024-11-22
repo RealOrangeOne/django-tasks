@@ -78,8 +78,8 @@ class ImmediateBackend(BaseTaskBackend):
             enqueued_at=None,
             started_at=None,
             finished_at=None,
-            args=json_normalize(args),
-            kwargs=json_normalize(kwargs),
+            args=args,
+            kwargs=kwargs,
             backend=self.alias,
         )
 

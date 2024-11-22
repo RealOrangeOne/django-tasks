@@ -9,7 +9,7 @@ from typing_extensions import ParamSpec
 from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.signals import task_enqueued
 from django_tasks.task import ResultStatus, Task, TaskResult
-from django_tasks.utils import get_random_id, json_normalize
+from django_tasks.utils import get_random_id
 
 from .base import BaseTaskBackend
 
@@ -44,8 +44,8 @@ class DummyBackend(BaseTaskBackend):
             enqueued_at=None,
             started_at=None,
             finished_at=None,
-            args=json_normalize(args),
-            kwargs=json_normalize(kwargs),
+            args=args,
+            kwargs=kwargs,
             backend=self.alias,
         )
 

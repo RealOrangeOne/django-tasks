@@ -68,6 +68,18 @@ class TaskTestCase(SimpleTestCase):
 
         self.assertEqual(default_task_backend.results, [result])  # type:ignore[attr-defined]
 
+    def test_enqueue_with_invalid_argument(self) -> None:
+        with self.assertRaisesMessage(
+            TypeError, "Object of type datetime is not JSON serializable"
+        ):
+            test_tasks.noop_task.enqueue(datetime.now())
+
+    async def test_aenqueue_with_invalid_argument(self) -> None:
+        with self.assertRaisesMessage(
+            TypeError, "Object of type datetime is not JSON serializable"
+        ):
+            await test_tasks.noop_task.aenqueue(datetime.now())
+
     def test_using_priority(self) -> None:
         self.assertEqual(test_tasks.noop_task.priority, 0)
         self.assertEqual(test_tasks.noop_task.using(priority=1).priority, 1)
