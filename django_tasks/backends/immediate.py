@@ -53,8 +53,8 @@ class ImmediateBackend(BaseTaskBackend):
 
             object.__setattr__(task_result, "finished_at", timezone.now())
 
-            object.__setattr__(task_result, "traceback", get_exception_traceback(e))
-            object.__setattr__(task_result, "exception_class", type(e))
+            object.__setattr__(task_result, "_traceback", get_exception_traceback(e))
+            object.__setattr__(task_result, "_exception_class", type(e))
 
             object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
@@ -80,8 +80,6 @@ class ImmediateBackend(BaseTaskBackend):
             args=args,
             kwargs=kwargs,
             backend=self.alias,
-            exception_class=None,
-            traceback=None,
         )
 
         if self._get_enqueue_on_commit_for_task(task) is not False:

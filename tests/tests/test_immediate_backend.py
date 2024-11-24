@@ -31,6 +31,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 result = cast(Task, task).enqueue(1, two=3)
 
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+                self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
@@ -46,6 +47,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 result = await cast(Task, task).aenqueue()
 
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+                self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
@@ -80,6 +82,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
                 # assert result
                 self.assertEqual(result.status, ResultStatus.FAILED)
+                self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]

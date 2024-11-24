@@ -33,6 +33,7 @@ class DummyBackendTestCase(SimpleTestCase):
                 result = cast(Task, task).enqueue(1, two=3)
 
                 self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
@@ -49,6 +50,7 @@ class DummyBackendTestCase(SimpleTestCase):
                 result = await cast(Task, task).aenqueue()
 
                 self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
@@ -150,6 +152,15 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(len(captured_logs.output), 1)
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
+
+    def test_exceptions(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            result.exception_class  # noqa: B018
+
+        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
+            result.traceback  # noqa: B018
 
 
 class DummyBackendTransactionTestCase(TransactionTestCase):

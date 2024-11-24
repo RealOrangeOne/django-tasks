@@ -37,8 +37,8 @@ MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
 
 TASK_REFRESH_ATTRS = {
-    "exception_class",
-    "traceback",
+    "_exception_class",
+    "_traceback",
     "_return_value",
     "finished_at",
     "started_at",
@@ -255,11 +255,8 @@ class TaskResult(Generic[T]):
     backend: str
     """The name of the backend the task will run on"""
 
-    exception_class: Optional[Type[BaseException]]
-    """The exception raised by the task function"""
-
-    traceback: Optional[str]
-    """The traceback of the exception if the task failed"""
+    _exception_class: Optional[Type[BaseException]] = field(init=False, default=None)
+    _traceback: Optional[str] = field(init=False, default=None)
 
     _return_value: Optional[T] = field(init=False, default=None)
 
@@ -271,13 +268,31 @@ class TaskResult(Generic[T]):
         If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
         """
-        if self.status == ResultStatus.FAILED:
-            raise ValueError("Task failed")
-
-        elif self.status != ResultStatus.SUCCEEDED:
+        if not self.is_finished:
             raise ValueError("Task has not finished yet")
 
         return cast(T, self._return_value)
+
+    @property
+    def exception_class(self) -> Optional[Type[BaseException]]:
+        """The exception raised by the task function"""
+        if not self.is_finished:
+            raise ValueError("Task has not finished yet")
+
+        return self._exception_class
+
+    @property
+    def traceback(self) -> Optional[str]:
+        """The traceback of the exception if the task failed"""
+        if not self.is_finished:
+            raise ValueError("Task has not finished yet")
+
+        return self._traceback
+
+    @property
+    def is_finished(self) -> bool:
+        """Has the task finished?"""
+        return self.status in {ResultStatus.FAILED, ResultStatus.SUCCEEDED}
 
     def refresh(self) -> None:
         """

@@ -152,7 +152,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         except ImportError:
             exception_class = None
 
-        return TaskResult[T](
+        task_result = TaskResult[T](
             db_result=self,
             task=self.task,
             id=normalize_uuid(self.id),
@@ -163,9 +163,12 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],
             backend=self.backend_name,
-            exception_class=exception_class,
-            traceback=self.traceback or None,
         )
+
+        object.__setattr__(task_result, "_exception_class", exception_class)
+        object.__setattr__(task_result, "_traceback", self.traceback or None)
+
+        return task_result
 
     @retry(backoff_delay=0)
     def claim(self) -> None:
