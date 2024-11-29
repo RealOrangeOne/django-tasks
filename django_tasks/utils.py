@@ -4,24 +4,10 @@ import random
 import time
 from functools import wraps
 from traceback import format_exception
-from typing import Any, Callable, List, TypedDict, TypeVar
+from typing import Any, Callable, TypeVar
 
 from django.utils.crypto import RANDOM_STRING_CHARS
-from django.utils.module_loading import import_string
 from typing_extensions import ParamSpec
-
-
-class SerializedExceptionDict(TypedDict):
-    """Type for the dictionary holding exception informations in task result
-
-    The task result either stores the result of the task, or the serialized exception
-    information required to reconstitute part of the exception for debugging.
-    """
-
-    exc_type: str
-    exc_args: List[Any]
-    exc_traceback: str
-
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -74,21 +60,8 @@ def get_module_path(val: Any) -> str:
     return f"{val.__module__}.{val.__qualname__}"
 
 
-def exception_to_dict(exc: BaseException) -> SerializedExceptionDict:
-    return {
-        "exc_type": get_module_path(type(exc)),
-        "exc_args": json_normalize(exc.args),
-        "exc_traceback": "".join(format_exception(type(exc), exc, exc.__traceback__)),
-    }
-
-
-def exception_from_dict(exc_data: SerializedExceptionDict) -> BaseException:
-    exc_class = import_string(exc_data["exc_type"])
-
-    if not inspect.isclass(exc_class) or not issubclass(exc_class, BaseException):
-        raise TypeError(f"{type(exc_class)} is not an exception")
-
-    return exc_class(*exc_data["exc_args"])
+def get_exception_traceback(exc: BaseException) -> str:
+    return "".join(format_exception(type(exc), exc, exc.__traceback__))
 
 
 def get_random_id() -> str:

@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Generic,
     Optional,
+    Type,
     TypeVar,
     Union,
     cast,
@@ -22,8 +23,6 @@ from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
 from .utils import (
-    SerializedExceptionDict,
-    exception_from_dict,
     get_module_path,
     json_normalize,
 )
@@ -38,7 +37,8 @@ MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
 
 TASK_REFRESH_ATTRS = {
-    "_exception_data",
+    "_exception_class",
+    "_traceback",
     "_return_value",
     "finished_at",
     "started_at",
@@ -255,27 +255,10 @@ class TaskResult(Generic[T]):
     backend: str
     """The name of the backend the task will run on"""
 
+    _exception_class: Optional[Type[BaseException]] = field(init=False, default=None)
+    _traceback: Optional[str] = field(init=False, default=None)
+
     _return_value: Optional[T] = field(init=False, default=None)
-    _exception_data: Optional[SerializedExceptionDict] = field(init=False, default=None)
-
-    @property
-    def exception(self) -> Optional[BaseException]:
-        return (
-            exception_from_dict(cast(SerializedExceptionDict, self._exception_data))
-            if self.status == ResultStatus.FAILED and self._exception_data is not None
-            else None
-        )
-
-    @property
-    def traceback(self) -> Optional[str]:
-        """
-        Return the string representation of the traceback of the task if it failed
-        """
-        return (
-            cast(SerializedExceptionDict, self._exception_data)["exc_traceback"]
-            if self.status == ResultStatus.FAILED and self._exception_data is not None
-            else None
-        )
 
     @property
     def return_value(self) -> Optional[T]:
@@ -285,13 +268,31 @@ class TaskResult(Generic[T]):
         If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
         """
-        if self.status == ResultStatus.FAILED:
-            raise ValueError("Task failed")
-
-        elif self.status != ResultStatus.SUCCEEDED:
+        if not self.is_finished:
             raise ValueError("Task has not finished yet")
 
         return cast(T, self._return_value)
+
+    @property
+    def exception_class(self) -> Optional[Type[BaseException]]:
+        """The exception raised by the task function"""
+        if not self.is_finished:
+            raise ValueError("Task has not finished yet")
+
+        return self._exception_class
+
+    @property
+    def traceback(self) -> Optional[str]:
+        """The traceback of the exception if the task failed"""
+        if not self.is_finished:
+            raise ValueError("Task has not finished yet")
+
+        return self._traceback
+
+    @property
+    def is_finished(self) -> bool:
+        """Has the task finished?"""
+        return self.status in {ResultStatus.FAILED, ResultStatus.SUCCEEDED}
 
     def refresh(self) -> None:
         """
