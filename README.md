@@ -125,7 +125,7 @@ To disable queue name validation, set `QUEUES` to `[]`.
 
 ### The database backend worker
 
-First, you'll need to add `django_tasks.backends.database`  to `INSTALLED_APPS`:
+First, you'll need to add `django_tasks.backends.database` to `INSTALLED_APPS`:
 
 ```python
 INSTALLED_APPS = [
@@ -237,6 +237,61 @@ Whilst signals are available, they may not be the most maintainable approach.
 
 - `django_tasks.signals.task_enqueued`: Called when a task is enqueued. The sender is the backend class. Also called with the enqueued `task_result`.
 - `django_tasks.signals.task_finished`: Called when a task finishes (`SUCCEEDED` or `FAILED`). The sender is the backend class. Also called with the finished `task_result`.
+
+### Database Routers
+
+**Define Multiple Databases in settings.py**
+
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'default_db',
+        'USER': 'default_user',
+        'PASSWORD': 'default_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    'queue_db': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'queue_db',
+        'USER': 'queue_user',
+        'PASSWORD': 'queue_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    'analytics_db': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'analytics_db',
+        'USER': 'analytics_user',
+        'PASSWORD': 'analytics_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+}
+```
+
+**Specify the Router in settings.py**
+
+In settings.py, specify the `DATABASE_ROUTERS` setting to point to your custom router class.
+
+```
+DATABASE_ROUTERS = ['django_tasks.backends.database.routers.DynamicDatabaseRouter']
+```
+
+**Add Models to Apps**
+
+Ensure that the APP_TO_DB_MAP variable is defined correctly in settings.py and contains the necessary mappings for your apps. For example:
+
+```python
+APP_TO_DB_MAP = {
+    'task_queue': 'queue_db',
+    'analytics': 'analytics_db',
+    'default_app': 'default',
+}
+```
+
+This way, the database router can dynamically access this mapping and direct queries to the appropriate database.
 
 ## Contributing
 
