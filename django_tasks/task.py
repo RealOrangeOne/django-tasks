@@ -17,7 +17,6 @@ from typing import (
 
 from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
 
@@ -110,10 +109,7 @@ class Task(Generic[P, T]):
         if queue_name is not None:
             changes["queue_name"] = queue_name
         if run_after is not None:
-            if isinstance(run_after, timedelta):
-                changes["run_after"] = timezone.now() + run_after
-            else:
-                changes["run_after"] = run_after
+            changes["run_after"] = run_after
         if backend is not None:
             changes["backend"] = backend
 

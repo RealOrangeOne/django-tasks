@@ -75,7 +75,7 @@ These attributes (besides `enqueue_on_commit`) can also be modified at run-time 
 modified_task = calculate_meaning_of_life.using(priority=10)
 ```
 
-In addition to the above attributes, `run_after` can be passed to specify a specific time the task should run. Both a timezone-aware `datetime` or `timedelta` may be passed.
+In addition to the above attributes, `run_after` can be passed to specify a specific time the task should run.
 
 ### Enqueueing tasks
 

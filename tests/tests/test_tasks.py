@@ -1,5 +1,5 @@
 import dataclasses
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
@@ -97,10 +97,6 @@ class TaskTestCase(SimpleTestCase):
 
         self.assertIsNone(test_tasks.noop_task.run_after)
         self.assertEqual(test_tasks.noop_task.using(run_after=now).run_after, now)
-        self.assertIsInstance(
-            test_tasks.noop_task.using(run_after=timedelta(hours=1)).run_after,
-            datetime,
-        )
         self.assertIsNone(test_tasks.noop_task.run_after)
 
     def test_using_unknown_backend(self) -> None:
