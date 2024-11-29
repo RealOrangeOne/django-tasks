@@ -10,7 +10,7 @@ description = "An implementation and backport of background workers and tasks in
 authors = [
     {name = "Jake Howard"},
 ]
-version = "0.5.0"
+version = "0.6.0"
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = [
