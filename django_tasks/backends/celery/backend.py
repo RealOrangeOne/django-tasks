@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from functools import partial
 from typing import Any, Iterable, TypeVar
 
 from celery import shared_task
@@ -6,13 +6,14 @@ from celery.app import default_app
 from celery.local import Proxy as CeleryTaskProxy
 from django.apps import apps
 from django.core.checks import ERROR, CheckMessage
+from django.db import transaction
 from django.utils import timezone
+from kombu.utils.uuid import uuid
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY, ResultStatus, TaskResult
 from django_tasks.task import Task as BaseTask
-from django_tasks.utils import json_normalize
 
 if not default_app:
     from django_tasks.backends.celery.app import app as celery_app
@@ -44,7 +45,6 @@ def _map_priority(value: int) -> int:
     return mapped_value
 
 
-@dataclass
 class Task(BaseTask[P, T]):
     celery_task: CeleryTaskProxy = None
     """Celery proxy to the task in the current celery app task registry."""
@@ -77,19 +77,35 @@ class CeleryBackend(BaseTaskBackend):
             priority = _map_priority(task.priority)
             apply_async_kwargs["priority"] = priority
 
+        task_id = uuid()
+        apply_async_kwargs["task_id"] = task_id
+
+        if self._get_enqueue_on_commit_for_task(task):
+            transaction.on_commit(
+                partial(
+                    task.celery_task.apply_async,
+                    args,
+                    kwargs=kwargs,
+                    **apply_async_kwargs,
+                )
+            )
+        else:
+            task.celery_task.apply_async(args, kwargs=kwargs, **apply_async_kwargs)
+
+        # TODO: send task_enqueued signal
+        # TODO: link a task to trigger the task_finished signal?
+        # TODO: consider using DBTaskResult for results?
+
         # TODO: a Celery result backend is required to get additional information
-        async_result = task.celery_task.apply_async(
-            args, kwargs=kwargs, **apply_async_kwargs
-        )
         task_result = TaskResult[T](
             task=task,
-            id=async_result.id,
+            id=task_id,
             status=ResultStatus.NEW,
             enqueued_at=timezone.now(),
             started_at=None,
             finished_at=None,
-            args=json_normalize(args),
-            kwargs=json_normalize(kwargs),
+            args=args,
+            kwargs=kwargs,
             backend=self.alias,
         )
         return task_result
