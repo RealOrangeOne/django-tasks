@@ -262,10 +262,12 @@ class TaskResult(Generic[T]):
         If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
         """
-        if not self.is_finished:
+        if self.status == ResultStatus.SUCCEEDED:
+            return cast(T, self._return_value)
+        elif self.status == ResultStatus.FAILED:
+            raise ValueError("Task failed")
+        else:
             raise ValueError("Task has not finished yet")
-
-        return cast(T, self._return_value)
 
     @property
     def exception_class(self) -> Optional[type[BaseException]]:

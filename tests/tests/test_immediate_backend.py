@@ -83,6 +83,8 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
                 # assert result
                 self.assertEqual(result.status, ResultStatus.FAILED)
+                with self.assertRaisesMessage(ValueError, "Task failed"):
+                    result.return_value  # noqa: B018
                 self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)

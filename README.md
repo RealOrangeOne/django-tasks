@@ -184,7 +184,7 @@ default_task_backend.get_result(result_id)
 
 ### Return values
 
-If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unfinished task (ie not `SUCCEEDED` or `FAILED`) will raise a `ValueError`.
+If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unsuccessful task (ie not `SUCCEEDED`) will raise a `ValueError`.
 
 ```python
 assert result.status == ResultStatus.SUCCEEDED

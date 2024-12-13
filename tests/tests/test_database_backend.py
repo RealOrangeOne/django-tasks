@@ -526,6 +526,8 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
+        with self.assertRaisesMessage(ValueError, "Task failed"):
+            result.return_value  # noqa: B018
 
         self.assertEqual(result.exception_class, ValueError)
         assert result.traceback  # So that mypy knows the next line is allowed
@@ -558,6 +560,8 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type: ignore
         self.assertEqual(result.status, ResultStatus.FAILED)
+        with self.assertRaisesMessage(ValueError, "Task failed"):
+            result.return_value  # noqa: B018
 
         self.assertEqual(result.exception_class, ValueError)
         self.assertIn('ValueError(ValueError("This task failed"))', result.traceback)  # type: ignore[arg-type]
