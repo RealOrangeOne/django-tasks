@@ -10,7 +10,7 @@ from .models import DBTaskResult
 class DBTaskResultAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "get_task_name",
+        "task_name",
         "status",
         "enqueued_at",
         "started_at",
@@ -40,7 +40,3 @@ class DBTaskResultAdmin(admin.ModelAdmin):
         self, request: HttpRequest, obj: Optional[DBTaskResult] = None
     ) -> List[str]:
         return [f.name for f in self.model._meta.fields]
-
-    @admin.display(description="Task")
-    def get_task_name(self, obj: DBTaskResult) -> str:
-        return obj.task.name
