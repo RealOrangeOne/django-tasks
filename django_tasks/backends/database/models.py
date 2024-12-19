@@ -95,7 +95,9 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     task_path = models.TextField(_("task path"))
 
-    queue_name = models.TextField(_("queue name"), default=DEFAULT_QUEUE_NAME)
+    queue_name = models.CharField(
+        _("queue name"), default=DEFAULT_QUEUE_NAME, max_length=64
+    )
     backend_name = models.TextField(_("backend name"))
 
     run_after = models.DateTimeField(_("run after"), null=True)
@@ -111,6 +113,16 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
         verbose_name = _("Task Result")
         verbose_name_plural = _("Task Results")
+
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["queue_name"]),
+            models.Index(
+                F("priority").desc(),
+                F("run_after").desc(nulls_last=True),
+                name="django_task_ordering_idx",
+            ),
+        ]
 
         if django.VERSION >= (5, 1):
             constraints = [
