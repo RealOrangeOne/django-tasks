@@ -170,6 +170,13 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
         return task_result
 
+    @property
+    def task_name(self) -> str:
+        try:
+            return self.task_path.rsplit(".", 1)[1]
+        except IndexError:
+            return self.task_path
+
     @retry(backoff_delay=0)
     def claim(self) -> None:
         """
