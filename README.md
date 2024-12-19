@@ -204,7 +204,7 @@ assert result.status == ResultStatus.SUCCEEDED
 If a task raised an exception, its `.exception_class` will be the exception class raised:
 
 ```python
-assert result.exception == ValueError
+assert result.exception_class == ValueError
 ```
 
 Note that this is just the type of exception, and contains no other values. The traceback information is reduced to a string that you can print to help debugging:
