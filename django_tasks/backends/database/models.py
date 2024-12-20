@@ -170,6 +170,20 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
         return task_result
 
+    @property
+    def task_name(self) -> str:
+        # If the function for an existing task is no longer available, it'll either raise an
+        # ImportError or ModuleNotFoundError (a subclass of ImportError).
+        try:
+            return self.task.name
+        except ImportError:
+            pass
+
+        try:
+            return self.task_path.rsplit(".", 1)[1]
+        except IndexError:
+            return self.task_path
+
     @retry(backoff_delay=0)
     def claim(self) -> None:
         """
