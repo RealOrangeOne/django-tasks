@@ -232,6 +232,22 @@ class DatabaseBackendTestCase(TransactionTestCase):
         with self.assertRaises(ImportError):
             _ = db_task_result.task
 
+    def test_task_name(self) -> None:
+        for task_path, expected_task_name in [
+            ("tests.tasks.noop_task", "noop_task"),
+            ("tests.tasks.task_not_found", "task_not_found"),
+            ("tests.tasks.module_not_found.module_not_found", "module_not_found"),
+            ("unexpected_function", "unexpected_function"),
+        ]:
+            with self.subTest(task_path):
+                db_task_result = DBTaskResult.objects.create(
+                    args_kwargs={"args": [], "kwargs": {}},
+                    task_path=task_path,
+                    backend_name="default",
+                )
+
+                self.assertEqual(db_task_result.task_name, expected_task_name)
+
     def test_check(self) -> None:
         errors = list(default_task_backend.check())
 
