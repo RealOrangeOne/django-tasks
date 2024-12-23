@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Generic, Optional, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 import django
 from django.core.exceptions import SuspiciousOperation
@@ -10,7 +10,7 @@ from django.db.models.constraints import CheckConstraint
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, Self
 
 from django_tasks.task import (
     DEFAULT_PRIORITY,
