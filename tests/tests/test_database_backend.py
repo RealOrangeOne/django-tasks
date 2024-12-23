@@ -758,8 +758,6 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     }
 )
 class DatabaseTaskResultTestCase(TransactionTestCase):
-    run_worker = partial(call_command, "db_worker", verbosity=0, batch=True, interval=0)
-
     def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> Sequence:
         if isinstance(sql, QuerySet):
             sql = str(sql.query)
