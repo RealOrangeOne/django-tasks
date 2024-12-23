@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Optional, Self, TypeVar
 
 import django
 from django.core.exceptions import SuspiciousOperation
@@ -167,6 +167,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
         object.__setattr__(task_result, "_exception_class", exception_class)
         object.__setattr__(task_result, "_traceback", self.traceback or None)
+        object.__setattr__(task_result, "_return_value", self.return_value)
 
         return task_result
 
@@ -225,4 +226,14 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "exception_class_path",
                 "traceback",
             ]
+        )
+
+    def duplicate(self) -> Self:
+        return type(self)(
+            args_kwargs=self.args_kwargs,
+            priority=self.priority,
+            task_path=self.task_path,
+            queue_name=self.queue_name,
+            backend_name=self.backend_name,
+            run_after=self.run_after,
         )
