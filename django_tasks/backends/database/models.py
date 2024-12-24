@@ -10,7 +10,7 @@ from django.db.models.constraints import CheckConstraint
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, Self
 
 from django_tasks.task import (
     DEFAULT_PRIORITY,
@@ -167,6 +167,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
         object.__setattr__(task_result, "_exception_class", exception_class)
         object.__setattr__(task_result, "_traceback", self.traceback or None)
+        object.__setattr__(task_result, "_return_value", self.return_value)
 
         return task_result
 
@@ -225,4 +226,14 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "exception_class_path",
                 "traceback",
             ]
+        )
+
+    def duplicate(self) -> Self:
+        return type(self)(
+            args_kwargs=self.args_kwargs,
+            priority=self.priority,
+            task_path=self.task_path,
+            queue_name=self.queue_name,
+            backend_name=self.backend_name,
+            run_after=self.run_after,
         )
