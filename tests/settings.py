@@ -6,7 +6,7 @@ import django
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-IN_TEST = sys.argv[1] == "test"
+IN_TEST = len(sys.argv) > 1 and sys.argv[1] == "test"
 
 ALLOWED_HOSTS = ["*"]
 
