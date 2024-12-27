@@ -127,6 +127,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             status=ResultStatus.SUCCEEDED,
             started_at=timezone.now(),
             finished_at=timezone.now(),
+            return_value=42,
         )
 
         self.assertEqual(result.status, ResultStatus.NEW)
@@ -139,6 +140,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.finished_at)
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
+        self.assertEqual(result.return_value, 42)
 
     async def test_refresh_result_async(self) -> None:
         result = await default_task_backend.aenqueue(
@@ -149,6 +151,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             status=ResultStatus.SUCCEEDED,
             started_at=timezone.now(),
             finished_at=timezone.now(),
+            return_value=42,
         )
 
         self.assertEqual(result.status, ResultStatus.NEW)
@@ -160,6 +163,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.finished_at)
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
+        self.assertEqual(result.return_value, 42)
 
     def test_get_missing_result(self) -> None:
         with self.assertRaises(ResultDoesNotExist):

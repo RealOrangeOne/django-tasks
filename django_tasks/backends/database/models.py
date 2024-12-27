@@ -167,6 +167,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
         object.__setattr__(task_result, "_exception_class", exception_class)
         object.__setattr__(task_result, "_traceback", self.traceback or None)
+        object.__setattr__(task_result, "_return_value", self.return_value)
 
         return task_result
 
