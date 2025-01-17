@@ -398,13 +398,15 @@ class DatabaseBackendTestCase(TransactionTestCase):
     }
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
-    run_worker = partial(
-        call_command,
-        "db_worker",
-        verbosity=0,
-        batch=True,
-        interval=0,
-        startup_delay=False,
+    run_worker = staticmethod(
+        partial(
+            call_command,
+            "db_worker",
+            verbosity=0,
+            batch=True,
+            interval=0,
+            startup_delay=False,
+        )
     )
 
     def tearDown(self) -> None:
@@ -1006,7 +1008,9 @@ class ConnectionExclusiveTranscationTestCase(TestCase):
     }
 )
 class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
-    prune_task_results = partial(call_command, "prune_db_task_results", verbosity=0)
+    prune_task_results = staticmethod(
+        partial(call_command, "prune_db_task_results", verbosity=0)
+    )
 
     def tearDown(self) -> None:
         # Reset the logger after every run, to ensure the correct `stdout` is used
