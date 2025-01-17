@@ -71,9 +71,10 @@ class ImmediateBackendTestCase(SimpleTestCase):
             ),
         ]
         for task, exception, message in test_data:
-            with self.subTest(task), self.assertLogs(
-                "django_tasks", level="ERROR"
-            ) as captured_logs:
+            with (
+                self.subTest(task),
+                self.assertLogs("django_tasks", level="ERROR") as captured_logs,
+            ):
                 result = task.enqueue()
 
                 # assert logging

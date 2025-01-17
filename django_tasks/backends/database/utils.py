@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator, Optional, Union
+from typing import Any, Optional, Union
 from uuid import UUID
 
 import django

@@ -5,10 +5,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Generic,
     Optional,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -102,7 +100,7 @@ class Task(Generic[P, T]):
         Create a new task with modified defaults
         """
 
-        changes: Dict[str, Any] = {}
+        changes: dict[str, Any] = {}
 
         if priority is not None:
             changes["priority"] = priority
@@ -245,13 +243,13 @@ class TaskResult(Generic[T]):
     args: list
     """The arguments to pass to the task function"""
 
-    kwargs: Dict[str, Any]
+    kwargs: dict[str, Any]
     """The keyword arguments to pass to the task function"""
 
     backend: str
     """The name of the backend the task will run on"""
 
-    _exception_class: Optional[Type[BaseException]] = field(init=False, default=None)
+    _exception_class: Optional[type[BaseException]] = field(init=False, default=None)
     _traceback: Optional[str] = field(init=False, default=None)
 
     _return_value: Optional[T] = field(init=False, default=None)
@@ -270,7 +268,7 @@ class TaskResult(Generic[T]):
         return cast(T, self._return_value)
 
     @property
-    def exception_class(self) -> Optional[Type[BaseException]]:
+    def exception_class(self) -> Optional[type[BaseException]]:
         """The exception raised by the task function"""
         if not self.is_finished:
             raise ValueError("Task has not finished yet")

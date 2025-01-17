@@ -6,7 +6,7 @@ import sys
 import time
 from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
-from typing import List, Optional
+from typing import Optional
 
 from django.core.exceptions import SuspiciousOperation
 from django.core.management.base import BaseCommand
@@ -29,7 +29,7 @@ class Worker:
     def __init__(
         self,
         *,
-        queue_names: List[str],
+        queue_names: list[str],
         interval: float,
         batch: bool,
         backend_name: str,

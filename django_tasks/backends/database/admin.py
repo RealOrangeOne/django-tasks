@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from django.contrib import admin
 from django.http import HttpRequest
@@ -38,5 +38,5 @@ class DBTaskResultAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(
         self, request: HttpRequest, obj: Optional[DBTaskResult] = None
-    ) -> List[str]:
+    ) -> list[str]:
         return [f.name for f in self.model._meta.fields]

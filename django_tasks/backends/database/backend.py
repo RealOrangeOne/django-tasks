@@ -1,5 +1,6 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import django
 from django.apps import apps
