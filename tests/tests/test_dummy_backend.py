@@ -1,13 +1,18 @@
 import json
 from typing import cast
+from unittest import mock
 
 from django.db import transaction
-from django.test import SimpleTestCase, TransactionTestCase, override_settings
+from django.test import (
+    SimpleTestCase,
+    TransactionTestCase,
+    override_settings,
+)
 from django.urls import reverse
 
 from django_tasks import ResultStatus, Task, default_task_backend, tasks
 from django_tasks.backends.dummy import DummyBackend
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 from tests import tasks as test_tasks
 
 
@@ -161,6 +166,13 @@ class DummyBackendTestCase(SimpleTestCase):
 
         with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
             result.traceback  # noqa: B018
+
+    def test_validate_disallowed_async_task(self) -> None:
+        with mock.patch.multiple(default_task_backend, supports_async_task=False):
+            with self.assertRaisesMessage(
+                InvalidTaskError, "Backend does not support async tasks"
+            ):
+                default_task_backend.validate_task(test_tasks.noop_task_async)
 
 
 class DummyBackendTransactionTestCase(TransactionTestCase):

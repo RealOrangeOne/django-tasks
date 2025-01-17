@@ -73,6 +73,14 @@ class RetryTestCase(SimpleTestCase):
         self.assertTrue(utils.retry()(lambda: True)())
         self.assertFalse(utils.retry()(lambda: False)())
 
+    def test_skip_retry_on_keyboard_interrupt(self) -> None:
+        sentinel = Mock(side_effect=KeyboardInterrupt(""))
+
+        with self.assertRaises(KeyboardInterrupt):
+            utils.retry()(sentinel)()
+
+        self.assertEqual(sentinel.call_count, 1)
+
 
 class RandomIdTestCase(SimpleTestCase):
     def test_correct_length(self) -> None:

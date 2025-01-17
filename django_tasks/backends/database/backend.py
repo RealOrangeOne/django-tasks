@@ -88,8 +88,7 @@ class DatabaseBackend(BaseTaskBackend):
         backend_name = self.__class__.__name__
 
         if not apps.is_installed("django_tasks.backends.database"):
-            yield messages.CheckMessage(
-                messages.ERROR,
+            yield messages.Error(
                 f"{backend_name} configured as django_tasks backend, but database app not installed",
                 "Insert 'django_tasks.backends.database' in INSTALLED_APPS",
             )
@@ -102,8 +101,7 @@ class DatabaseBackend(BaseTaskBackend):
             django.VERSION >= (5, 1)
             and connection_requires_manual_exclusive_transaction(db_connection)
         ):
-            yield messages.CheckMessage(
-                messages.ERROR,
+            yield messages.Error(
                 f"{backend_name} is using SQLite non-exclusive transactions",
                 f"Set settings.DATABASES[{db_connection.alias!r}]['OPTIONS']['transaction_mode'] to 'EXCLUSIVE'",
             )

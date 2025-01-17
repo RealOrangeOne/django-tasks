@@ -264,6 +264,23 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("django_tasks.backends.database", errors[0].hint)  # type:ignore[arg-type]
 
+    @skipIf(
+        connection.vendor != "sqlite", "Transaction mode is only applicable on SQLite"
+    )
+    @skipIf(django.VERSION < (5, 1), "Manual transaction check only runs on 5.1+")
+    def test_check_non_exclusive_transaction(self) -> None:
+        try:
+            with mock.patch.dict(
+                connection.settings_dict["OPTIONS"], {"transaction_mode": None}
+            ):
+                errors = list(default_task_backend.check())
+
+            self.assertEqual(len(errors), 1)
+            self.assertIn("['transaction_mode'] to 'EXCLUSIVE'", errors[0].hint)  # type:ignore[arg-type]
+        finally:
+            connection.close()
+            connection.get_connection_params()
+
     def test_priority_range_check(self) -> None:
         with self.assertRaises(IntegrityError):
             DBTaskResult.objects.create(

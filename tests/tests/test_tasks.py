@@ -176,6 +176,12 @@ class TaskTestCase(SimpleTestCase):
         test_tasks.noop_task.using(priority=-100)
         test_tasks.noop_task.using(priority=0)
 
+    def test_unknown_queue_name(self) -> None:
+        with self.assertRaisesMessage(
+            InvalidTaskError, "Queue 'queue-2' is not valid for backend"
+        ):
+            test_tasks.noop_task.using(queue_name="queue-2")
+
     def test_call_task(self) -> None:
         self.assertEqual(test_tasks.calculate_meaning_of_life.call(), 42)
 
