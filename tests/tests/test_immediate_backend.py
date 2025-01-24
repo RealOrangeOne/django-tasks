@@ -223,6 +223,11 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
 
+    def test_check(self) -> None:
+        errors = list(default_task_backend.check())
+
+        self.assertEqual(len(errors), 0, errors)
+
 
 class ImmediateBackendTransactionTestCase(TransactionTestCase):
     @override_settings(
