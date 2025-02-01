@@ -89,6 +89,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     started_at = models.DateTimeField(_("started at"), null=True)
     finished_at = models.DateTimeField(_("finished at"), null=True)
 
+    worker_id = models.UUIDField(_("worker id"), null=True)
+
     args_kwargs = models.JSONField(_("args kwargs"))
 
     priority = models.IntegerField(_("priority"), default=DEFAULT_PRIORITY)
@@ -163,6 +165,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],
             backend=self.backend_name,
+            worker_id=None if self.worker_id is None else str(self.worker_id),
         )
 
         object.__setattr__(task_result, "_exception_class", exception_class)
@@ -186,13 +189,14 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             return self.task_path
 
     @retry(backoff_delay=0)
-    def claim(self) -> None:
+    def claim(self, worker_id: uuid.UUID) -> None:
         """
-        Mark as job as being run
+        Mark as job as being run by a worker
         """
         self.status = ResultStatus.RUNNING
         self.started_at = timezone.now()
-        self.save(update_fields=["status", "started_at"])
+        self.worker_id = worker_id
+        self.save(update_fields=["status", "started_at", "worker_id"])
 
     @retry()
     def set_succeeded(self, return_value: Any) -> None:
@@ -201,6 +205,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.return_value = return_value
         self.exception_class_path = ""
         self.traceback = ""
+        self.worker_id = None
         self.save(
             update_fields=[
                 "status",
@@ -208,6 +213,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "finished_at",
                 "exception_class_path",
                 "traceback",
+                "worker_id",
             ]
         )
 
@@ -218,6 +224,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.exception_class_path = get_module_path(type(exc))
         self.traceback = get_exception_traceback(exc)
         self.return_value = None
+        self.worker_id = None
         self.save(
             update_fields=[
                 "status",
@@ -225,5 +232,6 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "finished_at",
                 "exception_class_path",
                 "traceback",
+                "worker_id",
             ]
         )

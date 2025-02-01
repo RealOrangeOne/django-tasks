@@ -41,6 +41,7 @@ TASK_REFRESH_ATTRS = {
     "started_at",
     "status",
     "enqueued_at",
+    "worker_id",
 }
 
 
@@ -248,6 +249,9 @@ class TaskResult(Generic[T]):
 
     backend: str
     """The name of the backend the task will run on"""
+
+    worker_id: Optional[str]
+    """The id of the worker running the task"""
 
     _exception_class: Optional[type[BaseException]] = field(init=False, default=None)
     _traceback: Optional[str] = field(init=False, default=None)

@@ -398,6 +398,8 @@ class DatabaseBackendTestCase(TransactionTestCase):
     }
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
+    worker_id = uuid.uuid4()
+
     run_worker = staticmethod(
         partial(
             call_command,
@@ -406,6 +408,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             batch=True,
             interval=0,
             startup_delay=False,
+            worker_id=worker_id,
         )
     )
 
@@ -437,6 +440,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+                self.assertIsNone(result.worker_id)
 
                 self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -612,6 +616,15 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(worker_class.mock_calls[0].kwargs["interval"], 0.1)
 
+    def test_invalid_worker_id(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--worker-id", "123"]
+                )
+        self.assertIn("invalid UUID value", output.getvalue())
+
     def test_run_after(self) -> None:
         result = test_tasks.noop_task.using(
             run_after=timezone.now() + timedelta(hours=10)
@@ -685,10 +698,10 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "Starting worker for queues=default",
+                f"Starting worker worker_id={self.worker_id} for queues=default",
                 f"Task id={result.id} path=tests.tasks.noop_task state=RUNNING",
                 f"Task id={result.id} path=tests.tasks.noop_task state=SUCCEEDED",
-                "No more tasks to run - exiting gracefully.",
+                f"No more tasks to run for worker_id={self.worker_id} - exiting gracefully.",
             ],
         )
 
@@ -1325,6 +1338,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
                 result.refresh()
                 self.assertEqual(result.status, ResultStatus.RUNNING)
+                self.assertIsNotNone(result.worker_id)
 
                 process.send_signal(sig)
 
@@ -1335,6 +1349,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 result.refresh()
 
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+                self.assertIsNone(result.worker_id)
 
     @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_repeat_ctrl_c(self) -> None:
@@ -1347,6 +1362,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
+        self.assertIsNotNone(result.worker_id)
 
         process.send_signal(signal.SIGINT)
 
@@ -1365,6 +1381,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertEqual(result.exception_class, SystemExit)
+        self.assertIsNone(result.worker_id)
 
     @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
     def test_kill(self) -> None:
@@ -1403,6 +1420,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertEqual(result.exception_class, SystemExit)
+        self.assertIsNone(result.worker_id)
 
     def test_keyboard_interrupt_task(self) -> None:
         result = test_tasks.failing_task_keyboard_interrupt.enqueue()
@@ -1415,6 +1433,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertEqual(result.exception_class, KeyboardInterrupt)
+        self.assertIsNone(result.worker_id)
 
     def test_multiple_workers(self) -> None:
         results = [test_tasks.sleep_for.enqueue(0.1) for _ in range(10)]
@@ -1431,6 +1450,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         for result in results:
             result.refresh()
             self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+            self.assertIsNone(result.worker_id)
 
         all_output = ""
 

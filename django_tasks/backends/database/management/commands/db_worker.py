@@ -4,6 +4,7 @@ import random
 import signal
 import sys
 import time
+import uuid
 from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
 from typing import Optional
@@ -34,6 +35,7 @@ class Worker:
         batch: bool,
         backend_name: str,
         startup_delay: bool,
+        worker_id: uuid.UUID,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -41,6 +43,8 @@ class Worker:
         self.batch = batch
         self.backend_name = backend_name
         self.startup_delay = startup_delay
+
+        self.worker_id = worker_id
 
         self.running = True
         self.running_task = False
@@ -72,7 +76,11 @@ class Worker:
     def start(self) -> None:
         self.configure_signals()
 
-        logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
+        logger.info(
+            "Starting worker worker_id=%s for queues=%s",
+            self.worker_id,
+            ",".join(self.queue_names),
+        )
 
         if self.startup_delay and self.interval:
             # Add a random small delay before starting the loop to avoid a thundering herd
@@ -101,7 +109,7 @@ class Worker:
 
                     if task_result is not None:
                         # "claim" the task, so it isn't run by another worker process
-                        task_result.claim()
+                        task_result.claim(self.worker_id)
 
                 if task_result is not None:
                     self.run_task(task_result)
@@ -150,7 +158,10 @@ class Worker:
                 sender = type(db_task_result.task.get_backend())
                 task_result = db_task_result.task_result
             except (ModuleNotFoundError, SuspiciousOperation):
-                logger.exception("Task id=%s failed unexpectedly", db_task_result.id)
+                logger.exception(
+                    "Task id=%s failed unexpectedly",
+                    db_task_result.id,
+                )
             else:
                 task_finished.send(
                     sender=sender,
@@ -214,6 +225,13 @@ class Command(BaseCommand):
             dest="startup_delay",
             help="Don't add a small delay at startup.",
         )
+        parser.add_argument(
+            "--worker-id",
+            nargs="?",
+            type=uuid.UUID,
+            help="Worker id. MUST be unique across worker pool (default: auto-generate)",
+            default=uuid.uuid4(),
+        )
 
     def configure_logging(self, verbosity: int) -> None:
         if verbosity == 0:
@@ -239,6 +257,7 @@ class Command(BaseCommand):
         batch: bool,
         backend_name: str,
         startup_delay: bool,
+        worker_id: uuid.UUID,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -249,9 +268,12 @@ class Command(BaseCommand):
             batch=batch,
             backend_name=backend_name,
             startup_delay=startup_delay,
+            worker_id=worker_id,
         )
 
         worker.start()
 
         if batch:
-            logger.info("No more tasks to run - exiting gracefully.")
+            logger.info(
+                "No more tasks to run for worker_id=%s - exiting gracefully.", worker_id
+            )
