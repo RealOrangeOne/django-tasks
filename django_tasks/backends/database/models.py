@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 import django
@@ -235,3 +236,32 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "worker_id",
             ]
         )
+
+
+class DBWorkerPingQuerySet(models.QuerySet):
+    STALE_TIME = 600
+
+    def stale(self) -> "DBWorkerPingQuerySet":
+        return self.filter(
+            last_ping__lte=timezone.now() - timedelta(seconds=self.STALE_TIME)
+        )
+
+
+class DBWorkerPing(models.Model):
+    worker_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    last_ping = models.DateTimeField()
+
+    objects = DBWorkerPingQuerySet.as_manager()
+
+    @classmethod
+    @retry()
+    def ping(cls, worker_id: str) -> None:
+        cls.objects.update_or_create(
+            worker_id=worker_id, defaults={"last_ping": timezone.now()}
+        )
+
+    @classmethod
+    @retry()
+    def cleanup_ping(cls, worker_id: str) -> None:
+        cls.objects.filter(worker_id=worker_id).delete()

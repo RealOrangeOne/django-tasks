@@ -3,6 +3,7 @@ import math
 import random
 import signal
 import sys
+import threading
 import time
 import uuid
 from argparse import ArgumentParser, ArgumentTypeError
@@ -16,7 +17,7 @@ from django.db.utils import OperationalError
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.backend import DatabaseBackend
-from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.models import DBTaskResult, DBWorkerPing
 from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished
@@ -46,11 +47,29 @@ class Worker:
 
         self.worker_id = worker_id
 
-        self.running = True
+        self.ping_thread = threading.Thread(target=self.run_ping)
+
+        self.should_exit = threading.Event()
         self.running_task = False
 
+    def run_ping(self) -> None:
+        try:
+            while True:
+                try:
+                    DBWorkerPing.ping(self.worker_id)
+                except Exception:
+                    logger.exception(
+                        "Error sending worker ping worker_id=%s", self.worker_id
+                    )
+                if self.should_exit.wait(timeout=10):
+                    break
+        finally:
+            # Close any connections opened in this thread
+            for conn in connections.all():
+                conn.close()
+
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
-        if not self.running:
+        if self.should_exit.is_set():
             logger.warning(
                 "Received %s - terminating current task.", signal.strsignal(signum)
             )
@@ -60,7 +79,7 @@ class Worker:
             "Received %s - shutting down gracefully... (press Ctrl+C again to force)",
             signal.strsignal(signum),
         )
-        self.running = False
+        self.should_exit.set()
 
         if not self.running_task:
             # If we're not currently running a task, exit immediately.
@@ -73,8 +92,9 @@ class Worker:
         if hasattr(signal, "SIGQUIT"):
             signal.signal(signal.SIGQUIT, self.shutdown)
 
-    def start(self) -> None:
+    def run(self) -> None:
         self.configure_signals()
+        self.ping_thread.start()
 
         logger.info(
             "Starting worker worker_id=%s for queues=%s",
@@ -86,7 +106,7 @@ class Worker:
             # Add a random small delay before starting the loop to avoid a thundering herd
             time.sleep(random.random())
 
-        while self.running:
+        while not self.should_exit.is_set():
             tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
             if not self.process_all_queues:
                 tasks = tasks.filter(queue_name__in=self.queue_names)
@@ -117,16 +137,13 @@ class Worker:
             finally:
                 self.running_task = False
 
-                for conn in connections.all(initialized_only=True):
-                    conn.close()
-
             if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
                 return None
 
-            # If ctrl-c has just interrupted a task, self.running was cleared,
+            # If ctrl-c has just interrupted a task, self.should_exit was cleared,
             # and we should not sleep, but rather exit immediately.
-            if self.running and not task_result:
+            if not self.should_exit.is_set() and not task_result:
                 # Wait before checking for another task
                 time.sleep(self.interval)
 
@@ -167,6 +184,14 @@ class Worker:
                     sender=sender,
                     task_result=task_result,
                 )
+
+        for conn in connections.all(initialized_only=True):
+            conn.close()
+
+    def stop(self) -> None:
+        self.should_exit.set()
+        DBWorkerPing.cleanup_ping(self.worker_id)
+        self.ping_thread.join()
 
 
 def valid_backend_name(val: str) -> str:
@@ -271,7 +296,10 @@ class Command(BaseCommand):
             worker_id=worker_id,
         )
 
-        worker.start()
+        try:
+            worker.run()
+        finally:
+            worker.stop()
 
         if batch:
             logger.info(
