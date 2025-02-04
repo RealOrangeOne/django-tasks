@@ -90,7 +90,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     started_at = models.DateTimeField(_("started at"), null=True)
     finished_at = models.DateTimeField(_("finished at"), null=True)
 
-    worker_id = models.UUIDField(_("worker id"), null=True)
+    worker_id = models.CharField(_("worker id"), max_length=64, default="")
 
     args_kwargs = models.JSONField(_("args kwargs"))
 
@@ -166,7 +166,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],
             backend=self.backend_name,
-            worker_id=None if self.worker_id is None else str(self.worker_id),
+            worker_id=self.worker_id or None,
         )
 
         object.__setattr__(task_result, "_exception_class", exception_class)
@@ -190,7 +190,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             return self.task_path
 
     @retry(backoff_delay=0)
-    def claim(self, worker_id: uuid.UUID) -> None:
+    def claim(self, worker_id: str) -> None:
         """
         Mark as job as being run by a worker
         """
@@ -206,7 +206,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.return_value = return_value
         self.exception_class_path = ""
         self.traceback = ""
-        self.worker_id = None
+        self.worker_id = ""
         self.save(
             update_fields=[
                 "status",
@@ -225,7 +225,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.exception_class_path = get_module_path(type(exc))
         self.traceback = get_exception_traceback(exc)
         self.return_value = None
-        self.worker_id = None
+        self.worker_id = ""
         self.save(
             update_fields=[
                 "status",
@@ -248,7 +248,7 @@ class DBWorkerPingQuerySet(models.QuerySet):
 
 
 class DBWorkerPing(models.Model):
-    worker_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    worker_id = models.CharField(max_length=64, primary_key=True, editable=False)
 
     last_ping = models.DateTimeField()
 

@@ -398,7 +398,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
     }
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
-    worker_id = uuid.uuid4()
+    worker_id = str(uuid.uuid4())
 
     run_worker = staticmethod(
         partial(
@@ -616,14 +616,25 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(worker_class.mock_calls[0].kwargs["interval"], 0.1)
 
-    def test_invalid_worker_id(self) -> None:
+    def test_too_long_worker_id(self) -> None:
         output = StringIO()
         with redirect_stderr(output):
             with self.assertRaises(SystemExit):
                 execute_from_command_line(
-                    ["django-admin", "db_worker", "--worker-id", "123"]
+                    ["django-admin", "db_worker", "--worker-id", "A" * 65]
                 )
-        self.assertIn("invalid UUID value", output.getvalue())
+        self.assertIn(
+            "Worker ids must be shorter than 64 characters", output.getvalue()
+        )
+
+    def test_empty_worker_id(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--worker-id", ""]
+                )
+        self.assertIn("Worker id must not be empty", output.getvalue())
 
     def test_run_after(self) -> None:
         result = test_tasks.noop_task.using(

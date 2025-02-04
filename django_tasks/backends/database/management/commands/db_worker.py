@@ -5,7 +5,6 @@ import signal
 import sys
 import threading
 import time
-import uuid
 from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
 from typing import Optional
@@ -22,6 +21,7 @@ from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished
 from django_tasks.task import DEFAULT_QUEUE_NAME
+from django_tasks.utils import get_random_id
 
 package_logger = logging.getLogger("django_tasks")
 logger = logging.getLogger("django_tasks.backends.database.db_worker")
@@ -36,7 +36,7 @@ class Worker:
         batch: bool,
         backend_name: str,
         startup_delay: bool,
-        worker_id: uuid.UUID,
+        worker_id: str,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -213,6 +213,14 @@ def valid_interval(val: str) -> float:
     return num
 
 
+def validate_worker_id(val: str) -> str:
+    if not val:
+        raise ArgumentTypeError("Worker id must not be empty")
+    if len(val) > 64:
+        raise ArgumentTypeError("Worker ids must be shorter than 64 characters")
+    return val
+
+
 class Command(BaseCommand):
     help = "Run a database background worker"
 
@@ -253,9 +261,9 @@ class Command(BaseCommand):
         parser.add_argument(
             "--worker-id",
             nargs="?",
-            type=uuid.UUID,
+            type=validate_worker_id,
             help="Worker id. MUST be unique across worker pool (default: auto-generate)",
-            default=uuid.uuid4(),
+            default=get_random_id(),
         )
 
     def configure_logging(self, verbosity: int) -> None:
@@ -282,7 +290,7 @@ class Command(BaseCommand):
         batch: bool,
         backend_name: str,
         startup_delay: bool,
-        worker_id: uuid.UUID,
+        worker_id: str,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
