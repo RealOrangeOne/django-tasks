@@ -50,17 +50,37 @@ class Worker:
         self.ping_thread = threading.Thread(target=self.run_ping)
 
         self.should_exit = threading.Event()
-        self.running_task = False
+        self.running_task = threading.Lock()
 
     def run_ping(self) -> None:
+        # Track whether there was a task running during the previous iteration,
+        # to track state changes.
+        was_running_task = self.running_task.locked()
+
         try:
             while True:
-                try:
-                    DBWorkerPing.ping(self.worker_id)
-                except Exception:
-                    logger.exception(
-                        "Error sending worker ping worker_id=%s", self.worker_id
-                    )
+                if self.running_task.locked():
+                    try:
+                        DBWorkerPing.ping(self.worker_id)
+                        logger.debug("Sent ping worker_id=%s", self.worker_id)
+                    except Exception:
+                        logger.exception(
+                            "Error updating worker ping worker_id=%s", self.worker_id
+                        )
+                elif was_running_task:
+                    # If a task was running before, the ping is stale and can be removed.
+                    # If no task is running, and it wasn't on the previous loop either,
+                    # there's nothing to do.
+                    try:
+                        DBWorkerPing.cleanup_ping(self.worker_id)
+                        logger.debug("Cleaned up ping worker_id=%s", self.worker_id)
+                    except Exception:
+                        logger.exception(
+                            "Error updating worker ping worker_id=%s", self.worker_id
+                        )
+
+                was_running_task = self.running_task.locked()
+
                 if self.should_exit.wait(timeout=10):
                     break
         finally:
@@ -81,7 +101,7 @@ class Worker:
         )
         self.should_exit.set()
 
-        if not self.running_task:
+        if not self.running_task.locked():
             # If we're not currently running a task, exit immediately.
             # This is useful if we're currently in a `sleep`.
             sys.exit(0)
@@ -111,9 +131,7 @@ class Worker:
             if not self.process_all_queues:
                 tasks = tasks.filter(queue_name__in=self.queue_names)
 
-            try:
-                self.running_task = True
-
+            with self.running_task:
                 # During this transaction, all "ready" tasks are locked. Therefore, it's important
                 # it be as efficient as possible.
                 with exclusive_transaction(tasks.db):
@@ -133,9 +151,6 @@ class Worker:
 
                 if task_result is not None:
                     self.run_task(task_result)
-
-            finally:
-                self.running_task = False
 
             if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
