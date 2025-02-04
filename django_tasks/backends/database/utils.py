@@ -22,6 +22,10 @@ def connection_requires_manual_exclusive_transaction(
     if django.VERSION < (5, 1):
         return True
 
+    if not hasattr(connection, "transaction_mode"):
+        # Manually called to set `transaction_mode`
+        connection.get_connection_params()
+
     return connection.transaction_mode != "EXCLUSIVE"  # type:ignore[attr-defined,no-any-return]
 
 
@@ -35,9 +39,6 @@ def exclusive_transaction(using: Optional[str] = None) -> Generator[Any, Any, An
     connection: BaseDatabaseWrapper = transaction.get_connection(using)
 
     if connection_requires_manual_exclusive_transaction(connection):
-        if django.VERSION >= (5, 1):
-            raise RuntimeError("Transactions must be EXCLUSIVE")
-
         with connection.cursor() as c:
             c.execute("BEGIN EXCLUSIVE")
             try:

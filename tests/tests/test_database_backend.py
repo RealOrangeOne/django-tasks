@@ -19,7 +19,7 @@ from django.core.management import call_command, execute_from_command_line
 from django.db import connection, connections, transaction
 from django.db.models import QuerySet
 from django.db.utils import IntegrityError, OperationalError
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.test import TransactionTestCase, override_settings
 from django.test.testcases import _deferredSkip  # type:ignore[attr-defined]
 from django.urls import reverse
 from django.utils import timezone
@@ -263,23 +263,6 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("django_tasks.backends.database", errors[0].hint)  # type:ignore[arg-type]
-
-    @skipIf(
-        connection.vendor != "sqlite", "Transaction mode is only applicable on SQLite"
-    )
-    @skipIf(django.VERSION < (5, 1), "Manual transaction check only runs on 5.1+")
-    def test_check_non_exclusive_transaction(self) -> None:
-        try:
-            with mock.patch.dict(
-                connection.settings_dict["OPTIONS"], {"transaction_mode": None}
-            ):
-                errors = list(default_task_backend.check())
-
-            self.assertEqual(len(errors), 1)
-            self.assertIn("['transaction_mode'] to 'EXCLUSIVE'", errors[0].hint)  # type:ignore[arg-type]
-        finally:
-            connection.close()
-            connection.get_connection_params()
 
     def test_priority_range_check(self) -> None:
         with self.assertRaises(IntegrityError):
@@ -981,12 +964,13 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
             new_connection.close()
 
 
-class ConnectionExclusiveTranscationTestCase(TestCase):
+class ConnectionExclusiveTranscationTestCase(TransactionTestCase):
     def setUp(self) -> None:
         self.connection = connections.create_connection("default")
 
     def tearDown(self) -> None:
         self.connection.close()
+        # connection.close()
 
     @skipIf(connection.vendor == "sqlite", "SQLite handled separately")
     def test_non_sqlite(self) -> None:
@@ -1017,6 +1001,14 @@ class ConnectionExclusiveTranscationTestCase(TestCase):
         self.assertFalse(
             connection_requires_manual_exclusive_transaction(self.connection)
         )
+
+    @skipIf(connection.vendor != "sqlite", "SQLite only")
+    def test_exclusive_transaction(self) -> None:
+        with self.assertNumQueries(2) as c:
+            with exclusive_transaction():
+                pass
+
+        self.assertEqual(c.captured_queries[0]["sql"], "BEGIN EXCLUSIVE")
 
 
 @override_settings(
