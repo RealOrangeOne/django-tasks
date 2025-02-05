@@ -131,26 +131,25 @@ class Worker:
             if not self.process_all_queues:
                 tasks = tasks.filter(queue_name__in=self.queue_names)
 
-            with self.running_task:
-                # During this transaction, all "ready" tasks are locked. Therefore, it's important
-                # it be as efficient as possible.
-                with exclusive_transaction(tasks.db):
-                    try:
-                        task_result = tasks.get_locked()
-                    except OperationalError as e:
-                        # Ignore locked databases and keep trying.
-                        # It should unlock eventually.
-                        if "is locked" in e.args[0]:
-                            task_result = None
-                        else:
-                            raise
-
-                    if task_result is not None:
-                        # "claim" the task, so it isn't run by another worker process
-                        task_result.claim(self.worker_id)
+            # During this transaction, all "ready" tasks are locked. Therefore, it's important
+            # it be as efficient as possible.
+            with exclusive_transaction(tasks.db):
+                try:
+                    task_result = tasks.get_locked()
+                except OperationalError as e:
+                    # Ignore locked databases and keep trying.
+                    # It should unlock eventually.
+                    if "is locked" in e.args[0]:
+                        task_result = None
+                    else:
+                        raise
 
                 if task_result is not None:
-                    self.run_task(task_result)
+                    # "claim" the task, so it isn't run by another worker process
+                    task_result.claim(self.worker_id)
+
+            if task_result is not None:
+                self.run_task(task_result)
 
             if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
@@ -166,39 +165,41 @@ class Worker:
         """
         Run the given task, marking it as succeeded or failed.
         """
-        try:
-            task = db_task_result.task
-            task_result = db_task_result.task_result
-
-            logger.info(
-                "Task id=%s path=%s state=%s",
-                db_task_result.id,
-                db_task_result.task_path,
-                task_result.status,
-            )
-            return_value = task.call(*task_result.args, **task_result.kwargs)
-
-            # Setting the return and success value inside the error handling,
-            # So errors setting it (eg JSON encode) can still be recorded
-            db_task_result.set_succeeded(return_value)
-            task_finished.send(
-                sender=type(task.get_backend()), task_result=db_task_result.task_result
-            )
-        except BaseException as e:
-            db_task_result.set_failed(e)
+        with self.running_task:
             try:
-                sender = type(db_task_result.task.get_backend())
+                task = db_task_result.task
                 task_result = db_task_result.task_result
-            except (ModuleNotFoundError, SuspiciousOperation):
-                logger.exception(
-                    "Task id=%s failed unexpectedly",
+
+                logger.info(
+                    "Task id=%s path=%s state=%s",
                     db_task_result.id,
+                    db_task_result.task_path,
+                    task_result.status,
                 )
-            else:
+                return_value = task.call(*task_result.args, **task_result.kwargs)
+
+                # Setting the return and success value inside the error handling,
+                # So errors setting it (eg JSON encode) can still be recorded
+                db_task_result.set_succeeded(return_value)
                 task_finished.send(
-                    sender=sender,
-                    task_result=task_result,
+                    sender=type(task.get_backend()),
+                    task_result=db_task_result.task_result,
                 )
+            except BaseException as e:
+                db_task_result.set_failed(e)
+                try:
+                    sender = type(db_task_result.task.get_backend())
+                    task_result = db_task_result.task_result
+                except (ModuleNotFoundError, SuspiciousOperation):
+                    logger.exception(
+                        "Task id=%s failed unexpectedly",
+                        db_task_result.id,
+                    )
+                else:
+                    task_finished.send(
+                        sender=sender,
+                        task_result=task_result,
+                    )
 
         for conn in connections.all(initialized_only=True):
             conn.close()
