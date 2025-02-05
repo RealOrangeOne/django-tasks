@@ -191,8 +191,8 @@ class Worker:
 
     def stop(self) -> None:
         self.should_exit.set()
-        DBWorkerPing.cleanup_ping(self.worker_id)
         self.ping_thread.join()
+        DBWorkerPing.cleanup_ping(self.worker_id)
 
 
 def valid_backend_name(val: str) -> str:

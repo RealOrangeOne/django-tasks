@@ -1372,6 +1372,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process = self.start_worker(["--batch"])
         process.wait()
         self.assertEqual(process.returncode, 0)
+        self.assertFalse(DBWorkerPing.objects.exists())
 
         self.assertEqual(result.status, ResultStatus.NEW)
 
@@ -1389,6 +1390,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         process.wait(timeout=0.5)
         self.assertEqual(process.returncode, 0)
+        self.assertFalse(DBWorkerPing.objects.exists())
 
     @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_interrupt_signals(self) -> None:
@@ -1421,6 +1423,10 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
                 self.assertIsNone(result.worker_id)
 
+                self.assertFalse(
+                    DBWorkerPing.objects.filter(worker_id=worker_id).exists()
+                )
+
     @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_repeat_ctrl_c(self) -> None:
         result = test_tasks.hang.enqueue()
@@ -1446,6 +1452,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process.wait(timeout=2)
 
         self.assertEqual(process.returncode, 0)
+        self.assertFalse(DBWorkerPing.objects.exists())
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
@@ -1470,6 +1477,9 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process.kill()
 
         process.wait(timeout=2)
+
+        # Process cleanup doesn't happen, so this is left.
+        self.assertTrue(DBWorkerPing.objects.exists())
 
         self.assertEqual(process.returncode, -signal.SIGKILL)
 
@@ -1531,6 +1541,8 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         for result in results:
             # Running and succeeded
             self.assertEqual(all_output.count(result.id), 2)
+
+        self.assertFalse(DBWorkerPing.objects.exists())
 
     def test_worker_ping(self) -> None:
         test_tasks.sleep_for.enqueue(3)
