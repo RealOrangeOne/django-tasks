@@ -29,13 +29,14 @@ from django_tasks.backends.database import DatabaseBackend
 from django_tasks.backends.database.management.commands.prune_db_task_results import (
     logger as prune_db_tasks_logger,
 )
-from django_tasks.backends.database.models import DBTaskResult
+from django_tasks.backends.database.models import DBTaskResult, DBWorkerPing
 from django_tasks.backends.database.utils import (
     connection_requires_manual_exclusive_transaction,
     exclusive_transaction,
     normalize_uuid,
 )
 from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.utils import get_random_id
 from tests import tasks as test_tasks
 
 
@@ -705,9 +706,13 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         stdout = StringIO()
         self.run_worker(verbosity=3, stdout=stdout, stderr=stdout)
-        self.maxDiff = None
+
+        lines = stdout.getvalue().splitlines()
+
+        lines.remove(f"Sent ping worker_id={self.worker_id}")
+
         self.assertEqual(
-            stdout.getvalue().splitlines(),
+            lines,
             [
                 f"Starting worker worker_id={self.worker_id} for queues=default",
                 f"Task id={result.id} path=tests.tasks.noop_task state=RUNNING",
@@ -781,6 +786,41 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(result_1.status, ResultStatus.NEW)
         self.assertEqual(result_2.status, ResultStatus.SUCCEEDED)
+
+    def test_worker_ping(self) -> None:
+        result = test_tasks.sleep_for.enqueue(2.5)
+
+        stdout = StringIO()
+
+        with mock.patch(
+            "django_tasks.backends.database.management.commands.db_worker.PING_TIMEOUT",
+            new=1,
+        ):
+            self.run_worker(verbosity=3, stdout=stdout, stderr=stdout)
+
+        log_lines = stdout.getvalue().splitlines()
+
+        running_log_line = (
+            f"Task id={result.id} path=tests.tasks.sleep_for state=RUNNING"
+        )
+        succeeded_log_line = (
+            f"Task id={result.id} path=tests.tasks.sleep_for state=SUCCEEDED"
+        )
+        ping_log_line = f"Sent ping worker_id={self.worker_id}"
+
+        self.assertIn(running_log_line, log_lines)
+        self.assertIn(succeeded_log_line, log_lines)
+
+        running_log_index = log_lines.index(running_log_line)
+        succeeded_log_index = log_lines.index(succeeded_log_line)
+
+        duration_logs = log_lines[running_log_index + 1 : succeeded_log_index]
+
+        # It may be 2 or 3, depending on how the thread is scheduled
+        self.assertGreaterEqual(duration_logs.count(ping_log_line), 2)
+        self.assertLessEqual(duration_logs.count(ping_log_line), 3)
+
+        self.assertFalse(DBWorkerPing.objects.filter(worker_id=self.worker_id).exists())
 
 
 @override_settings(
@@ -1281,10 +1321,17 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                     time.sleep(0.1)
 
     def start_worker(
-        self, args: Optional[List[str]] = None, debug: bool = False
+        self,
+        args: Optional[List[str]] = None,
+        *,
+        debug: bool = False,
+        worker_id: Optional[str] = None,
     ) -> subprocess.Popen:
         if args is None:
             args = []
+
+        if worker_id is None:
+            worker_id = get_random_id()
 
         p = subprocess.Popen(
             [
@@ -1295,6 +1342,8 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 "--verbosity",
                 "3",
                 "--no-startup-delay",
+                "--worker-id",
+                worker_id,
                 *args,
             ],
             stdout=None if debug else subprocess.PIPE,
@@ -1473,3 +1522,19 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         for result in results:
             # Running and succeeded
             self.assertEqual(all_output.count(result.id), 2)
+
+    def test_worker_ping(self) -> None:
+        test_tasks.sleep_for.enqueue(3)
+
+        worker_id = get_random_id()
+
+        process = self.start_worker(["--batch"], worker_id=worker_id)
+
+        time.sleep(self.WORKER_STARTUP_TIME)
+
+        self.assertTrue(DBWorkerPing.objects.filter(worker_id=worker_id).exists())
+
+        process.wait(timeout=3)
+        self.assertEqual(process.returncode, 0)
+
+        self.assertFalse(DBWorkerPing.objects.filter(worker_id=worker_id).exists())

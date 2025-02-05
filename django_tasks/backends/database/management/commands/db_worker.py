@@ -26,6 +26,8 @@ from django_tasks.utils import get_random_id
 package_logger = logging.getLogger("django_tasks")
 logger = logging.getLogger("django_tasks.backends.database.db_worker")
 
+PING_TIMEOUT = 10
+
 
 class Worker:
     def __init__(
@@ -53,35 +55,17 @@ class Worker:
         self.running_task = threading.Lock()
 
     def run_ping(self) -> None:
-        # Track whether there was a task running during the previous iteration,
-        # to track state changes.
-        was_running_task = self.running_task.locked()
-
         try:
             while True:
-                if self.running_task.locked():
-                    try:
-                        DBWorkerPing.ping(self.worker_id)
-                        logger.debug("Sent ping worker_id=%s", self.worker_id)
-                    except Exception:
-                        logger.exception(
-                            "Error updating worker ping worker_id=%s", self.worker_id
-                        )
-                elif was_running_task:
-                    # If a task was running before, the ping is stale and can be removed.
-                    # If no task is running, and it wasn't on the previous loop either,
-                    # there's nothing to do.
-                    try:
-                        DBWorkerPing.cleanup_ping(self.worker_id)
-                        logger.debug("Cleaned up ping worker_id=%s", self.worker_id)
-                    except Exception:
-                        logger.exception(
-                            "Error updating worker ping worker_id=%s", self.worker_id
-                        )
+                try:
+                    DBWorkerPing.ping(self.worker_id)
+                    logger.debug("Sent ping worker_id=%s", self.worker_id)
+                except Exception:
+                    logger.exception(
+                        "Error updating worker ping worker_id=%s", self.worker_id
+                    )
 
-                was_running_task = self.running_task.locked()
-
-                if self.should_exit.wait(timeout=10):
+                if self.should_exit.wait(timeout=PING_TIMEOUT):
                     break
         finally:
             # Close any connections opened in this thread
@@ -114,7 +98,6 @@ class Worker:
 
     def run(self) -> None:
         self.configure_signals()
-        self.ping_thread.start()
 
         logger.info(
             "Starting worker worker_id=%s for queues=%s",
@@ -123,8 +106,10 @@ class Worker:
         )
 
         if self.startup_delay and self.interval:
-            # Add a random small delay before starting the loop to avoid a thundering herd
+            # Add a random small delay before starting to avoid a thundering herd
             time.sleep(random.random())
+
+        self.ping_thread.start()
 
         while not self.should_exit.is_set():
             tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
