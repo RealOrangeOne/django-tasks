@@ -1307,8 +1307,6 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
 )
 @skipIfInMemoryDB()
 class DatabaseWorkerProcessTestCase(TransactionTestCase):
-    WORKER_STARTUP_TIME = 1
-
     def setUp(self) -> None:
         self.processes: List[subprocess.Popen] = []
 
@@ -1357,6 +1355,18 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.processes.append(p)
         return p
 
+    def wait_for_worker_ping(self, worker_id: Optional[str] = None) -> None:
+        qs = DBWorkerPing.objects.all()
+
+        if worker_id is not None:
+            qs = qs.filter(worker_id=worker_id)
+
+        for _ in range(15, 0, -1):
+            if qs.exists():
+                return
+
+            time.sleep(0.1)
+
     def test_run_subprocess(self) -> None:
         result = test_tasks.noop_task.enqueue()
         process = self.start_worker(["--batch"])
@@ -1373,7 +1383,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
     def test_interrupt_no_tasks(self) -> None:
         process = self.start_worker()
 
-        time.sleep(self.WORKER_STARTUP_TIME)
+        self.wait_for_worker_ping()
 
         process.terminate()
 
@@ -1389,12 +1399,12 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             with self.subTest(sig):
                 result = test_tasks.sleep_for.enqueue(2)
 
-                self.assertGreater(result.args[0], self.WORKER_STARTUP_TIME)
+                worker_id = get_random_id()
 
-                process = self.start_worker()
+                process = self.start_worker(worker_id=worker_id)
 
                 # Make sure the task is running by now
-                time.sleep(self.WORKER_STARTUP_TIME)
+                self.wait_for_worker_ping(worker_id)
 
                 result.refresh()
                 self.assertEqual(result.status, ResultStatus.RUNNING)
@@ -1402,7 +1412,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
                 process.send_signal(sig)
 
-                process.wait(timeout=2)
+                process.wait(timeout=3)
 
                 self.assertEqual(process.returncode, 0)
 
@@ -1417,8 +1427,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         process = self.start_worker()
 
-        # Make sure the task is running by now
-        time.sleep(self.WORKER_STARTUP_TIME)
+        self.wait_for_worker_ping()
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
@@ -1453,7 +1462,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process = self.start_worker()
 
         # Make sure the task is running by now
-        time.sleep(self.WORKER_STARTUP_TIME)
+        self.wait_for_worker_ping()
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
@@ -1501,7 +1510,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         for _ in range(3):
             self.start_worker(["--batch"])
 
-        time.sleep(self.WORKER_STARTUP_TIME)
+        self.wait_for_worker_ping()
 
         for process in self.processes:
             process.wait(timeout=5)
@@ -1530,11 +1539,11 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         process = self.start_worker(["--batch"], worker_id=worker_id)
 
-        time.sleep(self.WORKER_STARTUP_TIME)
+        self.wait_for_worker_ping(worker_id)
 
         self.assertTrue(DBWorkerPing.objects.filter(worker_id=worker_id).exists())
 
-        process.wait(timeout=3)
+        process.wait(timeout=4)
         self.assertEqual(process.returncode, 0)
 
         self.assertFalse(DBWorkerPing.objects.filter(worker_id=worker_id).exists())
