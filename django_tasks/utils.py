@@ -8,6 +8,7 @@ from typing import Any, Callable, TypeVar
 
 from django.utils.crypto import RANDOM_STRING_CHARS
 from typing_extensions import ParamSpec
+from django.core.serializers.json import DjangoJSONEncoder
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -27,7 +28,7 @@ def json_normalize(obj: Any) -> Any:
     """
     Round-trip encode object as JSON to normalize types.
     """
-    return json.loads(json.dumps(obj))
+    return json.loads(json.dumps(obj, cls=DjangoJSONEncoder))
 
 
 def retry(*, retries: int = 3, backoff_delay: float = 0.1) -> Callable:
