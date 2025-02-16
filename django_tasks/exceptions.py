@@ -13,3 +13,9 @@ class InvalidTaskBackendError(ImproperlyConfigured):
 
 class ResultDoesNotExist(ObjectDoesNotExist):
     pass
+
+
+class TimeoutException(BaseException):
+    """
+    Something timed out.
+    """
