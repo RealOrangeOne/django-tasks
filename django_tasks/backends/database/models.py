@@ -15,6 +15,7 @@ from typing_extensions import ParamSpec
 from django_tasks.task import (
     DEFAULT_PRIORITY,
     DEFAULT_QUEUE_NAME,
+    DEFAULT_TIMEOUT,
     MAX_PRIORITY,
     MIN_PRIORITY,
     ResultStatus,
@@ -99,6 +100,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     backend_name = models.TextField(_("backend name"))
 
     run_after = models.DateTimeField(_("run after"), null=True)
+    timeout = models.PositiveBigIntegerField(_("timeout"), default=DEFAULT_TIMEOUT)
 
     return_value = models.JSONField(_("return value"), default=None, null=True)
 
@@ -141,6 +143,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             queue_name=self.queue_name,
             run_after=self.run_after,
             backend=self.backend_name,
+            timeout=self.timeout,
         )
 
     @property
