@@ -20,6 +20,7 @@ from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished
 from django_tasks.task import DEFAULT_QUEUE_NAME
+from django_tasks.utils import get_random_id
 
 package_logger = logging.getLogger("django_tasks")
 logger = logging.getLogger("django_tasks.backends.database.db_worker")
@@ -34,6 +35,7 @@ class Worker:
         batch: bool,
         backend_name: str,
         startup_delay: bool,
+        worker_id: str,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -44,6 +46,8 @@ class Worker:
 
         self.running = True
         self.running_task = False
+
+        self.worker_id = worker_id
 
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
         if not self.running:
@@ -69,13 +73,17 @@ class Worker:
         if hasattr(signal, "SIGQUIT"):
             signal.signal(signal.SIGQUIT, self.shutdown)
 
-    def start(self) -> None:
+    def run(self) -> None:
         self.configure_signals()
 
-        logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
+        logger.info(
+            "Starting worker worker_id=%s queues=%s",
+            self.worker_id,
+            ",".join(self.queue_names),
+        )
 
         if self.startup_delay and self.interval:
-            # Add a random small delay before starting the loop to avoid a thundering herd
+            # Add a random small delay before starting to avoid a thundering herd
             time.sleep(random.random())
 
         while self.running:
@@ -101,7 +109,7 @@ class Worker:
 
                     if task_result is not None:
                         # "claim" the task, so it isn't run by another worker process
-                        task_result.claim()
+                        task_result.claim(self.worker_id)
 
                 if task_result is not None:
                     self.run_task(task_result)
@@ -177,6 +185,14 @@ def valid_interval(val: str) -> float:
     return num
 
 
+def validate_worker_id(val: str) -> str:
+    if not val:
+        raise ArgumentTypeError("Worker id must not be empty")
+    if len(val) > 64:
+        raise ArgumentTypeError("Worker ids must be shorter than 64 characters")
+    return val
+
+
 class Command(BaseCommand):
     help = "Run a database background worker"
 
@@ -214,6 +230,13 @@ class Command(BaseCommand):
             dest="startup_delay",
             help="Don't add a small delay at startup.",
         )
+        parser.add_argument(
+            "--worker-id",
+            nargs="?",
+            type=validate_worker_id,
+            help="Worker id. MUST be unique across worker pool (default: auto-generate)",
+            default=get_random_id(),
+        )
 
     def configure_logging(self, verbosity: int) -> None:
         if verbosity == 0:
@@ -239,6 +262,7 @@ class Command(BaseCommand):
         batch: bool,
         backend_name: str,
         startup_delay: bool,
+        worker_id: str,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -249,9 +273,12 @@ class Command(BaseCommand):
             batch=batch,
             backend_name=backend_name,
             startup_delay=startup_delay,
+            worker_id=worker_id,
         )
 
-        worker.start()
+        worker.run()
 
         if batch:
-            logger.info("No more tasks to run - exiting gracefully.")
+            logger.info(
+                "No more tasks to run for worker_id=%s - exiting gracefully.", worker_id
+            )

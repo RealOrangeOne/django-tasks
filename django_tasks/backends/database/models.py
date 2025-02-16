@@ -94,6 +94,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     priority = models.IntegerField(_("priority"), default=DEFAULT_PRIORITY)
 
     task_path = models.TextField(_("task path"))
+    worker_id = models.CharField(_("worker id"), max_length=64, default="")
 
     queue_name = models.TextField(_("queue name"), default=DEFAULT_QUEUE_NAME)
     backend_name = models.TextField(_("backend name"))
@@ -186,13 +187,14 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             return self.task_path
 
     @retry(backoff_delay=0)
-    def claim(self) -> None:
+    def claim(self, worker_id: str) -> None:
         """
         Mark as job as being run
         """
         self.status = ResultStatus.RUNNING
         self.started_at = timezone.now()
-        self.save(update_fields=["status", "started_at"])
+        self.worker_id = worker_id
+        self.save(update_fields=["status", "started_at", "worker_id"])
 
     @retry()
     def set_succeeded(self, return_value: Any) -> None:
