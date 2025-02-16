@@ -66,7 +66,10 @@ class ImmediateBackend(BaseTaskBackend):
             task_finished.send(type(self), task_result=task_result)
 
     def enqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+        self,
+        task: Task[P, T],
+        args: P.args,  # type:ignore[valid-type]
+        kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> TaskResult[T]:
         self.validate_task(task)
 

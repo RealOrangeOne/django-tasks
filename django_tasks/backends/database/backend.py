@@ -32,7 +32,10 @@ class DatabaseBackend(BaseTaskBackend):
     supports_defer = True
 
     def _task_to_db_task(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+        self,
+        task: Task[P, T],
+        args: P.args,  # type:ignore[valid-type]
+        kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> "DBTaskResult":
         from .models import DBTaskResult
 
@@ -46,7 +49,10 @@ class DatabaseBackend(BaseTaskBackend):
         )
 
     def enqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+        self,
+        task: Task[P, T],
+        args: P.args,  # type:ignore[valid-type]
+        kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> TaskResult[T]:
         self.validate_task(task)
 

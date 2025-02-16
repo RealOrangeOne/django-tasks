@@ -83,7 +83,10 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
     @abstractmethod
     def enqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+        self,
+        task: Task[P, T],
+        args: P.args,  # type:ignore[valid-type]
+        kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> TaskResult[T]:
         """
         Queue up a task to be executed
@@ -91,7 +94,10 @@ class BaseTaskBackend(metaclass=ABCMeta):
         ...
 
     async def aenqueue(
-        self, task: Task[P, T], args: P.args, kwargs: P.kwargs
+        self,
+        task: Task[P, T],
+        args: P.args,  # type:ignore[valid-type]
+        kwargs: P.kwargs,  #  type:ignore[valid-type]
     ) -> TaskResult[T]:
         """
         Queue up a task function (or coroutine) to be executed
