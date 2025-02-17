@@ -53,6 +53,7 @@ dev = [
     "coverage",
     "django-stubs[compatible-mypy]",
     "dj-database-url",
+    "celery",
 ]
 mysql = [
     "mysqlclient"
