@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import Optional
 
 from django.core.management.base import BaseCommand
+from django.db import connection
 from django.db.models import Q
 from django.utils import timezone
 
@@ -123,4 +124,13 @@ class Command(BaseCommand):
             logger.info("Would delete %d task result(s)", results.count())
         else:
             deleted, _ = results.delete()
+
+            # free up space in the database
+            if connection.vendor == 'sqlite':
+                with connection.cursor() as cursor:
+                    cursor.execute("VACUUM;")
+            elif connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute("VACUUM FULL;")
+
             logger.info("Deleted %d task result(s)", deleted)
