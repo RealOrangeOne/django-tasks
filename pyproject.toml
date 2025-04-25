@@ -53,12 +53,18 @@ dev = [
     "coverage",
     "django-stubs[compatible-mypy]",
     "dj-database-url",
+    "django-tasks[rq]",
+    "fakeredis",
 ]
 mysql = [
     "mysqlclient"
 ]
 postgres = [
     "psycopg[binary]",
+]
+rq = [
+    "django-rq",
+    "rq_scheduler",
 ]
 
 [tool.ruff.lint]
