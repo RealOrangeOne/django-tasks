@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 import random
 import signal
 import sys
@@ -8,10 +9,12 @@ from argparse import ArgumentParser, ArgumentTypeError
 from types import FrameType
 from typing import Optional
 
+from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 from django.core.management.base import BaseCommand
 from django.db import connections
 from django.db.utils import OperationalError
+from django.utils.autoreload import DJANGO_AUTORELOAD_ENV, run_with_reloader
 
 from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.backend import DatabaseBackend
@@ -70,8 +73,6 @@ class Worker:
             signal.signal(signal.SIGQUIT, self.shutdown)
 
     def start(self) -> None:
-        self.configure_signals()
-
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
 
         if self.startup_delay and self.interval:
@@ -201,6 +202,12 @@ class Command(BaseCommand):
             help="Process all outstanding tasks, then exit",
         )
         parser.add_argument(
+            "--reload",
+            action="store_true",
+            default=settings.DEBUG,
+            help="Reload the worker on code changes. Not recommended for production as tasks may not be stopped cleanly (default: DEBUG)",
+        )
+        parser.add_argument(
             "--backend",
             nargs="?",
             default=DEFAULT_TASK_BACKEND_ALIAS,
@@ -219,8 +226,6 @@ class Command(BaseCommand):
         if verbosity == 0:
             package_logger.setLevel(logging.CRITICAL)
         elif verbosity == 1:
-            package_logger.setLevel(logging.WARNING)
-        elif verbosity == 2:
             package_logger.setLevel(logging.INFO)
         else:
             package_logger.setLevel(logging.DEBUG)
@@ -239,6 +244,7 @@ class Command(BaseCommand):
         batch: bool,
         backend_name: str,
         startup_delay: bool,
+        reload: bool,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -251,7 +257,15 @@ class Command(BaseCommand):
             startup_delay=startup_delay,
         )
 
-        worker.start()
+        if reload:
+            if os.environ.get(DJANGO_AUTORELOAD_ENV) == "true":
+                # Only the child process should configure its signals
+                worker.configure_signals()
+
+            run_with_reloader(worker.start)
+        else:
+            worker.configure_signals()
+            worker.start()
 
         if batch:
             logger.info("No more tasks to run - exiting gracefully.")

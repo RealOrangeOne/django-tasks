@@ -5,7 +5,7 @@ import dj_database_url
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-IN_TEST = len(sys.argv) > 1 and sys.argv[1] == "test"
+IN_TEST = "IN_TEST" in os.environ or (len(sys.argv) > 1 and sys.argv[1] == "test")
 
 ALLOWED_HOSTS = ["*"]
 

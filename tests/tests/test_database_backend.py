@@ -1250,11 +1250,11 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
     def tearDown(self) -> None:
         # Try n times to kill any remaining child processes
-        for _ in range(3):
+        for _ in range(10):
             for process in self.processes:
                 if process.poll() is None:
                     process.kill()
-                    time.sleep(0.1)
+                    time.sleep(0.2)
 
     def start_worker(
         self, args: Optional[List[str]] = None, debug: bool = False
@@ -1278,6 +1278,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             env={
                 **os.environ,
                 "DJANGO_SETTINGS_MODULE": "tests.db_worker_test_settings",
+                "IN_TEST": "",
             },
             text=True,
         )
