@@ -226,8 +226,6 @@ class Command(BaseCommand):
         if verbosity == 0:
             package_logger.setLevel(logging.CRITICAL)
         elif verbosity == 1:
-            package_logger.setLevel(logging.WARNING)
-        elif verbosity == 2:
             package_logger.setLevel(logging.INFO)
         else:
             package_logger.setLevel(logging.DEBUG)
