@@ -11,6 +11,7 @@ from django.db import transaction
 from django.test import TransactionTestCase, modify_settings, override_settings
 from django.urls import reverse
 from fakeredis import FakeRedis, FakeStrictRedis
+from rq.timeouts import TimerDeathPenalty
 
 from django_tasks import ResultStatus, Task, default_task_backend, tasks
 from django_tasks.backends.rq import Job, RQBackend
@@ -77,6 +78,9 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         for queue in default_task_backend._get_queues():  # type: ignore[attr-defined]
             worker = SimpleWorker([queue], prepare_for_work=False, job_class=Job)
+
+            # Use timer death penalty to support Windows
+            worker.death_penalty_class = TimerDeathPenalty  # type: ignore[assignment]
 
             # HACK: Work around fakeredis not supporting `CLIENT LIST`
             worker.hostname = "example-hostname"
