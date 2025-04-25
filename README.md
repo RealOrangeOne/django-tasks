@@ -157,7 +157,7 @@ Finally, you can run the `db_worker` command to run tasks as they're created. Ch
 ./manage.py db_worker
 ```
 
-In `DEBUG`, the worker will automatically reload when code is changed.
+In `DEBUG`, the worker will automatically reload when code is changed (or by using `--reload`). This is not recommended in production environments as tasks may not be stopped cleanly.
 
 ### Pruning old tasks
 

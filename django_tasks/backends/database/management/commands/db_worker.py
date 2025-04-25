@@ -205,7 +205,7 @@ class Command(BaseCommand):
             "--reload",
             action="store_true",
             default=settings.DEBUG,
-            help="Reload the worker on code changes. Not recommended for production as tasks may not terminate cleanly.",
+            help="Reload the worker on code changes. Not recommended for production as tasks may not be stopped cleanly (default: DEBUG)",
         )
         parser.add_argument(
             "--backend",
