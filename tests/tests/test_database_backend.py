@@ -1278,6 +1278,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             env={
                 **os.environ,
                 "DJANGO_SETTINGS_MODULE": "tests.db_worker_test_settings",
+                "IN_TEST": "",
             },
             text=True,
         )
