@@ -16,11 +16,13 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        django-version: ["4.2", "5.0", "5.1"]
+        django-version: ["4.2", "5.0", "5.1", "5.2"]
         exclude:
           - django-version: "5.0"
             python-version: "3.9"
           - django-version: "5.1"
+            python-version: "3.9"
+          - django-version: "5.2"
             python-version: "3.9"
 
     steps:
@@ -60,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        django-version: ["4.2", "5.0", "5.1"]
+        django-version: ["4.2", "5.0", "5.1", "5.2"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.13
@@ -95,7 +97,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        django-version: ["4.2", "5.0", "5.1"]
+        django-version: ["4.2", "5.0", "5.1", "5.2"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.13
