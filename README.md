@@ -258,6 +258,14 @@ TASKS = {
 
 Any queues defined in `QUEUES` must also be defined in `django-rq`'s `RQ_QUEUES` setting.
 
+### Job class
+
+To use `rq` with `django-tasks`, a custom `Job` class must be used. This can be passed to the worker using `--job-class`:
+
+```shell
+./manage.py rqworker --job-class django_tasks.backend.rq.Job
+```
+
 ### Priorities
 
 `rq` has no native concept of priorities - instead relying on workers to define which queues they should pop tasks from in order. Therefore, `task.priority` has little effect on execution priority.
