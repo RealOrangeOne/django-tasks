@@ -108,7 +108,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     objects = DBTaskResultQuerySet.as_manager()
 
     class Meta:
-        ordering = [F("priority").desc(), F("run_after").desc(nulls_last=True)]
+        ordering = [F("priority").desc(), F("run_after").asc(nulls_last=True)]
         verbose_name = _("Task Result")
         verbose_name_plural = _("Task Results")
 

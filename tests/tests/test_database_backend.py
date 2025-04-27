@@ -638,6 +638,14 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.succeeded().count(), 1)
 
     def test_run_after_priority(self) -> None:
+        old_task = test_tasks.noop_task.using(
+            priority=20, run_after=timezone.now() - timedelta(hours=2)
+        ).enqueue()
+
+        very_old_task = test_tasks.noop_task.using(
+            priority=20, run_after=timezone.now() - timedelta(hours=10)
+        ).enqueue()
+
         far_future_result = test_tasks.noop_task.using(
             run_after=timezone.now() + timedelta(hours=10)
         ).enqueue()
@@ -658,11 +666,13 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(
             [dbt.task_result for dbt in DBTaskResult.objects.all()],
             [
+                very_old_task,
+                old_task,
                 high_priority_far_future_result,
                 high_priority_result,
                 low_priority_result,
-                far_future_result,
                 future_result,
+                far_future_result,
                 lower_priority_result,
             ],
         )
@@ -670,6 +680,8 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(
             [dbt.task_result for dbt in DBTaskResult.objects.ready()],
             [
+                very_old_task,
+                old_task,
                 high_priority_result,
                 low_priority_result,
                 lower_priority_result,
