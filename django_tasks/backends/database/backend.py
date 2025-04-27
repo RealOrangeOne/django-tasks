@@ -46,6 +46,7 @@ class DatabaseBackend(BaseTaskBackend):
             queue_name=task.queue_name,
             run_after=task.run_after,
             backend_name=self.alias,
+            timeout=task.timeout,
         )
 
     def enqueue(

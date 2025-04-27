@@ -1,13 +1,18 @@
+import ctypes
 import inspect
 import json
 import random
 import time
+from contextlib import contextmanager
 from functools import wraps
+from threading import Timer, current_thread
 from traceback import format_exception
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Iterator, TypeVar
 
 from django.utils.crypto import RANDOM_STRING_CHARS
 from typing_extensions import ParamSpec
+
+from .exceptions import TimeoutException
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -74,3 +79,40 @@ def get_random_id() -> str:
     it's not cryptographically secure.
     """
     return "".join(random.choices(RANDOM_STRING_CHARS, k=32))
+
+
+def _do_timeout(tid: int) -> None:
+    """
+    Raise `TimeoutException` in the given thread.
+
+    Here be dragons.
+    """
+    # Since we're in Python, no GIL lock is needed
+    ret = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+        ctypes.c_ulong(tid), ctypes.py_object(TimeoutException)
+    )
+
+    if ret == 0:
+        raise RuntimeError("Timeout failed - thread not found")
+    elif ret != 1:
+        ret = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_ulong(tid), None)
+        raise RuntimeError("Timeout failed")
+
+
+@contextmanager
+def timeout(timeout: float) -> Iterator[Timer]:
+    """
+    Run the wrapped code for at most `timeout` seconds before aborting.
+
+    This works by starting a timer thread, and using "magic" raises an exception
+    in the main process after the timer expires.
+
+    Raises `TimeoutException` when the timeout occurs.
+    """
+    timeout_timer = Timer(timeout, _do_timeout, args=[current_thread().ident])
+    try:
+        timeout_timer.start()
+
+        yield timeout_timer
+    finally:
+        timeout_timer.cancel()

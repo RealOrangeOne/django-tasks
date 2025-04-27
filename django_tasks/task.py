@@ -32,6 +32,7 @@ DEFAULT_QUEUE_NAME = "default"
 MIN_PRIORITY = -100
 MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
+DEFAULT_TIMEOUT = 600  # 10 minutes
 
 TASK_REFRESH_ATTRS = {
     "_exception_class",
@@ -78,6 +79,9 @@ class Task(Generic[P, T]):
     immediately, or whatever the backend decides
     """
 
+    timeout: int = DEFAULT_TIMEOUT
+    """The maximum duration the task can take to execute before being aborted"""
+
     def __post_init__(self) -> None:
         self.get_backend().validate_task(self)
 
@@ -95,6 +99,7 @@ class Task(Generic[P, T]):
         queue_name: Optional[str] = None,
         run_after: Optional[Union[datetime, timedelta]] = None,
         backend: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> Self:
         """
         Create a new task with modified defaults
@@ -110,6 +115,8 @@ class Task(Generic[P, T]):
             changes["run_after"] = run_after
         if backend is not None:
             changes["backend"] = backend
+        if timeout is not None:
+            changes["timeout"] = timeout
 
         return replace(self, **changes)
 
@@ -188,6 +195,7 @@ def task(
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     enqueue_on_commit: Optional[bool] = None,
+    timeout: int = DEFAULT_TIMEOUT,
 ) -> Callable[[Callable[P, T]], Task[P, T]]: ...
 
 
@@ -199,6 +207,7 @@ def task(
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     enqueue_on_commit: Optional[bool] = None,
+    timeout: int = DEFAULT_TIMEOUT,
 ) -> Union[Task[P, T], Callable[[Callable[P, T]], Task[P, T]]]:
     """
     A decorator used to create a task.
@@ -212,6 +221,7 @@ def task(
             queue_name=queue_name,
             backend=backend,
             enqueue_on_commit=enqueue_on_commit,
+            timeout=timeout,
         )
 
     if function:
@@ -223,7 +233,7 @@ def task(
 @dataclass(frozen=True)
 class TaskResult(Generic[T]):
     task: Task
-    """The task for which this is a result"""
+    """The task for which this is a result, as it was run"""
 
     id: str
     """A unique identifier for the task result"""

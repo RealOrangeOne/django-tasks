@@ -1,10 +1,12 @@
 import datetime
 import subprocess
+import time
 from unittest.mock import Mock
 
 from django.test import SimpleTestCase
 
 from django_tasks import utils
+from django_tasks.exceptions import TimeoutException
 from tests import tasks as test_tasks
 
 
@@ -116,3 +118,10 @@ class ExceptionTracebackTestCase(SimpleTestCase):
             self.assertIn("KeyError: datetime.datetime", traceback)
         else:
             self.fail("KeyError not raised")
+
+
+class TimeoutTestCase(SimpleTestCase):
+    def test_sleep_timeout(self) -> None:
+        with self.assertRaises(TimeoutException):
+            with utils.timeout(0.25):
+                time.sleep(0.5)
