@@ -1,3 +1,4 @@
+import datetime
 import logging
 import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
@@ -46,6 +47,9 @@ else:
             return cls
 
 
+DATE_MAX = datetime.datetime(9999, 1, 1, tzinfo=datetime.timezone.utc)
+
+
 class DBTaskResultQuerySet(models.QuerySet):
     def ready(self) -> "DBTaskResultQuerySet":
         """
@@ -53,7 +57,7 @@ class DBTaskResultQuerySet(models.QuerySet):
         """
         return self.filter(
             status=ResultStatus.NEW,
-        ).filter(models.Q(run_after=None) | models.Q(run_after__lte=timezone.now()))
+        ).filter(models.Q(run_after=DATE_MAX) | models.Q(run_after__lte=timezone.now()))
 
     def succeeded(self) -> "DBTaskResultQuerySet":
         return self.filter(status=ResultStatus.SUCCEEDED)
@@ -95,10 +99,12 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     task_path = models.TextField(_("task path"))
 
-    queue_name = models.TextField(_("queue name"), default=DEFAULT_QUEUE_NAME)
-    backend_name = models.TextField(_("backend name"))
+    queue_name = models.CharField(
+        _("queue name"), default=DEFAULT_QUEUE_NAME, max_length=32
+    )
+    backend_name = models.CharField(_("backend name"), max_length=32)
 
-    run_after = models.DateTimeField(_("run after"), null=True)
+    run_after = models.DateTimeField(_("run after"), default=DATE_MAX)
 
     return_value = models.JSONField(_("return value"), default=None, null=True)
 
@@ -108,9 +114,18 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     objects = DBTaskResultQuerySet.as_manager()
 
     class Meta:
-        ordering = [F("priority").desc(), F("run_after").asc(nulls_last=True)]
+        ordering = [F("priority").desc(), F("run_after").asc()]
         verbose_name = _("Task Result")
         verbose_name_plural = _("Task Results")
+        indexes = [
+            models.Index(
+                "status", *ordering,
+                name="django_task_new_ordering_idx",
+                condition=Q(status=ResultStatus.NEW),
+            ),
+            models.Index(fields=["queue_name"]),
+            models.Index(fields=["backend_name"]),
+        ]
 
         if django.VERSION >= (5, 1):
             constraints = [
@@ -127,6 +142,11 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 )
             ]
 
+    def save(self, **kwargs):
+        if self.run_after is None:
+            self.run_after = DATE_MAX
+        super().save(**kwargs)
+
     @property
     def task(self) -> Task[P, T]:
         task = import_string(self.task_path)
@@ -135,6 +155,9 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             raise SuspiciousOperation(
                 f"Task {self.id} does not point to a Task ({self.task_path})"
             )
+
+        if self.run_after == DATE_MAX:
+            self.run_after = None
 
         return task.using(
             priority=self.priority,

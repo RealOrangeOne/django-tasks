@@ -387,6 +387,38 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
 
+    def test_index_scan_for_ready(self) -> None:
+        test_tasks.noop_task.enqueue()
+        db_task = DBTaskResult.objects.first()
+        new_db_tasks = []
+        for _ in range(5000):
+            new_db_task = DBTaskResult()
+            for f in DBTaskResult._meta.fields:
+                if f.name != "id":
+                    setattr(new_db_task, f.attname, getattr(db_task, f.attname))
+            new_db_tasks.append(new_db_task)
+        DBTaskResult.objects.bulk_create(new_db_tasks)
+
+        # Update query plan for certain databases
+        if connection.vendor == "postgresql":
+            with connection.cursor() as c:
+                c.execute(f"ANALYZE {DBTaskResult._meta.db_table};")
+        elif connection.vendor == "mysql":
+            with connection.cursor() as c:
+                c.execute(f"ANALYZE TABLE {DBTaskResult._meta.db_table};")
+
+        plan = DBTaskResult.objects.ready().explain()
+
+        if connection.vendor == "postgresql":
+            self.assertIn("django_task_new_ordering_idx", plan)
+        elif connection.vendor == "sqlite":
+            self.assertIn("USING INDEX django_task_new_ordering_idx", plan)
+        elif connection.vendor == "mysql":
+            self.assertIn("Index lookup", plan)
+            self.assertIn("using django_task_new_ordering_idx", plan)
+        else:
+            self.fail("Unknown database engine")
+
 
 @override_settings(
     TASKS={
