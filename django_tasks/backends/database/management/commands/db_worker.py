@@ -56,6 +56,7 @@ class Worker:
             logger.warning(
                 "Received %s - terminating current task.", signal.strsignal(signum)
             )
+            self.reset_signals()
             sys.exit(1)
 
         logger.warning(
@@ -74,6 +75,12 @@ class Worker:
         signal.signal(signal.SIGTERM, self.shutdown)
         if hasattr(signal, "SIGQUIT"):
             signal.signal(signal.SIGQUIT, self.shutdown)
+
+    def reset_signals(self) -> None:
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        if hasattr(signal, "SIGQUIT"):
+            signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
     def start(self) -> None:
         logger.info("Starting worker for queues=%s", ",".join(self.queue_names))

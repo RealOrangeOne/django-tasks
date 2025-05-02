@@ -1321,7 +1321,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             for process in self.processes:
                 if process.poll() is None:
                     process.kill()
-                    time.sleep(0.2)
+                    process.wait(1)
 
     def start_worker(
         self, args: Optional[List[str]] = None, debug: bool = False
