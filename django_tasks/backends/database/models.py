@@ -47,7 +47,7 @@ else:
             return cls
 
 
-DATE_MAX = datetime.datetime.max.replace(day=1).astimezone(datetime.timezone.utc)
+DATE_MAX = datetime.datetime(9999, 1, 1, tzinfo=datetime.timezone.utc)
 
 
 class DBTaskResultQuerySet(models.QuerySet):
