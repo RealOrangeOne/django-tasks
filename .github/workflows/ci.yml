@@ -43,10 +43,12 @@ jobs:
           pip install Django~=${{ matrix.django-version }}
       - name: Lint
         run: just lint
-      - name: Run tests
-        run: just test
       - name: Run fast tests
+        if: ${{ !cancelled() }}
         run: just test-fast
+      - name: Run tests
+        if: ${{ !cancelled() }}
+        run: just test
 
   test-postgres:
     runs-on: ubuntu-latest
