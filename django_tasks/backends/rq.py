@@ -190,13 +190,13 @@ class RQBackend(BaseTaskBackend):
         return task_result
 
     def _get_queues(self) -> list[django_rq.queues.DjangoRQ]:
-        return django_rq.queues.get_queues(*self.queues, job_class=Job)  # type: ignore[no-any-return]
+        return django_rq.queues.get_queues(*self.queues, job_class=Job)  # type: ignore[no-any-return,no-untyped-call]
 
     def _get_job(self, job_id: str) -> Optional[Job]:
         for queue in self._get_queues():
             job = queue.fetch_job(job_id)
             if job is not None:
-                return job  # type: ignore[no-any-return]
+                return job  # type: ignore[return-value]
 
         return None
 
