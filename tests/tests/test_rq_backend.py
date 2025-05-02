@@ -142,7 +142,9 @@ class DatabaseBackendTestCase(TransactionTestCase):
             ):
                 result = task.enqueue()
 
-                self.run_worker()
+                with self.assertLogs("django_tasks", "DEBUG"):
+                    self.run_worker()
+
                 result.refresh()
 
                 # assert result
@@ -166,7 +168,8 @@ class DatabaseBackendTestCase(TransactionTestCase):
     def test_complex_exception(self) -> None:
         result = test_tasks.complex_exception.enqueue()
 
-        self.run_worker()
+        with self.assertLogs("django_tasks", "DEBUG"):
+            self.run_worker()
 
         result.refresh()
 
@@ -398,6 +401,32 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertEqual(len(captured_logs.output), 1)
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
+
+    def test_started_finished_logs(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
+            self.run_worker()
+
+        self.assertEqual(len(captured_logs.output), 2)
+        self.assertIn("state=RUNNING", captured_logs.output[0])
+        self.assertIn(result.id, captured_logs.output[0])
+
+        self.assertIn("state=SUCCEEDED", captured_logs.output[1])
+        self.assertIn(result.id, captured_logs.output[1])
+
+    def test_failed_logs(self) -> None:
+        result = test_tasks.failing_task_value_error.enqueue()
+
+        with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
+            self.run_worker()
+
+        self.assertEqual(len(captured_logs.output), 2)
+        self.assertIn("state=RUNNING", captured_logs.output[0])
+        self.assertIn(result.id, captured_logs.output[0])
+
+        self.assertIn("state=FAILED", captured_logs.output[1])
+        self.assertIn(result.id, captured_logs.output[1])
 
     def test_enqueue_priority(self) -> None:
         task_1 = test_tasks.noop_task.enqueue()
