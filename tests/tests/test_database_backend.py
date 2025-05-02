@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -386,6 +387,34 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertEqual(len(captured_logs.output), 1)
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
+
+    def test_index_scan_for_ready(self) -> None:
+        test_tasks.noop_task.enqueue()
+
+        # Quickly duplicate tasks
+        db_task = DBTaskResult.objects.get()
+        db_task.id = None
+        DBTaskResult.objects.bulk_create([copy.copy(db_task) for _ in range(5000)])
+
+        # Update query plan for certain databases
+        if connection.vendor == "postgresql":
+            with connection.cursor() as c:
+                c.execute(f"ANALYZE {DBTaskResult._meta.db_table};")
+        elif connection.vendor == "mysql":
+            with connection.cursor() as c:
+                c.execute(f"ANALYZE TABLE {DBTaskResult._meta.db_table};")
+
+        plan = DBTaskResult.objects.ready().explain()
+
+        if connection.vendor == "postgresql":
+            self.assertIn("django_task_new_ordering_idx", plan)
+        elif connection.vendor == "sqlite":
+            self.assertIn("USING INDEX django_task_new_ordering_idx", plan)
+        elif connection.vendor == "mysql":
+            self.assertIn("Index lookup", plan)
+            self.assertIn("using django_task_new_ordering_idx", plan)
+        else:
+            self.fail("Unknown database engine")
 
 
 @override_settings(
