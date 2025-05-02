@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import uuid
+from collections import Counter
 from contextlib import redirect_stderr
 from datetime import timedelta
 from functools import partial
@@ -612,6 +613,15 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(worker_class.mock_calls[0].kwargs["interval"], 0.1)
 
+    def test_negative_max_tasks(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--max-tasks", "-1"]
+                )
+        self.assertIn("Must be greater than zero", output.getvalue())
+
     def test_run_after(self) -> None:
         result = test_tasks.noop_task.using(
             run_after=timezone.now() + timedelta(hours=10)
@@ -769,6 +779,22 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(result_1.status, ResultStatus.NEW)
         self.assertEqual(result_2.status, ResultStatus.SUCCEEDED)
+
+    def test_max_tasks(self) -> None:
+        results = [test_tasks.noop_task.enqueue() for _ in range(5)]
+
+        stdout = StringIO()
+        self.run_worker(max_tasks=2, stdout=stdout, verbosity=3)
+
+        self.assertIn("Run maximum tasks (2)", stdout.getvalue())
+
+        for result in results:
+            result.refresh()
+
+        statuses = Counter(result.status for result in results)
+
+        self.assertEqual(statuses[ResultStatus.SUCCEEDED], 2)
+        self.assertEqual(statuses[ResultStatus.NEW], 3)
 
 
 @override_settings(
