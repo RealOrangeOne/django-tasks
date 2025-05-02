@@ -45,10 +45,10 @@ jobs:
         run: just lint
       - name: Run fast tests
         if: ${{ !cancelled() }}
-        run: just test-fast
+        run: just test-fast -v2
       - name: Run tests
         if: ${{ !cancelled() }}
-        run: just test
+        run: just test -v2
 
   test-postgres:
     runs-on: ubuntu-latest
@@ -82,7 +82,7 @@ jobs:
           pip install -e '.[dev,postgres]'
           pip install Django~=${{ matrix.django-version }}
       - name: Run tests
-        run: just test
+        run: just test -v2
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost/postgres
 
@@ -117,7 +117,7 @@ jobs:
           pip install -e '.[dev,mysql]'
           pip install Django~=${{ matrix.django-version }}
       - name: Run tests
-        run: just test
+        run: just test -v2
         env:
           DATABASE_URL: mysql://root:django@127.0.0.1/django
 
