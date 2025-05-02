@@ -47,7 +47,7 @@ else:
             return cls
 
 
-DATE_MAX = datetime.datetime(9999, 1, 1, tzinfo=datetime.timezone.utc)
+DATE_MAX = datetime.datetime.max.replace(day=1).astimezone(datetime.timezone.utc)
 
 
 class DBTaskResultQuerySet(models.QuerySet):
@@ -104,7 +104,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     )
     backend_name = models.CharField(_("backend name"), max_length=32)
 
-    run_after = models.DateTimeField(_("run after"), default=DATE_MAX)
+    run_after = models.DateTimeField(_("run after"))
 
     return_value = models.JSONField(_("return value"), default=None, null=True)
 
@@ -119,7 +119,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         verbose_name_plural = _("Task Results")
         indexes = [
             models.Index(
-                "status", *ordering,
+                "status",
+                *ordering,
                 name="django_task_new_ordering_idx",
                 condition=Q(status=ResultStatus.NEW),
             ),
@@ -142,11 +143,6 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 )
             ]
 
-    def save(self, **kwargs):
-        if self.run_after is None:
-            self.run_after = DATE_MAX
-        super().save(**kwargs)
-
     @property
     def task(self) -> Task[P, T]:
         task = import_string(self.task_path)
@@ -156,13 +152,10 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 f"Task {self.id} does not point to a Task ({self.task_path})"
             )
 
-        if self.run_after == DATE_MAX:
-            self.run_after = None
-
         return task.using(
             priority=self.priority,
             queue_name=self.queue_name,
-            run_after=self.run_after,
+            run_after=None if self.run_after == DATE_MAX else self.run_after,
             backend=self.backend_name,
         )
 

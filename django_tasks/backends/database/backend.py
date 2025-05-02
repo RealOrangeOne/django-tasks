@@ -44,7 +44,7 @@ class DatabaseBackend(BaseTaskBackend):
             priority=task.priority,
             task_path=task.module_path,
             queue_name=task.queue_name,
-            run_after=task.run_after,
+            run_after=task.run_after,  # type: ignore[misc]
             backend_name=self.alias,
         )
 

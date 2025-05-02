@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -389,15 +390,11 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
     def test_index_scan_for_ready(self) -> None:
         test_tasks.noop_task.enqueue()
-        db_task = DBTaskResult.objects.first()
-        new_db_tasks = []
-        for _ in range(5000):
-            new_db_task = DBTaskResult()
-            for f in DBTaskResult._meta.fields:
-                if f.name != "id":
-                    setattr(new_db_task, f.attname, getattr(db_task, f.attname))
-            new_db_tasks.append(new_db_task)
-        DBTaskResult.objects.bulk_create(new_db_tasks)
+
+        # Quickly duplicate tasks
+        db_task = DBTaskResult.objects.get()
+        db_task.id = None
+        DBTaskResult.objects.bulk_create([copy.copy(db_task) for _ in range(5000)])
 
         # Update query plan for certain databases
         if connection.vendor == "postgresql":
