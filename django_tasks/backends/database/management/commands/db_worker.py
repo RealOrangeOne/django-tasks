@@ -80,6 +80,7 @@ class Worker:
             time.sleep(random.random())
 
         while self.running:
+            task_result = None  # Ensure it's always defined
             tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)
             if not self.process_all_queues:
                 tasks = tasks.filter(queue_name__in=self.queue_names)
