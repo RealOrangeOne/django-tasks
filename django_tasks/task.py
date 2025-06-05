@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta
+from datetime import datetime
 from inspect import iscoroutinefunction
 from typing import (
     TYPE_CHECKING,
@@ -93,7 +93,7 @@ class Task(Generic[P, T]):
         *,
         priority: Optional[int] = None,
         queue_name: Optional[str] = None,
-        run_after: Optional[Union[datetime, timedelta]] = None,
+        run_after: Optional[datetime] = None,
         backend: Optional[str] = None,
     ) -> Self:
         """
