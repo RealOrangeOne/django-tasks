@@ -50,6 +50,24 @@ else:
 DATE_MAX = datetime.datetime(9999, 1, 1, tzinfo=datetime.timezone.utc)
 
 
+class NullIsMaxDateTimeField(models.DateTimeField):
+    """
+    MySQL can only use indexes on simple queries, so instead of using null,
+    and nulls_last, or models.Case, set null/None as MAX_DATE, and vice-versa
+    """
+
+    def get_prep_value(self, value):  # type: ignore
+        value = super().get_prep_value(value)
+        if value is None:
+            value = DATE_MAX
+        return value
+
+    def from_db_value(self, value, expression, connection):  # type: ignore
+        if value == DATE_MAX:
+            return None
+        return value
+
+
 class DBTaskResultQuerySet(models.QuerySet):
     def ready(self) -> "DBTaskResultQuerySet":
         """
@@ -104,7 +122,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     )
     backend_name = models.CharField(_("backend name"), max_length=32)
 
-    run_after = models.DateTimeField(_("run after"))
+    run_after = NullIsMaxDateTimeField(_("run after"))
 
     return_value = models.JSONField(_("return value"), default=None, null=True)
 
@@ -155,7 +173,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         return task.using(
             priority=self.priority,
             queue_name=self.queue_name,
-            run_after=None if self.run_after == DATE_MAX else self.run_after,
+            run_after=self.run_after,
             backend=self.backend_name,
         )
 
