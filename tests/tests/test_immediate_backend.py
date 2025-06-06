@@ -220,8 +220,27 @@ class ImmediateBackendTestCase(SimpleTestCase):
         with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
             result = test_tasks.noop_task.enqueue()
 
+        self.assertEqual(len(captured_logs.output), 3)
+
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
+
+        self.assertIn("state=RUNNING", captured_logs.output[1])
+        self.assertIn(result.id, captured_logs.output[1])
+
+        self.assertIn("state=SUCCEEDED", captured_logs.output[2])
+        self.assertIn(result.id, captured_logs.output[2])
+
+    def test_failed_logs(self) -> None:
+        with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
+            result = test_tasks.failing_task_value_error.enqueue()
+
+        self.assertEqual(len(captured_logs.output), 3)
+        self.assertIn("state=RUNNING", captured_logs.output[1])
+        self.assertIn(result.id, captured_logs.output[1])
+
+        self.assertIn("state=FAILED", captured_logs.output[2])
+        self.assertIn(result.id, captured_logs.output[2])
 
     def test_check(self) -> None:
         errors = list(default_task_backend.check())

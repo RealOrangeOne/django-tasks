@@ -8,7 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
-from django_tasks.signals import task_enqueued, task_finished
+from django_tasks.signals import task_enqueued, task_finished, task_started
 from django_tasks.task import ResultStatus, Task, TaskResult
 from django_tasks.utils import get_exception_traceback, get_random_id, json_normalize
 
@@ -37,7 +37,10 @@ class ImmediateBackend(BaseTaskBackend):
             async_to_sync(task.func) if iscoroutinefunction(task.func) else task.func
         )
 
+        object.__setattr__(task_result, "status", ResultStatus.RUNNING)
         object.__setattr__(task_result, "started_at", timezone.now())
+        task_started.send(sender=type(self), task_result=task_result)
+
         try:
             object.__setattr__(
                 task_result,

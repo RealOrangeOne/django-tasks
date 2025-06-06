@@ -17,7 +17,7 @@ from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.exceptions import ResultDoesNotExist
-from django_tasks.signals import task_enqueued, task_finished
+from django_tasks.signals import task_enqueued, task_finished, task_started
 from django_tasks.task import DEFAULT_PRIORITY, MAX_PRIORITY, ResultStatus, Task
 from django_tasks.task import TaskResult as BaseTaskResult
 from django_tasks.utils import get_module_path, get_random_id
@@ -44,6 +44,13 @@ class TaskResult(BaseTaskResult[T]):
 
 
 class Job(BaseJob):
+    def perform(self) -> Any:
+        task_result = self.into_task_result()
+
+        task_started.send(type(task_result.task.get_backend()), task_result=task_result)
+
+        return super().perform()
+
     def _execute(self) -> Any:
         """
         Shim RQ's `Job` to call the underlying `Task` function.
@@ -112,17 +119,21 @@ def failed_callback(
     exception_value: Exception,
     traceback: TracebackType,
 ) -> None:
-    task_result = job.into_task_result()
-
     # Smuggle the exception class through meta
     job.meta["exception_class"] = get_module_path(exception_class)
     job.save_meta()  # type: ignore[no-untyped-call]
+
+    task_result = job.into_task_result()
+
+    object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
     task_finished.send(type(task_result.task.get_backend()), task_result=task_result)
 
 
 def success_callback(job: Job, connection: Optional[Redis], result: Any) -> None:
     task_result = job.into_task_result()
+
+    object.__setattr__(task_result, "status", ResultStatus.SUCCEEDED)
 
     task_finished.send(type(task_result.task.get_backend()), task_result=task_result)
 
