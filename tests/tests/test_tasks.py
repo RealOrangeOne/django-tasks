@@ -299,3 +299,10 @@ class TaskTestCase(SimpleTestCase):
 
         with self.assertRaises(ImportError):
             immediate_task.errors[0].exception_class  # noqa: B018
+
+    def test_takes_context_without_taking_context(self) -> None:
+        with self.assertRaisesMessage(
+            InvalidTaskError,
+            "Task takes context but does not have a first argument of 'context'",
+        ):
+            task(takes_context=True)(test_tasks.calculate_meaning_of_life.func)  # type: ignore[arg-type]

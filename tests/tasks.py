@@ -1,7 +1,7 @@
 import time
 from typing import Any
 
-from django_tasks import task
+from django_tasks import TaskContext, task
 
 
 @task()
@@ -70,3 +70,8 @@ def hang() -> None:
 @task()
 def sleep_for(seconds: float) -> None:
     time.sleep(seconds)
+
+
+@task(takes_context=True)
+def get_task_id(context: TaskContext) -> str:
+    return context.task_result.id
