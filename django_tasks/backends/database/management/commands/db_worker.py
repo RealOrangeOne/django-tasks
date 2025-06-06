@@ -12,7 +12,7 @@ from typing import Optional
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 from django.core.management.base import BaseCommand
-from django.db import connections
+from django.db import close_old_connections
 from django.db.utils import OperationalError
 from django.utils.autoreload import DJANGO_AUTORELOAD_ENV, run_with_reloader
 
@@ -37,6 +37,7 @@ class Worker:
         batch: bool,
         backend_name: str,
         startup_delay: bool,
+        max_tasks: Optional[int],
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -44,9 +45,11 @@ class Worker:
         self.batch = batch
         self.backend_name = backend_name
         self.startup_delay = startup_delay
+        self.max_tasks = max_tasks
 
         self.running = True
         self.running_task = False
+        self._run_tasks = 0
 
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
         if not self.running:
@@ -84,38 +87,40 @@ class Worker:
             if not self.process_all_queues:
                 tasks = tasks.filter(queue_name__in=self.queue_names)
 
-            try:
-                self.running_task = True
-
-                # During this transaction, all "ready" tasks are locked. Therefore, it's important
-                # it be as efficient as possible.
-                with exclusive_transaction(tasks.db):
-                    try:
-                        task_result = tasks.get_locked()
-                    except OperationalError as e:
-                        # Ignore locked databases and keep trying.
-                        # It should unlock eventually.
-                        if "is locked" in e.args[0]:
-                            task_result = None
-                        else:
-                            raise
-
-                    if task_result is not None:
-                        # "claim" the task, so it isn't run by another worker process
-                        task_result.claim()
+            # During this transaction, all "ready" tasks are locked. Therefore, it's important
+            # it be as efficient as possible.
+            with exclusive_transaction(tasks.db):
+                try:
+                    task_result = tasks.get_locked()
+                except OperationalError as e:
+                    # Ignore locked databases and keep trying.
+                    # It should unlock eventually.
+                    if "is locked" in e.args[0]:
+                        task_result = None
+                    else:
+                        raise
 
                 if task_result is not None:
-                    self.run_task(task_result)
+                    # "claim" the task, so it isn't run by another worker process
+                    task_result.claim()
 
-            finally:
-                self.running_task = False
-
-                for conn in connections.all(initialized_only=True):
-                    conn.close()
+            if task_result is not None:
+                self.run_task(task_result)
 
             if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
+                logger.info("No more tasks to run - exiting gracefully.")
                 return None
+
+            if self.max_tasks is not None and self._run_tasks >= self.max_tasks:
+                logger.info(
+                    "Run maximum tasks (%d) - exiting gracefully.", self._run_tasks
+                )
+                return None
+
+            # Emulate Django's request behaviour and check for expired
+            # database connections periodically.
+            close_old_connections()
 
             # If ctrl-c has just interrupted a task, self.running was cleared,
             # and we should not sleep, but rather exit immediately.
@@ -128,6 +133,7 @@ class Worker:
         Run the given task, marking it as succeeded or failed.
         """
         try:
+            self.running_task = True
             task = db_task_result.task
             task_result = db_task_result.task_result
 
@@ -155,6 +161,9 @@ class Worker:
                     sender=sender,
                     task_result=task_result,
                 )
+        finally:
+            self.running_task = False
+            self._run_tasks += 1
 
 
 def valid_backend_name(val: str) -> str:
@@ -171,6 +180,13 @@ def valid_interval(val: str) -> float:
     num = float(val)
     if not math.isfinite(num):
         raise ArgumentTypeError("Must be a finite floating point value")
+    if num < 0:
+        raise ArgumentTypeError("Must be greater than zero")
+    return num
+
+
+def valid_max_tasks(val: str) -> int:
+    num = int(val)
     if num < 0:
         raise ArgumentTypeError("Must be greater than zero")
     return num
@@ -197,7 +213,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--batch",
             action="store_true",
-            help="Process all outstanding tasks, then exit",
+            help="Process all outstanding tasks, then exit. Can be used in combination with --max-tasks.",
         )
         parser.add_argument(
             "--reload",
@@ -218,6 +234,13 @@ class Command(BaseCommand):
             action="store_false",
             dest="startup_delay",
             help="Don't add a small delay at startup.",
+        )
+        parser.add_argument(
+            "--max-tasks",
+            nargs="?",
+            default=None,
+            type=valid_max_tasks,
+            help="If provided, the maximum number of tasks the worker will execute before exiting.",
         )
 
     def configure_logging(self, verbosity: int) -> None:
@@ -243,6 +266,7 @@ class Command(BaseCommand):
         backend_name: str,
         startup_delay: bool,
         reload: bool,
+        max_tasks: Optional[int],
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -259,6 +283,7 @@ class Command(BaseCommand):
             batch=batch,
             backend_name=backend_name,
             startup_delay=startup_delay,
+            max_tasks=max_tasks,
         )
 
         if reload:
@@ -270,6 +295,3 @@ class Command(BaseCommand):
         else:
             worker.configure_signals()
             worker.start()
-
-        if batch:
-            logger.info("No more tasks to run - exiting gracefully.")
