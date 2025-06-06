@@ -249,6 +249,12 @@ class Command(BaseCommand):
     ) -> None:
         self.configure_logging(verbosity)
 
+        if reload and batch:
+            logger.warning(
+                "Warning: --reload and --batch cannot be specified together. Disabling autoreload."
+            )
+            reload = False
+
         worker = Worker(
             queue_names=queue_name.split(","),
             interval=interval,
