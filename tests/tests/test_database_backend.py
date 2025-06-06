@@ -1317,11 +1317,13 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
     def tearDown(self) -> None:
         # Try n times to kill any remaining child processes
-        for _ in range(10):
+        for n in range(20):
             for process in self.processes:
                 if process.poll() is None:
+                    if n >= 5:
+                        print("Still waiting for process", process.pid, process.args)  # noqa: T201
                     process.kill()
-                    time.sleep(0.2)
+                    process.wait(1)
 
     def start_worker(
         self, args: Optional[List[str]] = None, debug: bool = False
