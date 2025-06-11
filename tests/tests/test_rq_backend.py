@@ -491,3 +491,12 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("Add 'queue-2' to RQ_QUEUES", errors[0].hint)  # type:ignore[arg-type]
+
+    def test_takes_context(self) -> None:
+        result = test_tasks.get_task_id.enqueue()
+
+        self.run_worker()
+
+        result.refresh()
+
+        self.assertEqual(result.return_value, result.id)
