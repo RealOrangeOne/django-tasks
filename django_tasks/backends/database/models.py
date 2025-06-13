@@ -20,6 +20,7 @@ from django_tasks.task import (
     MIN_PRIORITY,
     ResultStatus,
     Task,
+    TaskError,
 )
 from django_tasks.utils import get_exception_traceback, get_module_path, retry
 
@@ -56,7 +57,7 @@ class DBTaskResultQuerySet(models.QuerySet):
         Return tasks which are ready to be processed.
         """
         return self.filter(
-            status=ResultStatus.NEW,
+            status=ResultStatus.READY,
         ).filter(models.Q(run_after=DATE_MAX) | models.Q(run_after__lte=timezone.now()))
 
     def succeeded(self) -> "DBTaskResultQuerySet":
@@ -85,7 +86,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     status = models.CharField(
         _("status"),
         choices=ResultStatus.choices,
-        default=ResultStatus.NEW,
+        default=ResultStatus.READY,
         max_length=max(len(value) for value in ResultStatus.values),
     )
 
@@ -122,7 +123,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "status",
                 *ordering,
                 name="django_task_new_ordering_idx",
-                condition=Q(status=ResultStatus.NEW),
+                condition=Q(status=ResultStatus.READY),
             ),
             models.Index(fields=["queue_name"]),
             models.Index(fields=["backend_name"]),
@@ -163,11 +164,6 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     def task_result(self) -> "TaskResult[T]":
         from .backend import TaskResult
 
-        try:
-            exception_class = import_string(self.exception_class_path)
-        except ImportError:
-            exception_class = None
-
         task_result = TaskResult[T](
             db_result=self,
             task=self.task,
@@ -175,14 +171,22 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             status=ResultStatus[self.status],
             enqueued_at=self.enqueued_at,
             started_at=self.started_at,
+            last_attempted_at=self.started_at,
             finished_at=self.finished_at,
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],
             backend=self.backend_name,
+            errors=[],
         )
 
-        object.__setattr__(task_result, "_exception_class", exception_class)
-        object.__setattr__(task_result, "_traceback", self.traceback or None)
+        if self.status == ResultStatus.FAILED:
+            task_result.errors.append(
+                TaskError(
+                    exception_class_path=self.exception_class_path,
+                    traceback=self.traceback,
+                )
+            )
+
         object.__setattr__(task_result, "_return_value", self.return_value)
 
         return task_result

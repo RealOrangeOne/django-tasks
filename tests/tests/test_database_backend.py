@@ -79,30 +79,34 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task), self.assertNumQueries(1):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
+                self.assertIsNone(result.last_attempted_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.return_value  # noqa:B018
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
+                self.assertEqual(result.attempts, 0)
 
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
+                self.assertIsNone(result.last_attempted_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.return_value  # noqa:B018
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
+                self.assertEqual(result.attempts, 0)
 
     def test_get_result(self) -> None:
         with self.assertNumQueries(1):
@@ -132,17 +136,23 @@ class DatabaseBackendTestCase(TransactionTestCase):
             return_value=42,
         )
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
+        self.assertIsNone(result.last_attempted_at)
         self.assertIsNone(result.finished_at)
+        self.assertEqual(result.attempts, 0)
+
         with self.assertNumQueries(1):
             result.refresh()
+
         self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
+        self.assertEqual(result.attempts, 1)
 
     async def test_refresh_result_async(self) -> None:
         result = await default_task_backend.aenqueue(
@@ -156,16 +166,22 @@ class DatabaseBackendTestCase(TransactionTestCase):
             return_value=42,
         )
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
+        self.assertIsNone(result.last_attempted_at)
         self.assertIsNone(result.finished_at)
+        self.assertEqual(result.attempts, 0)
+
         await result.arefresh()
+
         self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
+        self.assertEqual(result.attempts, 1)
 
     def test_get_missing_result(self) -> None:
         with self.assertRaises(ResultDoesNotExist):
@@ -195,10 +211,10 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], None)
-                self.assertEqual(data["status"], ResultStatus.NEW)
+                self.assertEqual(data["status"], ResultStatus.READY)
 
                 result = default_task_backend.get_result(data["result_id"])
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -212,7 +228,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.assertEqual(
             json.loads(response.content),
-            {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
+            {"result_id": result_id, "result": None, "status": ResultStatus.READY},
         )
 
     def test_invalid_task_path(self) -> None:
@@ -455,18 +471,21 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 result = cast(Task, task).enqueue()
                 self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
 
                 with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
                     self.run_worker()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
+                self.assertEqual(result.attempts, 0)
                 result.refresh()
                 self.assertIsNotNone(result.started_at)
+                self.assertIsNotNone(result.last_attempted_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+                self.assertEqual(result.attempts, 1)
 
                 self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -522,18 +541,13 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.failing_task_value_error.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.exception_class  # noqa: B018
-
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.traceback  # noqa: B018
-
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         result.refresh()
         self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
 
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
@@ -542,12 +556,12 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         with self.assertRaisesMessage(ValueError, "Task failed"):
             result.return_value  # noqa: B018
 
-        self.assertEqual(result.exception_class, ValueError)
-        assert result.traceback  # So that mypy knows the next line is allowed
+        self.assertEqual(result.errors[0].exception_class, ValueError)
+        traceback = result.errors[0].traceback
         self.assertTrue(
-            result.traceback.endswith(
-                "ValueError: This task failed due to ValueError\n"
-            )
+            traceback
+            and traceback.endswith("ValueError: This task failed due to ValueError\n"),
+            traceback,
         )
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -556,18 +570,13 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.complex_exception.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertRaisesMessage(ValueError, "Task has not finished"):
-            result.exception_class  # noqa: B018
-
-        with self.assertRaisesMessage(ValueError, "Task has not finished"):
-            result.traceback  # noqa: B018
-
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         result.refresh()
         self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
 
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type: ignore
@@ -576,8 +585,10 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         with self.assertRaisesMessage(ValueError, "Task failed"):
             result.return_value  # noqa: B018
 
-        self.assertEqual(result.exception_class, ValueError)
-        self.assertIn('ValueError(ValueError("This task failed"))', result.traceback)  # type: ignore[arg-type]
+        self.assertEqual(result.errors[0].exception_class, ValueError)
+        self.assertIn(
+            'ValueError(ValueError("This task failed"))', result.errors[0].traceback
+        )
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -806,7 +817,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result_1.refresh()
         result_2.refresh()
 
-        self.assertEqual(result_1.status, ResultStatus.NEW)
+        self.assertEqual(result_1.status, ResultStatus.READY)
         self.assertEqual(result_2.status, ResultStatus.SUCCEEDED)
 
     def test_max_tasks(self) -> None:
@@ -823,7 +834,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         statuses = Counter(result.status for result in results)
 
         self.assertEqual(statuses[ResultStatus.SUCCEEDED], 2)
-        self.assertEqual(statuses[ResultStatus.NEW], 3)
+        self.assertEqual(statuses[ResultStatus.READY], 3)
 
 
 @override_settings(
@@ -1360,7 +1371,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process.wait()
         self.assertEqual(process.returncode, 0)
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
 
         result.refresh()
 
@@ -1434,7 +1445,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertEqual(result.exception_class, SystemExit)
+        self.assertEqual(result.errors[0].exception_class, SystemExit)
 
     @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
     def test_kill(self) -> None:
@@ -1472,7 +1483,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertEqual(result.exception_class, SystemExit)
+        self.assertEqual(result.errors[0].exception_class, SystemExit)
 
     def test_keyboard_interrupt_task(self) -> None:
         result = test_tasks.failing_task_keyboard_interrupt.enqueue()
@@ -1484,7 +1495,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertEqual(result.exception_class, KeyboardInterrupt)
+        self.assertEqual(result.errors[0].exception_class, KeyboardInterrupt)
 
     def test_multiple_workers(self) -> None:
         results = [test_tasks.sleep_for.enqueue(0.1) for _ in range(10)]

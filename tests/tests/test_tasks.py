@@ -31,7 +31,10 @@ from tests import tasks as test_tasks
             "QUEUES": ["default", "queue_1"],
             "ENQUEUE_ON_COMMIT": False,
         },
-        "immediate": {"BACKEND": "django_tasks.backends.immediate.ImmediateBackend"},
+        "immediate": {
+            "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+            "ENQUEUE_ON_COMMIT": False,
+        },
         "missing": {"BACKEND": "does.not.exist"},
     }
 )
@@ -51,7 +54,7 @@ class TaskTestCase(SimpleTestCase):
     def test_enqueue_task(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertEqual(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
@@ -61,7 +64,7 @@ class TaskTestCase(SimpleTestCase):
     async def test_enqueue_task_async(self) -> None:
         result = await test_tasks.noop_task.aenqueue()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertEqual(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
@@ -264,3 +267,35 @@ class TaskTestCase(SimpleTestCase):
     def test_no_backends(self) -> None:
         with self.assertRaises(InvalidTaskBackendError):
             test_tasks.noop_task.enqueue()
+
+    def test_task_error_invalid_exception(self) -> None:
+        with self.assertLogs("django_tasks"):
+            immediate_task = test_tasks.failing_task_value_error.using(
+                backend="immediate"
+            ).enqueue()
+
+        self.assertEqual(len(immediate_task.errors), 1)
+
+        object.__setattr__(
+            immediate_task.errors[0], "exception_class_path", "subprocess.run"
+        )
+
+        with self.assertRaisesMessage(
+            ValueError, "'subprocess.run' does not reference a valid exception."
+        ):
+            immediate_task.errors[0].exception_class  # noqa: B018
+
+    def test_task_error_unknown_module(self) -> None:
+        with self.assertLogs("django_tasks"):
+            immediate_task = test_tasks.failing_task_value_error.using(
+                backend="immediate"
+            ).enqueue()
+
+        self.assertEqual(len(immediate_task.errors), 1)
+
+        object.__setattr__(
+            immediate_task.errors[0], "exception_class_path", "does.not.exist"
+        )
+
+        with self.assertRaises(ImportError):
+            immediate_task.errors[0].exception_class  # noqa: B018

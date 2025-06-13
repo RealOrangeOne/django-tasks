@@ -197,24 +197,32 @@ assert result.return_value == 42
 If a result has been updated in the background, you can call `refresh` on it to update its values. Results obtained using `get_result` will always be up-to-date.
 
 ```python
-assert result.status == ResultStatus.NEW
+assert result.status == ResultStatus.READY
 result.refresh()
 assert result.status == ResultStatus.SUCCEEDED
 ```
 
-#### Exceptions
+#### Errors
 
-If a task raised an exception, its `.exception_class` will be the exception class raised:
+If a task raised an exception, its `.errors` contains information about the error:
 
 ```python
-assert result.exception_class == ValueError
+assert result.errors[0].exception_class == ValueError
 ```
 
 Note that this is just the type of exception, and contains no other values. The traceback information is reduced to a string that you can print to help debugging:
 
 ```python
-assert isinstance(result.traceback, str)
+assert isinstance(result.errors[0].traceback, str)
 ```
+
+Note that currently, whilst `.errors` is a list, it will only ever contain a single element.
+
+#### Attempts
+
+The number of times a task has been run is stored as the `.attempts` attribute. This will currently only ever be 0 or 1.
+
+The date of the last attempt is stored as `.last_attempted_at`.
 
 ### Backend introspecting
 

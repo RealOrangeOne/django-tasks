@@ -38,15 +38,17 @@ class DummyBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
+                self.assertIsNone(result.last_attempted_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.return_value  # noqa:B018
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
+                self.assertEqual(result.attempts, 0)
 
                 self.assertIn(result, default_task_backend.results)  # type:ignore[attr-defined]
 
@@ -55,15 +57,17 @@ class DummyBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
+                self.assertIsNone(result.last_attempted_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.return_value  # noqa:B018
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
+                self.assertEqual(result.attempts, 0)
 
                 self.assertIn(result, default_task_backend.results)  # type:ignore[attr-defined]
 
@@ -89,7 +93,7 @@ class DummyBackendTestCase(SimpleTestCase):
         enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
         object.__setattr__(enqueued_result, "status", ResultStatus.SUCCEEDED)
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         result.refresh()
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
@@ -101,7 +105,7 @@ class DummyBackendTestCase(SimpleTestCase):
         enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
         object.__setattr__(enqueued_result, "status", ResultStatus.SUCCEEDED)
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         await result.arefresh()
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
@@ -124,10 +128,10 @@ class DummyBackendTestCase(SimpleTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], None)
-                self.assertEqual(data["status"], ResultStatus.NEW)
+                self.assertEqual(data["status"], ResultStatus.READY)
 
                 result = default_task_backend.get_result(data["result_id"])
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -141,7 +145,7 @@ class DummyBackendTestCase(SimpleTestCase):
 
         self.assertEqual(
             json.loads(response.content),
-            {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
+            {"result_id": result_id, "result": None, "status": ResultStatus.READY},
         )
 
     def test_enqueue_on_commit(self) -> None:
@@ -159,14 +163,10 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
 
-    def test_exceptions(self) -> None:
+    def test_errors(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.exception_class  # noqa: B018
-
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.traceback  # noqa: B018
+        self.assertEqual(result.errors, [])
 
     def test_validate_disallowed_async_task(self) -> None:
         with mock.patch.multiple(default_task_backend, supports_async_task=False):
