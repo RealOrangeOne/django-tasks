@@ -239,37 +239,20 @@ def task(  # type: ignore[misc]
     """
     from . import tasks
 
-    if takes_context:
+    def wrapper(f: Callable[P, T]) -> Task[P, T]:
+        return tasks[backend].task_class(
+            priority=priority,
+            func=f,
+            queue_name=queue_name,
+            backend=backend,
+            enqueue_on_commit=enqueue_on_commit,
+            takes_context=takes_context,
+        )
 
-        def context_wrapper(
-            f: Callable[Concatenate["TaskContext", P], T],
-        ) -> Task[P, T]:
-            return tasks[backend].task_class(
-                priority=priority,
-                func=f,  # type: ignore[arg-type]
-                queue_name=queue_name,
-                backend=backend,
-                enqueue_on_commit=enqueue_on_commit,
-                takes_context=takes_context,
-            )
+    if function:
+        return wrapper(function)
 
-        return context_wrapper
-    else:
-
-        def wrapper(f: Callable[P, T]) -> Task[P, T]:
-            return tasks[backend].task_class(
-                priority=priority,
-                func=f,
-                queue_name=queue_name,
-                backend=backend,
-                enqueue_on_commit=enqueue_on_commit,
-                takes_context=takes_context,
-            )
-
-        if function:
-            return wrapper(function)
-
-        return wrapper
+    return wrapper
 
 
 @dataclass(frozen=True)
