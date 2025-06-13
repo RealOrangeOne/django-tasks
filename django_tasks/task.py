@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from inspect import iscoroutinefunction
+from inspect import isclass, iscoroutinefunction
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -15,6 +15,7 @@ from typing import (
 
 from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
 
@@ -34,8 +35,7 @@ MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
 
 TASK_REFRESH_ATTRS = {
-    "_exception_class",
-    "_traceback",
+    "errors",
     "_return_value",
     "finished_at",
     "started_at",
@@ -228,6 +228,26 @@ def task(
 
 
 @dataclass(frozen=True)
+class TaskError:
+    exception_class_path: str
+    traceback: str
+
+    @property
+    def exception_class(self) -> type[BaseException]:
+        # Lazy resolve the exception class
+        exception_class = import_string(self.exception_class_path)
+
+        if not isclass(exception_class) or not issubclass(
+            exception_class, BaseException
+        ):
+            raise ValueError(
+                f"{self.exception_class_path!r} does not reference a valid exception."
+            )
+
+        return exception_class
+
+
+@dataclass(frozen=True)
 class TaskResult(Generic[T]):
     task: Task
     """The task for which this is a result"""
@@ -256,15 +276,15 @@ class TaskResult(Generic[T]):
     backend: str
     """The name of the backend the task will run on"""
 
-    _exception_class: Optional[type[BaseException]] = field(init=False, default=None)
-    _traceback: Optional[str] = field(init=False, default=None)
+    errors: list[TaskError]
+    """The errors raised when running the task"""
 
     _return_value: Optional[T] = field(init=False, default=None)
 
     @property
     def return_value(self) -> Optional[T]:
         """
-        Get the return value of the task.
+        The return value of the task.
 
         If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
@@ -275,22 +295,6 @@ class TaskResult(Generic[T]):
             raise ValueError("Task failed")
         else:
             raise ValueError("Task has not finished yet")
-
-    @property
-    def exception_class(self) -> Optional[type[BaseException]]:
-        """The exception raised by the task function"""
-        if not self.is_finished:
-            raise ValueError("Task has not finished yet")
-
-        return self._exception_class
-
-    @property
-    def traceback(self) -> Optional[str]:
-        """The traceback of the exception if the task failed"""
-        if not self.is_finished:
-            raise ValueError("Task has not finished yet")
-
-        return self._traceback
 
     @property
     def is_finished(self) -> bool:

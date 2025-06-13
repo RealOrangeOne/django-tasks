@@ -159,14 +159,10 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertIn("enqueued", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
 
-    def test_exceptions(self) -> None:
+    def test_errors(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.exception_class  # noqa: B018
-
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.traceback  # noqa: B018
+        self.assertEqual(result.errors, [])
 
     def test_validate_disallowed_async_task(self) -> None:
         with mock.patch.multiple(default_task_backend, supports_async_task=False):

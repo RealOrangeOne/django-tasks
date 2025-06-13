@@ -156,10 +156,12 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
-                self.assertEqual(result.exception_class, exception)
+                self.assertEqual(result.errors[0].exception_class, exception)
+                traceback = result.errors[0].traceback
                 self.assertTrue(
-                    result.traceback
-                    and result.traceback.endswith(f"{exception.__name__}: {message}\n")
+                    traceback
+                    and traceback.endswith(f"{exception.__name__}: {message}\n"),
+                    traceback,
                 )
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
@@ -180,8 +182,10 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
 
         self.assertIsNone(result._return_value)
-        self.assertEqual(result.exception_class, ValueError)
-        self.assertIn('ValueError(ValueError("This task failed"))', result.traceback)  # type: ignore[arg-type]
+        self.assertEqual(result.errors[0].exception_class, ValueError)
+        self.assertIn(
+            'ValueError(ValueError("This task failed"))', result.errors[0].traceback
+        )
 
         self.assertEqual(result.task, test_tasks.complex_exception)
         self.assertEqual(result.args, [])

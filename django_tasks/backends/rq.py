@@ -8,17 +8,23 @@ from django.apps import apps
 from django.core.checks import messages
 from django.core.exceptions import SuspiciousOperation
 from django.db import transaction
-from django.utils.module_loading import import_string
 from redis.client import Redis
 from rq.job import Callback, JobStatus
 from rq.job import Job as BaseJob
 from rq.registry import ScheduledJobRegistry
+from rq.results import Result
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.signals import task_enqueued, task_finished, task_started
-from django_tasks.task import DEFAULT_PRIORITY, MAX_PRIORITY, ResultStatus, Task
+from django_tasks.task import (
+    DEFAULT_PRIORITY,
+    MAX_PRIORITY,
+    ResultStatus,
+    Task,
+    TaskError,
+)
 from django_tasks.task import TaskResult as BaseTaskResult
 from django_tasks.utils import get_module_path, get_random_id
 
@@ -95,19 +101,24 @@ class Job(BaseJob):
             args=list(self.args),
             kwargs=self.kwargs,
             backend=self.meta["backend_name"],
+            errors=[],
         )
 
-        latest_result = self.latest_result()
+        exception_classes = self.meta.get("_django_tasks_exceptions", []).copy()
 
-        if latest_result is not None:
-            if "exception_class" in self.meta:
-                object.__setattr__(
-                    task_result,
-                    "_exception_class",
-                    import_string(self.meta["exception_class"]),
+        rq_results = self.results()
+
+        for rq_result in rq_results:
+            if rq_result.type == Result.Type.FAILED:
+                task_result.errors.append(
+                    TaskError(
+                        exception_class_path=exception_classes.pop(),
+                        traceback=rq_result.exc_string,  # type: ignore[arg-type]
+                    )
                 )
-            object.__setattr__(task_result, "_traceback", latest_result.exc_string)
-            object.__setattr__(task_result, "_return_value", latest_result.return_value)
+
+        if rq_results:
+            object.__setattr__(task_result, "_return_value", rq_results[0].return_value)
 
         return task_result
 
@@ -120,7 +131,9 @@ def failed_callback(
     traceback: TracebackType,
 ) -> None:
     # Smuggle the exception class through meta
-    job.meta["exception_class"] = get_module_path(exception_class)
+    job.meta.setdefault("_django_tasks_exceptions", []).append(
+        get_module_path(exception_class)
+    )
     job.save_meta()  # type: ignore[no-untyped-call]
 
     task_result = job.into_task_result()
@@ -169,6 +182,7 @@ class RQBackend(BaseTaskBackend):
             args=args,
             kwargs=kwargs,
             backend=self.alias,
+            errors=[],
         )
 
         job = queue.create_job(

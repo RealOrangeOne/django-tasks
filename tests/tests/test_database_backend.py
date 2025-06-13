@@ -522,12 +522,6 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.failing_task_value_error.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.exception_class  # noqa: B018
-
-        with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
-            result.traceback  # noqa: B018
-
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
@@ -542,12 +536,12 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         with self.assertRaisesMessage(ValueError, "Task failed"):
             result.return_value  # noqa: B018
 
-        self.assertEqual(result.exception_class, ValueError)
-        assert result.traceback  # So that mypy knows the next line is allowed
+        self.assertEqual(result.errors[0].exception_class, ValueError)
+        traceback = result.errors[0].traceback
         self.assertTrue(
-            result.traceback.endswith(
-                "ValueError: This task failed due to ValueError\n"
-            )
+            traceback
+            and traceback.endswith("ValueError: This task failed due to ValueError\n"),
+            traceback,
         )
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -556,12 +550,6 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.complex_exception.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertRaisesMessage(ValueError, "Task has not finished"):
-            result.exception_class  # noqa: B018
-
-        with self.assertRaisesMessage(ValueError, "Task has not finished"):
-            result.traceback  # noqa: B018
-
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
@@ -576,8 +564,10 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         with self.assertRaisesMessage(ValueError, "Task failed"):
             result.return_value  # noqa: B018
 
-        self.assertEqual(result.exception_class, ValueError)
-        self.assertIn('ValueError(ValueError("This task failed"))', result.traceback)  # type: ignore[arg-type]
+        self.assertEqual(result.errors[0].exception_class, ValueError)
+        self.assertIn(
+            'ValueError(ValueError("This task failed"))', result.errors[0].traceback
+        )
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -1432,7 +1422,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertEqual(result.exception_class, SystemExit)
+        self.assertEqual(result.errors[0].exception_class, SystemExit)
 
     @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
     def test_kill(self) -> None:
@@ -1470,7 +1460,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertEqual(result.exception_class, SystemExit)
+        self.assertEqual(result.errors[0].exception_class, SystemExit)
 
     def test_keyboard_interrupt_task(self) -> None:
         result = test_tasks.failing_task_keyboard_interrupt.enqueue()
@@ -1482,7 +1472,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.FAILED)
-        self.assertEqual(result.exception_class, KeyboardInterrupt)
+        self.assertEqual(result.errors[0].exception_class, KeyboardInterrupt)
 
     def test_multiple_workers(self) -> None:
         results = [test_tasks.sleep_for.enqueue(0.1) for _ in range(10)]

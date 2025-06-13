@@ -9,8 +9,13 @@ from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.signals import task_enqueued, task_finished, task_started
-from django_tasks.task import ResultStatus, Task, TaskResult
-from django_tasks.utils import get_exception_traceback, get_random_id, json_normalize
+from django_tasks.task import ResultStatus, Task, TaskError, TaskResult
+from django_tasks.utils import (
+    get_exception_traceback,
+    get_module_path,
+    get_random_id,
+    json_normalize,
+)
 
 from .base import BaseTaskBackend
 
@@ -56,8 +61,12 @@ class ImmediateBackend(BaseTaskBackend):
 
             object.__setattr__(task_result, "finished_at", timezone.now())
 
-            object.__setattr__(task_result, "_traceback", get_exception_traceback(e))
-            object.__setattr__(task_result, "_exception_class", type(e))
+            task_result.errors.append(
+                TaskError(
+                    exception_class_path=get_module_path(type(e)),
+                    traceback=get_exception_traceback(e),
+                )
+            )
 
             object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
@@ -86,6 +95,7 @@ class ImmediateBackend(BaseTaskBackend):
             args=args,
             kwargs=kwargs,
             backend=self.alias,
+            errors=[],
         )
 
         if self._get_enqueue_on_commit_for_task(task) is not False:

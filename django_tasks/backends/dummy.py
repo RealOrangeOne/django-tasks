@@ -50,6 +50,7 @@ class DummyBackend(BaseTaskBackend):
             args=args,
             kwargs=kwargs,
             backend=self.alias,
+            errors=[],
         )
 
         if self._get_enqueue_on_commit_for_task(task) is not False:
