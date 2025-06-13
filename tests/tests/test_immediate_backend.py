@@ -33,6 +33,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
                 self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
+                self.assertIsNotNone(result.last_attempted_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
@@ -50,6 +51,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.SUCCEEDED)
                 self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
+                self.assertIsNotNone(result.last_attempted_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
@@ -89,6 +91,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                     result.return_value  # noqa: B018
                 self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
+                self.assertIsNotNone(result.last_attempted_at)
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type, misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type, misc]
@@ -119,6 +122,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
         self.assertEqual(result.status, ResultStatus.FAILED)
         self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
         self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
         self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]

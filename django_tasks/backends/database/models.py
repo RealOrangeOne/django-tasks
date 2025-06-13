@@ -171,6 +171,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             status=ResultStatus[self.status],
             enqueued_at=self.enqueued_at,
             started_at=self.started_at,
+            last_attempted_at=self.started_at,
             finished_at=self.finished_at,
             args=self.args_kwargs["args"],
             kwargs=self.args_kwargs["kwargs"],

@@ -41,6 +41,7 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
+                self.assertIsNone(result.last_attempted_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.return_value  # noqa:B018
@@ -59,6 +60,7 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
+                self.assertIsNone(result.last_attempted_at)
                 self.assertIsNone(result.finished_at)
                 with self.assertRaisesMessage(ValueError, "Task has not finished yet"):
                     result.return_value  # noqa:B018

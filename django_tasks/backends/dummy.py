@@ -46,6 +46,7 @@ class DummyBackend(BaseTaskBackend):
             status=ResultStatus.READY,
             enqueued_at=None,
             started_at=None,
+            last_attempted_at=None,
             finished_at=None,
             args=args,
             kwargs=kwargs,

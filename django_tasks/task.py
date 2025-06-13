@@ -39,6 +39,7 @@ TASK_REFRESH_ATTRS = {
     "_return_value",
     "finished_at",
     "started_at",
+    "last_attempted_at",
     "status",
     "enqueued_at",
 }
@@ -266,6 +267,9 @@ class TaskResult(Generic[T]):
 
     finished_at: Optional[datetime]
     """The time this task was finished"""
+
+    last_attempted_at: Optional[datetime]
+    """The time this task was last attempted to be run"""
 
     args: list
     """The arguments to pass to the task function"""

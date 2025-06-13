@@ -97,6 +97,7 @@ class Job(BaseJob):
             status=RQ_STATUS_TO_RESULT_STATUS[self.get_status()],
             enqueued_at=self.enqueued_at,
             started_at=self.started_at,
+            last_attempted_at=self.started_at,
             finished_at=self.ended_at,
             args=list(self.args),
             kwargs=self.kwargs,
@@ -119,6 +120,9 @@ class Job(BaseJob):
 
         if rq_results:
             object.__setattr__(task_result, "_return_value", rq_results[0].return_value)
+            object.__setattr__(
+                task_result, "last_attempted_at", rq_results[0].created_at
+            )
 
         return task_result
 
@@ -178,6 +182,7 @@ class RQBackend(BaseTaskBackend):
             status=ResultStatus.READY,
             enqueued_at=None,
             started_at=None,
+            last_attempted_at=None,
             finished_at=None,
             args=args,
             kwargs=kwargs,

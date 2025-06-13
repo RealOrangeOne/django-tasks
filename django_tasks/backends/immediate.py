@@ -44,6 +44,7 @@ class ImmediateBackend(BaseTaskBackend):
 
         object.__setattr__(task_result, "status", ResultStatus.RUNNING)
         object.__setattr__(task_result, "started_at", timezone.now())
+        object.__setattr__(task_result, "last_attempted_at", timezone.now())
         task_started.send(sender=type(self), task_result=task_result)
 
         try:
@@ -91,6 +92,7 @@ class ImmediateBackend(BaseTaskBackend):
             status=ResultStatus.READY,
             enqueued_at=None,
             started_at=None,
+            last_attempted_at=None,
             finished_at=None,
             args=args,
             kwargs=kwargs,
