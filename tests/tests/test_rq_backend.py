@@ -98,7 +98,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
@@ -113,7 +113,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
@@ -208,7 +208,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
@@ -228,7 +228,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
@@ -269,10 +269,10 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], None)
-                self.assertEqual(data["status"], ResultStatus.NEW)
+                self.assertEqual(data["status"], ResultStatus.READY)
 
                 result = default_task_backend.get_result(data["result_id"])
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -286,7 +286,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.assertEqual(
             json.loads(response.content),
-            {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
+            {"result_id": result_id, "result": None, "status": ResultStatus.READY},
         )
 
     def test_invalid_task_path(self) -> None:

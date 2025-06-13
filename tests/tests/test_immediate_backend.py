@@ -267,7 +267,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
             result = test_tasks.noop_task.enqueue()
 
             self.assertIsNone(result.enqueued_at)
-            self.assertEqual(result.status, ResultStatus.NEW)
+            self.assertEqual(result.status, ResultStatus.READY)
 
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertIsNotNone(result.enqueued_at)
@@ -312,7 +312,7 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
             result = test_tasks.noop_task.enqueue()
 
             self.assertIsNone(result.enqueued_at)
-            self.assertEqual(result.status, ResultStatus.NEW)
+            self.assertEqual(result.status, ResultStatus.READY)
 
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
@@ -337,6 +337,6 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
             result = test_tasks.enqueue_on_commit_task.enqueue()
 
             self.assertIsNone(result.enqueued_at)
-            self.assertEqual(result.status, ResultStatus.NEW)
+            self.assertEqual(result.status, ResultStatus.READY)
 
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)

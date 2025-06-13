@@ -197,7 +197,7 @@ assert result.return_value == 42
 If a result has been updated in the background, you can call `refresh` on it to update its values. Results obtained using `get_result` will always be up-to-date.
 
 ```python
-assert result.status == ResultStatus.NEW
+assert result.status == ResultStatus.READY
 result.refresh()
 assert result.status == ResultStatus.SUCCEEDED
 ```

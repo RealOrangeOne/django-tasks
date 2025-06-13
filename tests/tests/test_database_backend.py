@@ -79,7 +79,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task), self.assertNumQueries(1):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
@@ -94,7 +94,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.finished_at)
@@ -132,7 +132,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             return_value=42,
         )
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
@@ -156,7 +156,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             return_value=42,
         )
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
@@ -195,10 +195,10 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], None)
-                self.assertEqual(data["status"], ResultStatus.NEW)
+                self.assertEqual(data["status"], ResultStatus.READY)
 
                 result = default_task_backend.get_result(data["result_id"])
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -212,7 +212,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.assertEqual(
             json.loads(response.content),
-            {"result_id": result_id, "result": None, "status": ResultStatus.NEW},
+            {"result_id": result_id, "result": None, "status": ResultStatus.READY},
         )
 
     def test_invalid_task_path(self) -> None:
@@ -455,12 +455,12 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 result = cast(Task, task).enqueue()
                 self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
 
                 with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
                     self.run_worker()
 
-                self.assertEqual(result.status, ResultStatus.NEW)
+                self.assertEqual(result.status, ResultStatus.READY)
                 result.refresh()
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.finished_at)
@@ -531,7 +531,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         result.refresh()
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
@@ -565,7 +565,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
             self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
         result.refresh()
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.finished_at)
@@ -806,7 +806,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result_1.refresh()
         result_2.refresh()
 
-        self.assertEqual(result_1.status, ResultStatus.NEW)
+        self.assertEqual(result_1.status, ResultStatus.READY)
         self.assertEqual(result_2.status, ResultStatus.SUCCEEDED)
 
     def test_max_tasks(self) -> None:
@@ -823,7 +823,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         statuses = Counter(result.status for result in results)
 
         self.assertEqual(statuses[ResultStatus.SUCCEEDED], 2)
-        self.assertEqual(statuses[ResultStatus.NEW], 3)
+        self.assertEqual(statuses[ResultStatus.READY], 3)
 
 
 @override_settings(
@@ -1358,7 +1358,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         process.wait()
         self.assertEqual(process.returncode, 0)
 
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
 
         result.refresh()
 

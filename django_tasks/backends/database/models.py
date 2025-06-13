@@ -56,7 +56,7 @@ class DBTaskResultQuerySet(models.QuerySet):
         Return tasks which are ready to be processed.
         """
         return self.filter(
-            status=ResultStatus.NEW,
+            status=ResultStatus.READY,
         ).filter(models.Q(run_after=DATE_MAX) | models.Q(run_after__lte=timezone.now()))
 
     def succeeded(self) -> "DBTaskResultQuerySet":
@@ -85,7 +85,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     status = models.CharField(
         _("status"),
         choices=ResultStatus.choices,
-        default=ResultStatus.NEW,
+        default=ResultStatus.READY,
         max_length=max(len(value) for value in ResultStatus.values),
     )
 
@@ -122,7 +122,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "status",
                 *ordering,
                 name="django_task_new_ordering_idx",
-                condition=Q(status=ResultStatus.NEW),
+                condition=Q(status=ResultStatus.READY),
             ),
             models.Index(fields=["queue_name"]),
             models.Index(fields=["backend_name"]),

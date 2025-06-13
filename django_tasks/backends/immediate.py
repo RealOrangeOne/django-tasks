@@ -79,7 +79,7 @@ class ImmediateBackend(BaseTaskBackend):
         task_result = TaskResult[T](
             task=task,
             id=get_random_id(),
-            status=ResultStatus.NEW,
+            status=ResultStatus.READY,
             enqueued_at=None,
             started_at=None,
             finished_at=None,

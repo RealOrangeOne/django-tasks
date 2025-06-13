@@ -26,15 +26,15 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 RQ_STATUS_TO_RESULT_STATUS = {
-    JobStatus.QUEUED: ResultStatus.NEW,
+    JobStatus.QUEUED: ResultStatus.READY,
     JobStatus.FINISHED: ResultStatus.SUCCEEDED,
     JobStatus.FAILED: ResultStatus.FAILED,
     JobStatus.STARTED: ResultStatus.RUNNING,
-    JobStatus.DEFERRED: ResultStatus.NEW,
-    JobStatus.SCHEDULED: ResultStatus.NEW,
+    JobStatus.DEFERRED: ResultStatus.READY,
+    JobStatus.SCHEDULED: ResultStatus.READY,
     JobStatus.STOPPED: ResultStatus.FAILED,
     JobStatus.CANCELED: ResultStatus.FAILED,
-    None: ResultStatus.NEW,
+    None: ResultStatus.READY,
 }
 
 
@@ -162,7 +162,7 @@ class RQBackend(BaseTaskBackend):
         task_result = TaskResult[T](
             task=task,
             id=get_random_id(),
-            status=ResultStatus.NEW,
+            status=ResultStatus.READY,
             enqueued_at=None,
             started_at=None,
             finished_at=None,

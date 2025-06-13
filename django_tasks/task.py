@@ -45,10 +45,17 @@ TASK_REFRESH_ATTRS = {
 
 
 class ResultStatus(TextChoices):
-    NEW = ("NEW", _("New"))
+    READY = ("READY", _("Ready"))
+    """The task has just been enqueued, or is ready to be executed again (eg for a retry)."""
+
     RUNNING = ("RUNNING", _("Running"))
+    """The task is currently running."""
+
     FAILED = ("FAILED", _("Failed"))
+    """The task has finished running, but resulted in an error."""
+
     SUCCEEDED = ("SUCCEEDED", _("Succeeded"))
+    """The task has finished running successfully."""
 
 
 T = TypeVar("T")
