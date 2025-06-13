@@ -301,6 +301,15 @@ class TaskResult(Generic[T]):
         """Has the task finished?"""
         return self.status in {ResultStatus.FAILED, ResultStatus.SUCCEEDED}
 
+    @property
+    def attempts(self) -> int:
+        attempts = len(self.errors)
+
+        if self.status == ResultStatus.SUCCEEDED:
+            attempts += 1
+
+        return attempts
+
     def refresh(self) -> None:
         """
         Reload the cached task data from the task store

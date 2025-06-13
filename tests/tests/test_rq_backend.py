@@ -107,6 +107,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
+                self.assertEqual(result.attempts, 0)
 
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
@@ -122,6 +123,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
+                self.assertEqual(result.attempts, 0)
 
     def test_catches_exception(self) -> None:
         test_data = [
@@ -166,6 +168,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
+                self.assertEqual(result.attempts, 1)
 
     def test_complex_exception(self) -> None:
         result = test_tasks.complex_exception.enqueue()
@@ -190,6 +193,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertEqual(result.task, test_tasks.complex_exception)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
+        self.assertEqual(result.attempts, 1)
 
     def test_get_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task, [], {})
@@ -216,6 +220,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
+        self.assertEqual(result.attempts, 0)
 
         result.refresh()
 
@@ -224,6 +229,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
+        self.assertEqual(result.attempts, 1)
 
     def test_refresh_result_async(self) -> None:
         result = async_to_sync(default_task_backend.aenqueue)(
@@ -236,6 +242,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.finished_at)
+        self.assertEqual(result.attempts, 0)
 
         async_to_sync(result.arefresh)()
 
@@ -244,6 +251,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
+        self.assertEqual(result.attempts, 1)
 
     def test_get_missing_result(self) -> None:
         with self.assertRaises(ResultDoesNotExist):

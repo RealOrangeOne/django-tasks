@@ -40,6 +40,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
+                self.assertEqual(result.attempts, 1)
 
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
@@ -56,6 +57,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.task, task)
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
+                self.assertEqual(result.attempts, 1)
 
     def test_catches_exception(self) -> None:
         test_data = [
@@ -271,10 +273,12 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
             result = test_tasks.noop_task.enqueue()
 
             self.assertIsNone(result.enqueued_at)
+            self.assertEqual(result.attempts, 0)
             self.assertEqual(result.status, ResultStatus.READY)
 
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
         self.assertIsNotNone(result.enqueued_at)
+        self.assertEqual(result.attempts, 1)
 
     @override_settings(
         TASKS={

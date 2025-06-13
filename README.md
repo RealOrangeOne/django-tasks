@@ -218,6 +218,10 @@ assert isinstance(result.errors[0].traceback, str)
 
 Note that currently, whilst `.errors` is a list, it will only ever contain a single element.
 
+#### Attempts
+
+The number of times a task has been run is stored as the `.attempts` attribute. This will currently only ever be 0 or 1.
+
 ### Backend introspecting
 
 Because `django-tasks` enables support for multiple different backends, those backends may not support all features, and it can be useful to determine this at runtime to ensure the chosen task queue meets the requirements, or to gracefully degrade functionality if it doesn't.
