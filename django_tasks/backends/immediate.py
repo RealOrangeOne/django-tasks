@@ -1,15 +1,13 @@
 import logging
 from functools import partial
-from inspect import iscoroutinefunction
 from typing import TypeVar
 
-from asgiref.sync import async_to_sync
 from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
 from django_tasks.signals import task_enqueued, task_finished, task_started
-from django_tasks.task import ResultStatus, Task, TaskResult
+from django_tasks.task import ResultStatus, Task, TaskContext, TaskResult
 from django_tasks.utils import get_exception_traceback, get_random_id, json_normalize
 
 from .base import BaseTaskBackend
@@ -33,21 +31,24 @@ class ImmediateBackend(BaseTaskBackend):
 
         task = task_result.task
 
-        calling_task_func = (
-            async_to_sync(task.func) if iscoroutinefunction(task.func) else task.func
-        )
-
         object.__setattr__(task_result, "status", ResultStatus.RUNNING)
         object.__setattr__(task_result, "started_at", timezone.now())
         task_started.send(sender=type(self), task_result=task_result)
 
         try:
+            if task.takes_context:
+                raw_return_value = task.call(
+                    TaskContext(task_result=task_result),
+                    *task_result.args,
+                    **task_result.kwargs,
+                )
+            else:
+                raw_return_value = task.call(*task_result.args, **task_result.kwargs)
+
             object.__setattr__(
                 task_result,
                 "_return_value",
-                json_normalize(
-                    calling_task_func(*task_result.args, **task_result.kwargs)
-                ),
+                json_normalize(raw_return_value),
             )
         except BaseException as e:
             # If the user tried to terminate, let them

@@ -8,6 +8,7 @@ from django.apps import apps
 from django.core.checks import messages
 from django.core.exceptions import SuspiciousOperation
 from django.db import transaction
+from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from redis.client import Redis
 from rq.job import Callback, JobStatus
@@ -18,7 +19,13 @@ from typing_extensions import ParamSpec
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.signals import task_enqueued, task_finished, task_started
-from django_tasks.task import DEFAULT_PRIORITY, MAX_PRIORITY, ResultStatus, Task
+from django_tasks.task import (
+    DEFAULT_PRIORITY,
+    MAX_PRIORITY,
+    ResultStatus,
+    Task,
+    TaskContext,
+)
 from django_tasks.task import TaskResult as BaseTaskResult
 from django_tasks.utils import get_module_path, get_random_id
 
@@ -45,9 +52,9 @@ class TaskResult(BaseTaskResult[T]):
 
 class Job(BaseJob):
     def perform(self) -> Any:
-        task_result = self.into_task_result()
-
-        task_started.send(type(task_result.task.get_backend()), task_result=task_result)
+        task_started.send(
+            type(self.task_result.task.get_backend()), task_result=self.task_result
+        )
 
         return super().perform()
 
@@ -55,7 +62,16 @@ class Job(BaseJob):
         """
         Shim RQ's `Job` to call the underlying `Task` function.
         """
-        return self.func.call(*self.args, **self.kwargs)
+        try:
+            if self.func.takes_context:
+                return self.func.call(
+                    TaskContext(task_result=self.task_result), *self.args, **self.kwargs
+                )
+            return self.func.call(*self.args, **self.kwargs)
+        finally:
+            # Clear the task result cache, as it's changed now
+            self.__dict__.pop("task_result", None)
+            pass
 
     @property
     def func(self) -> Task:
@@ -68,7 +84,8 @@ class Job(BaseJob):
 
         return func
 
-    def into_task_result(self) -> TaskResult:
+    @cached_property
+    def task_result(self) -> TaskResult:
         task: Task = self.func
 
         scheduled_job_registry = ScheduledJobRegistry(  # type: ignore[no-untyped-call]
@@ -123,7 +140,7 @@ def failed_callback(
     job.meta["exception_class"] = get_module_path(exception_class)
     job.save_meta()  # type: ignore[no-untyped-call]
 
-    task_result = job.into_task_result()
+    task_result = job.task_result
 
     object.__setattr__(task_result, "status", ResultStatus.FAILED)
 
@@ -131,7 +148,7 @@ def failed_callback(
 
 
 def success_callback(job: Job, connection: Optional[Redis], result: Any) -> None:
-    task_result = job.into_task_result()
+    task_result = job.task_result
 
     object.__setattr__(task_result, "status", ResultStatus.SUCCEEDED)
 
@@ -217,7 +234,7 @@ class RQBackend(BaseTaskBackend):
         if job is None:
             raise ResultDoesNotExist(result_id)
 
-        return job.into_task_result()
+        return job.task_result
 
     def check(self, **kwargs: Any) -> Iterable[messages.CheckMessage]:
         yield from super().check(**kwargs)

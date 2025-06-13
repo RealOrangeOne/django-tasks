@@ -264,3 +264,10 @@ class TaskTestCase(SimpleTestCase):
     def test_no_backends(self) -> None:
         with self.assertRaises(InvalidTaskBackendError):
             test_tasks.noop_task.enqueue()
+
+    def test_takes_context_without_taking_context(self) -> None:
+        with self.assertRaisesMessage(
+            InvalidTaskError,
+            "Task takes context but does not have a first argument of 'context'",
+        ):
+            task(takes_context=True)(test_tasks.calculate_meaning_of_life.func)  # type: ignore[arg-type]
