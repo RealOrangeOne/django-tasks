@@ -33,8 +33,9 @@ class ImmediateBackend(BaseTaskBackend):
         """
         Execute the task for the given `TaskResult`, mutating it with the outcome
         """
-        object.__setattr__(task_result, "enqueued_at", timezone.now())
-        task_enqueued.send(type(self), task_result=task_result)
+        if task_result.enqueued_at is None:
+            object.__setattr__(task_result, "enqueued_at", timezone.now())
+            task_enqueued.send(type(self), task_result=task_result)
 
         task = task_result.task
 
@@ -106,3 +107,6 @@ class ImmediateBackend(BaseTaskBackend):
             self._execute_task(task_result)
 
         return task_result
+
+    def retry(self, task_result: TaskResult) -> None:
+        self._execute_task(task_result)

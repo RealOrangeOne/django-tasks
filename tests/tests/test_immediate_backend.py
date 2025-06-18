@@ -257,6 +257,23 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
         self.assertEqual(len(errors), 0, errors)
 
+    def test_retry(self) -> None:
+        with self.assertLogs("django_tasks", level="ERROR"):
+            result = test_tasks.failing_task_value_error.enqueue()
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.attempts, 1)
+        self.assertEqual(len(result.errors), 1)
+        original_enqueued = result.enqueued_at
+
+        with self.assertLogs("django_tasks", level="ERROR"):
+            result.retry()
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.attempts, 2)
+        self.assertEqual(result.enqueued_at, original_enqueued)
+        self.assertEqual(len(result.errors), 2)
+
 
 class ImmediateBackendTransactionTestCase(TransactionTestCase):
     @override_settings(

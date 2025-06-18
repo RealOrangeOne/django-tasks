@@ -195,6 +195,21 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("Set `ENQUEUE_ON_COMMIT` to False", errors[0].hint)  # type:ignore[arg-type]
 
+    async def test_no_retry(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        with self.assertRaises(ValueError):
+            result.retry()
+
+        with self.assertRaises(ValueError):
+            await result.aretry()
+
+        with self.assertRaises(NotImplementedError):
+            default_task_backend.retry(result)
+
+        with self.assertRaises(NotImplementedError):
+            await default_task_backend.aretry(result)
+
 
 class DummyBackendTransactionTestCase(TransactionTestCase):
     @override_settings(

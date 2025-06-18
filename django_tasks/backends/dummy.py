@@ -20,6 +20,8 @@ P = ParamSpec("P")
 class DummyBackend(BaseTaskBackend):
     supports_defer = True
     supports_async_task = True
+    supports_retries = False
+
     results: list[TaskResult]
 
     def __init__(self, alias: str, params: dict) -> None:

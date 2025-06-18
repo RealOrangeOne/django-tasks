@@ -331,3 +331,21 @@ class TaskResult(Generic[T]):
 
         for attr in TASK_REFRESH_ATTRS:
             object.__setattr__(self, attr, getattr(refreshed_task, attr))
+
+    def retry(self) -> None:
+        """
+        Retry the task by putting it back into the queue store.
+        """
+        if self.status != ResultStatus.FAILED:
+            raise ValueError("Only failed tasks can be retried")
+
+        self.task.get_backend().retry(self)
+
+    async def aretry(self) -> None:
+        """
+        Retry the task by putting it back into the queue store.
+        """
+        if self.status != ResultStatus.FAILED:
+            raise ValueError("Only failed tasks can be retried")
+
+        await self.task.get_backend().aretry(self)

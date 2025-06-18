@@ -61,7 +61,7 @@ def get_fake_connection(
     },
 )
 @modify_settings(INSTALLED_APPS={"append": ["django_rq"]})
-class DatabaseBackendTestCase(TransactionTestCase):
+class RQBackendTestCase(TransactionTestCase):
     def setUp(self) -> None:
         super().setUp()
 
@@ -491,3 +491,23 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("Add 'queue-2' to RQ_QUEUES", errors[0].hint)  # type:ignore[arg-type]
+
+    def test_retry(self) -> None:
+        result = test_tasks.failing_task_value_error.enqueue()
+
+        with self.assertLogs("django_tasks", "DEBUG"):
+            self.run_worker()
+        result.refresh()
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.attempts, 1)
+        self.assertEqual(len(result.errors), 1)
+
+        result.retry()
+        with self.assertLogs("django_tasks", "DEBUG"):
+            self.run_worker()
+        result.refresh()
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.attempts, 2)
+        self.assertEqual(len(result.errors), 2)

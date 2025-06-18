@@ -216,13 +216,13 @@ Note that this is just the type of exception, and contains no other values. The 
 assert isinstance(result.errors[0].traceback, str)
 ```
 
-Note that currently, whilst `.errors` is a list, it will only ever contain a single element.
-
 #### Attempts
 
-The number of times a task has been run is stored as the `.attempts` attribute. This will currently only ever be 0 or 1.
+The number of times a task has been run is stored as the `.attempts` attribute. The date of the last attempt is stored as `.last_attempted_at`.
 
-The date of the last attempt is stored as `.last_attempted_at`.
+#### Retries
+
+A task result can be retried by calling `.retry()` (or `.aretry`). This adds the task back to the queue, retaining the `id`.
 
 ### Backend introspecting
 
@@ -231,6 +231,7 @@ Because `django-tasks` enables support for multiple different backends, those ba
 - `supports_defer`: Can tasks be enqueued with the `run_after` attribute?
 - `supports_async_task`: Can coroutines be enqueued?
 - `supports_get_result`: Can results be retrieved after the fact (from **any** thread / process)?
+- `supports_retries`: Can results be retried?
 
 ```python
 from django_tasks import default_task_backend
