@@ -5,7 +5,7 @@ import random
 import signal
 import sys
 import time
-from argparse import ArgumentParser, ArgumentTypeError
+from argparse import ArgumentParser, ArgumentTypeError, BooleanOptionalAction
 from types import FrameType
 from typing import Optional
 
@@ -224,7 +224,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--reload",
-            action="store_true",
+            action=BooleanOptionalAction,
             default=settings.DEBUG,
             help="Reload the worker on code changes. Not recommended for production as tasks may not be stopped cleanly (default: DEBUG)",
         )
