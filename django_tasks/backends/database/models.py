@@ -99,7 +99,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     priority = models.IntegerField(_("priority"), default=DEFAULT_PRIORITY)
 
     task_path = models.TextField(_("task path"))
-    worker_id = models.CharField(_("worker id"), max_length=64, default="")
+    worker_ids = models.JSONField(_("worker id"), default=list)
 
     queue_name = models.CharField(
         _("queue name"), default=DEFAULT_QUEUE_NAME, max_length=32
@@ -178,6 +178,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             kwargs=self.args_kwargs["kwargs"],
             backend=self.backend_name,
             errors=[],
+            worker_ids=self.worker_ids,
         )
 
         if self.status == ResultStatus.FAILED:
@@ -213,8 +214,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         """
         self.status = ResultStatus.RUNNING
         self.started_at = timezone.now()
-        self.worker_id = worker_id
-        self.save(update_fields=["status", "started_at", "worker_id"])
+        self.worker_ids = [*self.worker_ids, worker_id]
+        self.save(update_fields=["status", "started_at", "worker_ids"])
 
     @retry()
     def set_succeeded(self, return_value: Any) -> None:

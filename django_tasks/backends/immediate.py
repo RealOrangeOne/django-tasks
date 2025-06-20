@@ -29,6 +29,11 @@ P = ParamSpec("P")
 class ImmediateBackend(BaseTaskBackend):
     supports_async_task = True
 
+    def __init__(self, alias: str, params: dict):
+        super().__init__(alias, params)
+
+        self.worker_id = get_random_id()
+
     def _execute_task(self, task_result: TaskResult) -> None:
         """
         Execute the task for the given `TaskResult`, mutating it with the outcome
@@ -45,6 +50,7 @@ class ImmediateBackend(BaseTaskBackend):
         object.__setattr__(task_result, "status", ResultStatus.RUNNING)
         object.__setattr__(task_result, "started_at", timezone.now())
         object.__setattr__(task_result, "last_attempted_at", timezone.now())
+        task_result.worker_ids.append(self.worker_id)
         task_started.send(sender=type(self), task_result=task_result)
 
         try:
@@ -98,6 +104,7 @@ class ImmediateBackend(BaseTaskBackend):
             kwargs=kwargs,
             backend=self.alias,
             errors=[],
+            worker_ids=[],
         )
 
         if self._get_enqueue_on_commit_for_task(task) is not False:

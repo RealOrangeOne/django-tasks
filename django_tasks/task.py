@@ -42,6 +42,7 @@ TASK_REFRESH_ATTRS = {
     "last_attempted_at",
     "status",
     "enqueued_at",
+    "worker_ids",
 }
 
 
@@ -283,6 +284,9 @@ class TaskResult(Generic[T]):
     errors: list[TaskError]
     """The errors raised when running the task"""
 
+    worker_ids: list[str]
+    """The workers which have processed the task"""
+
     _return_value: Optional[T] = field(init=False, default=None)
 
     @property
@@ -307,12 +311,7 @@ class TaskResult(Generic[T]):
 
     @property
     def attempts(self) -> int:
-        attempts = len(self.errors)
-
-        if self.status == ResultStatus.SUCCEEDED:
-            attempts += 1
-
-        return attempts
+        return len(self.worker_ids)
 
     def refresh(self) -> None:
         """
