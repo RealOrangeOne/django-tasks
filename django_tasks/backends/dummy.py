@@ -43,13 +43,15 @@ class DummyBackend(BaseTaskBackend):
         result = TaskResult[T](
             task=task,
             id=get_random_id(),
-            status=ResultStatus.NEW,
+            status=ResultStatus.READY,
             enqueued_at=None,
             started_at=None,
+            last_attempted_at=None,
             finished_at=None,
             args=args,
             kwargs=kwargs,
             backend=self.alias,
+            errors=[],
         )
 
         if self._get_enqueue_on_commit_for_task(task) is not False:
