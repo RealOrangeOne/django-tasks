@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, Optional, TypeVar
 
@@ -24,8 +23,8 @@ from django_tasks.task import (
     ResultStatus,
     Task,
     TaskError,
+    TaskResult,
 )
-from django_tasks.task import TaskResult as BaseTaskResult
 from django_tasks.utils import get_module_path, get_random_id
 
 T = TypeVar("T")
@@ -42,11 +41,6 @@ RQ_STATUS_TO_RESULT_STATUS = {
     JobStatus.CANCELED: ResultStatus.FAILED,
     None: ResultStatus.READY,
 }
-
-
-@dataclass(frozen=True)
-class TaskResult(BaseTaskResult[T]):
-    pass
 
 
 class Job(BaseJob):
@@ -257,3 +251,17 @@ class RQBackend(BaseTaskBackend):
                     f"{queue_name!r} is not configured for django-rq",
                     f"Add {queue_name!r} to RQ_QUEUES",
                 )
+
+    def retry(self, task_result: TaskResult) -> None:
+        job = self._get_job(task_result.id)
+
+        if job is None:
+            raise ResultDoesNotExist(task_result.id)
+
+        if job.retries_left:
+            queue = django_rq.get_queue(task_result.task.queue_name)
+
+            with queue.connection.pipeline() as pipeline:
+                job.retry(queue=queue, pipeline=pipeline)
+        else:
+            job.requeue()

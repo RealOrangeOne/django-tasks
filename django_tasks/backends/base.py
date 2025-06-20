@@ -32,6 +32,9 @@ class BaseTaskBackend(metaclass=ABCMeta):
     supports_get_result = False
     """Can results be retrieved after the fact (from **any** thread / process)"""
 
+    supports_retries = False
+    """Can results be retried"""
+
     def __init__(self, alias: str, params: dict) -> None:
         from django_tasks import DEFAULT_QUEUE_NAME
 
@@ -129,3 +132,17 @@ class BaseTaskBackend(metaclass=ABCMeta):
                 "`ENQUEUE_ON_COMMIT` cannot be used when no databases are configured",
                 hint="Set `ENQUEUE_ON_COMMIT` to False",
             )
+
+    def retry(self, task_result: TaskResult) -> None:
+        """
+        Retry the task by putting it back into the queue store.
+        """
+        raise NotImplementedError("This backend does not support retries.")
+
+    async def aretry(self, task_result: TaskResult) -> None:
+        """
+        Retry the task by putting it back into the queue store.
+        """
+        return await sync_to_async(self.retry, thread_sensitive=True)(
+            task_result=task_result
+        )
