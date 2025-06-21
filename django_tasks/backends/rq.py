@@ -53,6 +53,7 @@ class Job(BaseJob):
     def perform(self) -> Any:
         task_result = self.into_task_result()
 
+        assert self.worker_name is not None
         self.meta.setdefault("_django_tasks_worker_ids", []).append(self.worker_name)
         self.save_meta()  # type: ignore[no-untyped-call]
 
