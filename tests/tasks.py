@@ -75,3 +75,9 @@ def sleep_for(seconds: float) -> None:
 @task(takes_context=True)
 def get_task_id(context: TaskContext) -> str:
     return context.task_result.id
+
+
+@task(takes_context=True)
+def test_context(context: TaskContext, attempt: int) -> None:
+    assert isinstance(context, TaskContext)
+    assert context.attempt == attempt

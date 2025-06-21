@@ -94,6 +94,7 @@ def calculate_meaning_of_life(context: TaskContext) -> int:
 The task context has the following attributes:
 
 - `task_result`: The running task result
+- `attempt`: The current attempt number for the task
 
 This API will be extended with additional features in future.
 

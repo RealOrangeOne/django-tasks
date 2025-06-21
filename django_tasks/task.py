@@ -361,3 +361,7 @@ class TaskResult(Generic[T]):
 @dataclass(frozen=True)
 class TaskContext:
     task_result: TaskResult
+
+    @property
+    def attempt(self) -> int:
+        return self.task_result.attempts + 1

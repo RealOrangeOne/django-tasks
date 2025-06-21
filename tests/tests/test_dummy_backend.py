@@ -197,7 +197,7 @@ class DummyBackendTestCase(SimpleTestCase):
 
     def test_takes_context(self) -> None:
         result = test_tasks.get_task_id.enqueue()
-        self.assertEqual(result.status, ResultStatus.NEW)
+        self.assertEqual(result.status, ResultStatus.READY)
 
 
 class DummyBackendTransactionTestCase(TransactionTestCase):
