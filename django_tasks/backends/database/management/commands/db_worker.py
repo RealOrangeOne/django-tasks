@@ -22,7 +22,7 @@ from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
-from django_tasks.task import DEFAULT_QUEUE_NAME
+from django_tasks.task import DEFAULT_QUEUE_NAME, TaskContext
 from django_tasks.utils import get_random_id
 
 package_logger = logging.getLogger("django_tasks")
@@ -160,8 +160,14 @@ class Worker:
             backend_type = task.get_backend()
 
             task_started.send(sender=backend_type, task_result=task_result)
-
-            return_value = task.call(*task_result.args, **task_result.kwargs)
+            if task.takes_context:
+                return_value = task.call(
+                    TaskContext(task_result=task_result),
+                    *task_result.args,
+                    **task_result.kwargs,
+                )
+            else:
+                return_value = task.call(*task_result.args, **task_result.kwargs)
 
             # Setting the return and success value inside the error handling,
             # So errors setting it (eg JSON encode) can still be recorded

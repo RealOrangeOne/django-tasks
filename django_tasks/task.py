@@ -6,6 +6,7 @@ from typing import (
     Any,
     Callable,
     Generic,
+    Literal,
     Optional,
     TypeVar,
     Union,
@@ -17,7 +18,7 @@ from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
-from typing_extensions import ParamSpec, Self
+from typing_extensions import Concatenate, ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
 from .utils import (
@@ -85,6 +86,11 @@ class Task(Generic[P, T]):
     """
     Whether the task will be enqueued when the current transaction commits,
     immediately, or whatever the backend decides
+    """
+
+    takes_context: bool = False
+    """
+    Whether the task receives the task context when executed.
     """
 
     def __post_init__(self) -> None:
@@ -197,18 +203,37 @@ def task(
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     enqueue_on_commit: Optional[bool] = None,
+    takes_context: Literal[False] = False,
 ) -> Callable[[Callable[P, T]], Task[P, T]]: ...
 
 
-# Implementation
+# Decorator with context and arguments
+# e.g. @task(takes_context=True, ...)
+@overload
 def task(
+    *,
+    priority: int = DEFAULT_PRIORITY,
+    queue_name: str = DEFAULT_QUEUE_NAME,
+    backend: str = DEFAULT_TASK_BACKEND_ALIAS,
+    enqueue_on_commit: Optional[bool] = None,
+    takes_context: Literal[True],
+) -> Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]]: ...
+
+
+# Implementation
+def task(  # type: ignore[misc]
     function: Optional[Callable[P, T]] = None,
     *,
     priority: int = DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     enqueue_on_commit: Optional[bool] = None,
-) -> Union[Task[P, T], Callable[[Callable[P, T]], Task[P, T]]]:
+    takes_context: bool = False,
+) -> Union[
+    Task[P, T],
+    Callable[[Callable[P, T]], Task[P, T]],
+    Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]],
+]:
     """
     A decorator used to create a task.
     """
@@ -221,6 +246,7 @@ def task(
             queue_name=queue_name,
             backend=backend,
             enqueue_on_commit=enqueue_on_commit,
+            takes_context=takes_context,
         )
 
     if function:
@@ -330,3 +356,12 @@ class TaskResult(Generic[T]):
 
         for attr in TASK_REFRESH_ATTRS:
             object.__setattr__(self, attr, getattr(refreshed_task, attr))
+
+
+@dataclass(frozen=True)
+class TaskContext:
+    task_result: TaskResult
+
+    @property
+    def attempt(self) -> int:
+        return self.task_result.attempts

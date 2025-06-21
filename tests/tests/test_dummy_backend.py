@@ -195,6 +195,10 @@ class DummyBackendTestCase(SimpleTestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("Set `ENQUEUE_ON_COMMIT` to False", errors[0].hint)  # type:ignore[arg-type]
 
+    def test_takes_context(self) -> None:
+        result = test_tasks.get_task_id.enqueue()
+        self.assertEqual(result.status, ResultStatus.READY)
+
 
 class DummyBackendTransactionTestCase(TransactionTestCase):
     @override_settings(

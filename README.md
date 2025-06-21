@@ -78,6 +78,26 @@ modified_task = calculate_meaning_of_life.using(priority=10)
 
 In addition to the above attributes, `run_after` can be passed to specify a specific time the task should run.
 
+#### Task context
+
+Sometimes the running task may need to know context about how it was enqueued. To receive the task context as an argument to your task function, pass `takes_context` to the decorator and ensure the task takes a `context` as the first argument.
+
+```python
+from django_tasks import task, TaskContext
+
+
+@task(takes_context=True)
+def calculate_meaning_of_life(context: TaskContext) -> int:
+    return 42
+```
+
+The task context has the following attributes:
+
+- `task_result`: The running task result
+- `attempt`: The current attempt number for the task
+
+This API will be extended with additional features in future.
+
 ### Enqueueing tasks
 
 To execute a task, call the `enqueue` method on it:

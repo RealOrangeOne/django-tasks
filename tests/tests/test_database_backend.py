@@ -862,6 +862,23 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(statuses[ResultStatus.SUCCEEDED], 2)
         self.assertEqual(statuses[ResultStatus.READY], 3)
 
+    def test_takes_context(self) -> None:
+        result = test_tasks.get_task_id.enqueue()
+
+        self.run_worker()
+
+        result.refresh()
+
+        self.assertEqual(result.return_value, result.id)
+
+    def test_context(self) -> None:
+        result = test_tasks.test_context.enqueue(1)
+
+        self.run_worker()
+        result.refresh()
+
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+
 
 @override_settings(
     TASKS={

@@ -257,6 +257,15 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
         self.assertEqual(len(errors), 0, errors)
 
+    def test_takes_context(self) -> None:
+        result = test_tasks.get_task_id.enqueue()
+
+        self.assertEqual(result.return_value, result.id)
+
+    def test_context(self) -> None:
+        result = test_tasks.test_context.enqueue(1)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+
 
 class ImmediateBackendTransactionTestCase(TransactionTestCase):
     @override_settings(
