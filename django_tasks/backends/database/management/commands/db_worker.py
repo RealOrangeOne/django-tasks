@@ -87,8 +87,6 @@ class Worker:
             signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
     def run(self) -> None:
-        self.configure_signals()
-
         logger.info(
             "Starting worker worker_id=%s queues=%s",
             self.worker_id,
