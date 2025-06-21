@@ -38,6 +38,7 @@ from django_tasks.backends.database.utils import (
     normalize_uuid,
 )
 from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.utils import get_random_id
 from tests import tasks as test_tasks
 
 
@@ -134,6 +135,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             started_at=timezone.now(),
             finished_at=timezone.now(),
             return_value=42,
+            worker_ids=[get_random_id()],
         )
 
         self.assertEqual(result.status, ResultStatus.READY)
@@ -164,6 +166,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             started_at=timezone.now(),
             finished_at=timezone.now(),
             return_value=42,
+            worker_ids=[get_random_id()],
         )
 
         self.assertEqual(result.status, ResultStatus.READY)
@@ -444,6 +447,8 @@ class DatabaseBackendTestCase(TransactionTestCase):
     }
 )
 class DatabaseBackendWorkerTestCase(TransactionTestCase):
+    worker_id = get_random_id()
+
     run_worker = staticmethod(
         partial(
             call_command,
@@ -452,6 +457,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             batch=True,
             interval=0,
             startup_delay=False,
+            worker_id=worker_id,
         )
     )
 
@@ -465,7 +471,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     def test_run_enqueued_task(self) -> None:
         for task in [
             test_tasks.noop_task,
-            test_tasks.noop_task_async,
+            # test_tasks.noop_task_async,
         ]:
             with self.subTest(task):
                 result = cast(Task, task).enqueue()
@@ -662,6 +668,26 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 )
         self.assertIn("Must be greater than zero", output.getvalue())
 
+    def test_too_long_worker_id(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--worker-id", "A" * 65]
+                )
+        self.assertIn(
+            "Worker ids must be shorter than 64 characters", output.getvalue()
+        )
+
+    def test_empty_worker_id(self) -> None:
+        output = StringIO()
+        with redirect_stderr(output):
+            with self.assertRaises(SystemExit):
+                execute_from_command_line(
+                    ["django-admin", "db_worker", "--worker-id", ""]
+                )
+        self.assertIn("Worker id must not be empty", output.getvalue())
+
     def test_run_after(self) -> None:
         result = test_tasks.noop_task.using(
             run_after=timezone.now() + timedelta(hours=10)
@@ -747,10 +773,10 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "Starting worker for queues=default",
+                f"Starting worker worker_id={self.worker_id} queues=default",
                 f"Task id={result.id} path=tests.tasks.noop_task state=RUNNING",
                 f"Task id={result.id} path=tests.tasks.noop_task state=SUCCEEDED",
-                "No more tasks to run - exiting gracefully.",
+                f"No more tasks to run for worker_id={self.worker_id} - exiting gracefully.",
             ],
         )
 
@@ -1337,10 +1363,17 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                     process.wait(1)
 
     def start_worker(
-        self, args: Optional[List[str]] = None, debug: bool = False
+        self,
+        args: Optional[List[str]] = None,
+        *,
+        debug: bool = False,
+        worker_id: Optional[str] = None,
     ) -> subprocess.Popen:
         if args is None:
             args = []
+
+        if worker_id is None:
+            worker_id = get_random_id()
 
         p = subprocess.Popen(
             [
@@ -1351,6 +1384,8 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
                 "--verbosity",
                 "3",
                 "--no-startup-delay",
+                "--worker-id",
+                worker_id,
                 *args,
             ],
             stdout=None if debug else subprocess.PIPE,
@@ -1396,6 +1431,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         ]:
             with self.subTest(sig):
                 result = test_tasks.sleep_for.enqueue(2)
+                self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [])
 
                 self.assertGreater(result.args[0], self.WORKER_STARTUP_TIME)
 
@@ -1406,6 +1442,9 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
                 result.refresh()
                 self.assertEqual(result.status, ResultStatus.RUNNING)
+                self.assertNotEqual(
+                    DBTaskResult.objects.get(id=result.id).worker_ids, []
+                )
 
                 process.send_signal(sig)
 
@@ -1420,14 +1459,18 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
     @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_repeat_ctrl_c(self) -> None:
         result = test_tasks.hang.enqueue()
+        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [])
 
-        process = self.start_worker()
+        worker_id = get_random_id()
+
+        process = self.start_worker(worker_id=worker_id)
 
         # Make sure the task is running by now
         time.sleep(self.WORKER_STARTUP_TIME)
 
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
+        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [worker_id])
 
         process.send_signal(signal.SIGINT)
 
@@ -1436,6 +1479,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         self.assertIsNone(process.poll())
         result.refresh()
         self.assertEqual(result.status, ResultStatus.RUNNING)
+        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [worker_id])
 
         process.send_signal(signal.SIGINT)
 

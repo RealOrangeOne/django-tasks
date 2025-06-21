@@ -23,6 +23,7 @@ from django_tasks.backends.database.utils import exclusive_transaction
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
 from django_tasks.task import DEFAULT_QUEUE_NAME
+from django_tasks.utils import get_random_id
 
 package_logger = logging.getLogger("django_tasks")
 logger = logging.getLogger("django_tasks.backends.database.db_worker")
@@ -38,6 +39,7 @@ class Worker:
         backend_name: str,
         startup_delay: bool,
         max_tasks: Optional[int],
+        worker_id: str,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -50,6 +52,8 @@ class Worker:
         self.running = True
         self.running_task = False
         self._run_tasks = 0
+
+        self.worker_id = worker_id
 
     def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
         if not self.running:
@@ -82,11 +86,17 @@ class Worker:
         if hasattr(signal, "SIGQUIT"):
             signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
-    def start(self) -> None:
-        logger.info("Starting worker for queues=%s", ",".join(self.queue_names))
+    def run(self) -> None:
+        self.configure_signals()
+
+        logger.info(
+            "Starting worker worker_id=%s queues=%s",
+            self.worker_id,
+            ",".join(self.queue_names),
+        )
 
         if self.startup_delay and self.interval:
-            # Add a random small delay before starting the loop to avoid a thundering herd
+            # Add a random small delay before starting to avoid a thundering herd
             time.sleep(random.random())
 
         while self.running:
@@ -109,19 +119,24 @@ class Worker:
 
                 if task_result is not None:
                     # "claim" the task, so it isn't run by another worker process
-                    task_result.claim()
+                    task_result.claim(self.worker_id)
 
             if task_result is not None:
                 self.run_task(task_result)
 
             if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
-                logger.info("No more tasks to run - exiting gracefully.")
+                logger.info(
+                    "No more tasks to run for worker_id=%s - exiting gracefully.",
+                    self.worker_id,
+                )
                 return None
 
             if self.max_tasks is not None and self._run_tasks >= self.max_tasks:
                 logger.info(
-                    "Run maximum tasks (%d) - exiting gracefully.", self._run_tasks
+                    "Run maximum tasks (%d) on worker=%s - exiting gracefully.",
+                    self._run_tasks,
+                    self.worker_id,
                 )
                 return None
 
@@ -199,6 +214,14 @@ def valid_max_tasks(val: str) -> int:
     return num
 
 
+def validate_worker_id(val: str) -> str:
+    if not val:
+        raise ArgumentTypeError("Worker id must not be empty")
+    if len(val) > 64:
+        raise ArgumentTypeError("Worker ids must be shorter than 64 characters")
+    return val
+
+
 class Command(BaseCommand):
     help = "Run a database background worker"
 
@@ -249,6 +272,13 @@ class Command(BaseCommand):
             type=valid_max_tasks,
             help="If provided, the maximum number of tasks the worker will execute before exiting.",
         )
+        parser.add_argument(
+            "--worker-id",
+            nargs="?",
+            type=validate_worker_id,
+            help="Worker id. MUST be unique across worker pool (default: auto-generate)",
+            default=get_random_id(),
+        )
 
     def configure_logging(self, verbosity: int) -> None:
         if verbosity == 0:
@@ -274,6 +304,7 @@ class Command(BaseCommand):
         startup_delay: bool,
         reload: bool,
         max_tasks: Optional[int],
+        worker_id: str,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -291,6 +322,7 @@ class Command(BaseCommand):
             backend_name=backend_name,
             startup_delay=startup_delay,
             max_tasks=max_tasks,
+            worker_id=worker_id,
         )
 
         if reload:
@@ -298,7 +330,7 @@ class Command(BaseCommand):
                 # Only the child process should configure its signals
                 worker.configure_signals()
 
-            run_with_reloader(worker.start)
+            run_with_reloader(worker.run)
         else:
             worker.configure_signals()
-            worker.start()
+            worker.run()

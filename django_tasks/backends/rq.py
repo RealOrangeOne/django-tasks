@@ -53,6 +53,10 @@ class Job(BaseJob):
     def perform(self) -> Any:
         task_result = self.into_task_result()
 
+        assert self.worker_name is not None
+        self.meta.setdefault("_django_tasks_worker_ids", []).append(self.worker_name)
+        self.save_meta()  # type: ignore[no-untyped-call]
+
         task_started.send(type(task_result.task.get_backend()), task_result=task_result)
 
         return super().perform()
@@ -103,6 +107,7 @@ class Job(BaseJob):
             kwargs=self.kwargs,
             backend=self.meta["backend_name"],
             errors=[],
+            worker_ids=self.meta.get("_django_tasks_worker_ids", []),
         )
 
         exception_classes = self.meta.get("_django_tasks_exceptions", []).copy()
@@ -188,6 +193,7 @@ class RQBackend(BaseTaskBackend):
             kwargs=kwargs,
             backend=self.alias,
             errors=[],
+            worker_ids=[],
         )
 
         job = queue.create_job(
@@ -209,7 +215,6 @@ class RQBackend(BaseTaskBackend):
                 job = queue.schedule_job(job, task.run_after)
 
             object.__setattr__(task_result, "enqueued_at", job.enqueued_at)
-
             task_enqueued.send(type(self), task_result=task_result)
 
         if self._get_enqueue_on_commit_for_task(task):
