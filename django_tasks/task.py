@@ -364,4 +364,4 @@ class TaskContext:
 
     @property
     def attempt(self) -> int:
-        return self.task_result.attempts + 1
+        return self.task_result.attempts
