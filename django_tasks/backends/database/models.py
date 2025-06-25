@@ -4,6 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 import django
+from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
 from django.db.models import F, Q
@@ -48,7 +49,9 @@ else:
             return cls
 
 
-DATE_MAX = datetime.datetime(9999, 1, 1, tzinfo=datetime.timezone.utc)
+DATE_MAX = datetime.datetime(
+    9999, 1, 1, tzinfo=datetime.timezone.utc if settings.USE_TZ else None
+)
 
 
 class DBTaskResultQuerySet(models.QuerySet):
