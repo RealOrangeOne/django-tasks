@@ -4,6 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 import django
+from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
 from django.db.models import F, Q
@@ -48,7 +49,12 @@ else:
             return cls
 
 
-DATE_MAX = datetime.datetime(9999, 1, 1, tzinfo=datetime.timezone.utc)
+DATE_MAX = datetime.datetime(9999, 1, 1)
+DATE_MAXS = (DATE_MAX.astimezone(datetime.timezone.utc), DATE_MAX)
+
+
+def get_date_max() -> datetime.datetime:
+    return DATE_MAXS[0] if settings.USE_TZ else DATE_MAXS[1]
 
 
 class DBTaskResultQuerySet(models.QuerySet):
@@ -58,7 +64,9 @@ class DBTaskResultQuerySet(models.QuerySet):
         """
         return self.filter(
             status=ResultStatus.READY,
-        ).filter(models.Q(run_after=DATE_MAX) | models.Q(run_after__lte=timezone.now()))
+        ).filter(
+            models.Q(run_after=get_date_max()) | models.Q(run_after__lte=timezone.now())
+        )
 
     def succeeded(self) -> "DBTaskResultQuerySet":
         return self.filter(status=ResultStatus.SUCCEEDED)
@@ -157,7 +165,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         return task.using(
             priority=self.priority,
             queue_name=self.queue_name,
-            run_after=None if self.run_after == DATE_MAX else self.run_after,
+            run_after=None if self.run_after in DATE_MAXS else self.run_after,
             backend=self.backend_name,
         )
 

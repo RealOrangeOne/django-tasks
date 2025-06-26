@@ -54,9 +54,7 @@ class Migration(migrations.Migration):
             model_name="dbtaskresult",
             name="run_after",
             field=models.DateTimeField(
-                default=datetime.datetime(
-                    9999, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-                ),
+                default=datetime.datetime(9999, 1, 1, 0, 0),
                 verbose_name="run after",
             ),
             preserve_default=False,

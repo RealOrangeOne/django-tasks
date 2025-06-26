@@ -4,6 +4,7 @@ from inspect import iscoroutinefunction
 from typing import Any, TypeVar
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.core.checks import messages
 from django.db import connections
 from django.utils import timezone
@@ -83,7 +84,11 @@ class BaseTaskBackend(metaclass=ABCMeta):
         if not self.supports_defer and task.run_after is not None:
             raise InvalidTaskError("Backend does not support run_after")
 
-        if task.run_after is not None and not timezone.is_aware(task.run_after):
+        if (
+            settings.USE_TZ
+            and task.run_after is not None
+            and not timezone.is_aware(task.run_after)
+        ):
             raise InvalidTaskError("run_after must be an aware datetime")
 
         if self.queues and task.queue_name not in self.queues:
