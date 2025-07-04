@@ -2,6 +2,7 @@
 
 import datetime
 
+from django.conf import settings
 from django.db import migrations, models
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
@@ -55,7 +56,12 @@ class Migration(migrations.Migration):
             name="run_after",
             field=models.DateTimeField(
                 default=datetime.datetime(
-                    9999, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+                    9999,
+                    1,
+                    1,
+                    0,
+                    0,
+                    tzinfo=datetime.timezone.utc if settings.USE_TZ else None,
                 ),
                 verbose_name="run after",
             ),
