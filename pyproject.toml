@@ -10,7 +10,7 @@ description = "An implementation and backport of background workers and tasks in
 authors = [
     {name = "Jake Howard"},
 ]
-version = "0.8.0"
+version = "0.8.1"
 readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
