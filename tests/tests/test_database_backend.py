@@ -7,9 +7,10 @@ import subprocess
 import sys
 import time
 import uuid
+import warnings
 from collections import Counter
 from contextlib import redirect_stderr
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import partial
 from io import StringIO
 from typing import Any, List, Optional, Sequence, Union, cast
@@ -435,6 +436,43 @@ class DatabaseBackendTestCase(TransactionTestCase):
             self.assertIn("using django_task_new_ordering_idx", plan)
         else:
             self.fail("Unknown database engine")
+
+    def test_run_after_tz(self) -> None:
+        for use_tz in [True, False]:
+            with self.subTest(use_tz=use_tz):
+                with override_settings(USE_TZ=use_tz):
+                    result = test_tasks.noop_task.enqueue()
+                    self.assertIsNone(
+                        DBTaskResult.objects.get(id=result.id).task.run_after
+                    )
+
+    def test_run_after_null_0016_migration(self) -> None:
+        from datetime import timezone
+
+        for use_tz in [True, False]:
+            with self.subTest(use_tz=use_tz):
+                with override_settings(USE_TZ=use_tz):
+                    result = test_tasks.noop_task.enqueue()
+
+                    db_result = DBTaskResult.objects.get(id=result.id)
+
+                    # Literal taken from migration
+                    db_result.run_after = datetime(
+                        9999,
+                        1,
+                        1,
+                        tzinfo=timezone.utc if use_tz else None,
+                    )
+
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings(
+                            "ignore", module="django.db", category=RuntimeWarning
+                        )
+                        db_result.save()
+
+                    self.assertIsNone(
+                        DBTaskResult.objects.get(id=result.id).task.run_after
+                    )
 
 
 @override_settings(
