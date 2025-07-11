@@ -4,7 +4,6 @@ import django_stubs_ext
 django_stubs_ext.monkeypatch()
 
 import importlib.metadata
-from typing import Optional
 
 from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
@@ -40,7 +39,7 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
     settings_name = "TASKS"
     exception_class = InvalidTaskBackendError
 
-    def configure_settings(self, settings: Optional[dict]) -> dict:
+    def configure_settings(self, settings: dict | None) -> dict:
         try:
             return super().configure_settings(settings)
         except AttributeError:

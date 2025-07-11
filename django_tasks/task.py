@@ -1,15 +1,14 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from inspect import isclass, iscoroutinefunction
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
+    Concatenate,
     Generic,
     Literal,
-    Optional,
     TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -18,7 +17,7 @@ from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
-from typing_extensions import Concatenate, ParamSpec, Self
+from typing_extensions import ParamSpec, Self
 
 from .exceptions import ResultDoesNotExist
 from .utils import (
@@ -79,10 +78,10 @@ class Task(Generic[P, T]):
     queue_name: str = DEFAULT_QUEUE_NAME
     """The name of the queue the task will run on"""
 
-    run_after: Optional[datetime] = None
+    run_after: datetime | None = None
     """The earliest this task will run"""
 
-    enqueue_on_commit: Optional[bool] = None
+    enqueue_on_commit: bool | None = None
     """
     Whether the task will be enqueued when the current transaction commits,
     immediately, or whatever the backend decides
@@ -106,10 +105,10 @@ class Task(Generic[P, T]):
     def using(
         self,
         *,
-        priority: Optional[int] = None,
-        queue_name: Optional[str] = None,
-        run_after: Optional[datetime] = None,
-        backend: Optional[str] = None,
+        priority: int | None = None,
+        queue_name: str | None = None,
+        run_after: datetime | None = None,
+        backend: str | None = None,
     ) -> Self:
         """
         Create a new task with modified defaults
@@ -202,7 +201,7 @@ def task(
     priority: int = DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-    enqueue_on_commit: Optional[bool] = None,
+    enqueue_on_commit: bool | None = None,
     takes_context: Literal[False] = False,
 ) -> Callable[[Callable[P, T]], Task[P, T]]: ...
 
@@ -215,25 +214,25 @@ def task(
     priority: int = DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-    enqueue_on_commit: Optional[bool] = None,
+    enqueue_on_commit: bool | None = None,
     takes_context: Literal[True],
 ) -> Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]]: ...
 
 
 # Implementation
 def task(  # type: ignore[misc]
-    function: Optional[Callable[P, T]] = None,
+    function: Callable[P, T] | None = None,
     *,
     priority: int = DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-    enqueue_on_commit: Optional[bool] = None,
+    enqueue_on_commit: bool | None = None,
     takes_context: bool = False,
-) -> Union[
-    Task[P, T],
-    Callable[[Callable[P, T]], Task[P, T]],
-    Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]],
-]:
+) -> (
+    Task[P, T]
+    | Callable[[Callable[P, T]], Task[P, T]]
+    | Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]]
+):
     """
     A decorator used to create a task.
     """
@@ -286,16 +285,16 @@ class TaskResult(Generic[T]):
     status: ResultStatus
     """The status of the running task"""
 
-    enqueued_at: Optional[datetime]
+    enqueued_at: datetime | None
     """The time this task was enqueued"""
 
-    started_at: Optional[datetime]
+    started_at: datetime | None
     """The time this task was started"""
 
-    finished_at: Optional[datetime]
+    finished_at: datetime | None
     """The time this task was finished"""
 
-    last_attempted_at: Optional[datetime]
+    last_attempted_at: datetime | None
     """The time this task was last attempted to be run"""
 
     args: list
@@ -313,10 +312,10 @@ class TaskResult(Generic[T]):
     worker_ids: list[str]
     """The workers which have processed the task"""
 
-    _return_value: Optional[T] = field(init=False, default=None)
+    _return_value: T | None = field(init=False, default=None)
 
     @property
-    def return_value(self) -> Optional[T]:
+    def return_value(self) -> T | None:
         """
         The return value of the task.
 

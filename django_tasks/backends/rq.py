@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 from types import TracebackType
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 import django_rq
 from django.apps import apps
@@ -140,7 +140,7 @@ class Job(BaseJob):
 
 def failed_callback(
     job: Job,
-    connection: Optional[Redis],
+    connection: Redis | None,
     exception_class: type[Exception],
     exception_value: Exception,
     traceback: TracebackType,
@@ -158,7 +158,7 @@ def failed_callback(
     task_finished.send(type(task_result.task.get_backend()), task_result=task_result)
 
 
-def success_callback(job: Job, connection: Optional[Redis], result: Any) -> None:
+def success_callback(job: Job, connection: Redis | None, result: Any) -> None:
     task_result = job.task_result
 
     object.__setattr__(task_result, "status", ResultStatus.SUCCEEDED)
@@ -233,7 +233,7 @@ class RQBackend(BaseTaskBackend):
     def _get_queues(self) -> list[django_rq.queues.DjangoRQ]:
         return django_rq.queues.get_queues(*self.queues, job_class=Job)  # type: ignore[no-any-return,no-untyped-call]
 
-    def _get_job(self, job_id: str) -> Optional[Job]:
+    def _get_job(self, job_id: str) -> Job | None:
         for queue in self._get_queues():
             job = queue.fetch_job(job_id)
             if job is not None:

@@ -1,12 +1,12 @@
 import inspect
 import json
-import random
 import time
+from collections.abc import Callable
 from functools import wraps
 from traceback import format_exception
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
-from django.utils.crypto import RANDOM_STRING_CHARS
+from django.utils.crypto import get_random_string
 from typing_extensions import ParamSpec
 
 T = TypeVar("T")
@@ -69,8 +69,5 @@ def get_random_id() -> str:
     Return a random string for use as a task or worker id.
 
     Whilst 64 characters is the max, just use 32 as a sensible middle-ground.
-
-    This should be much faster than Django's `get_random_string`, since
-    it's not cryptographically secure.
     """
-    return "".join(random.choices(RANDOM_STRING_CHARS, k=32))
+    return get_random_string(32)

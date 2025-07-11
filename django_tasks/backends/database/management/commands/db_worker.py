@@ -7,7 +7,6 @@ import sys
 import time
 from argparse import ArgumentParser, ArgumentTypeError, BooleanOptionalAction
 from types import FrameType
-from typing import Optional
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
@@ -38,7 +37,7 @@ class Worker:
         batch: bool,
         backend_name: str,
         startup_delay: bool,
-        max_tasks: Optional[int],
+        max_tasks: int | None,
         worker_id: str,
     ):
         self.queue_names = queue_names
@@ -55,7 +54,7 @@ class Worker:
 
         self.worker_id = worker_id
 
-    def shutdown(self, signum: int, frame: Optional[FrameType]) -> None:
+    def shutdown(self, signum: int, frame: FrameType | None) -> None:
         if not self.running:
             logger.warning(
                 "Received %s - terminating current task.", signal.strsignal(signum)
@@ -307,7 +306,7 @@ class Command(BaseCommand):
         backend_name: str,
         startup_delay: bool,
         reload: bool,
-        max_tasks: Optional[int],
+        max_tasks: int | None,
         worker_id: str,
         **options: dict,
     ) -> None:
