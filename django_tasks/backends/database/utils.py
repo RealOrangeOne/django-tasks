@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Optional, Union
+from typing import Any
 from uuid import UUID
 
 import django
@@ -30,7 +30,7 @@ def connection_requires_manual_exclusive_transaction(
 
 
 @contextmanager
-def exclusive_transaction(using: Optional[str] = None) -> Generator[Any, Any, Any]:
+def exclusive_transaction(using: str | None = None) -> Generator[Any, Any, Any]:
     """
     Wrapper around `transaction.atomic` which ensures transactions on SQLite are exclusive.
 
@@ -50,7 +50,7 @@ def exclusive_transaction(using: Optional[str] = None) -> Generator[Any, Any, An
             yield
 
 
-def normalize_uuid(val: Union[str, UUID]) -> str:
+def normalize_uuid(val: str | UUID) -> str:
     """
     Normalize a UUID into its dashed representation.
 

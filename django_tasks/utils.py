@@ -1,9 +1,10 @@
 import inspect
 import json
 import time
+from collections.abc import Callable
 from functools import wraps
 from traceback import format_exception
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from django.utils.crypto import get_random_string
 from typing_extensions import ParamSpec

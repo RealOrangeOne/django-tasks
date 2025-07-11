@@ -1,7 +1,6 @@
 import logging
 from argparse import ArgumentParser, ArgumentTypeError
 from datetime import timedelta
-from typing import Optional
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -91,7 +90,7 @@ class Command(BaseCommand):
         verbosity: int,
         backend: DatabaseBackend,
         min_age_days: int,
-        failed_min_age_days: Optional[int],
+        failed_min_age_days: int | None,
         queue_name: str,
         dry_run: bool,
         **options: dict,
