@@ -40,7 +40,7 @@ jobs:
         run: just test-fast -v2
       - name: Run tests
         if: ${{ !cancelled() }}
-        run: just test -v2
+        run: just test -v2 --keepdb
 
   test-postgres:
     runs-on: ubuntu-latest
