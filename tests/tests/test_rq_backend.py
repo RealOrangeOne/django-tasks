@@ -506,3 +506,46 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.run_worker()
         result.refresh()
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+
+    def test_exception_classes_pop_empty_list_bug(self) -> None:
+        """Test for IndexError: pop from empty list bug in task_result property
+
+        This test creates a scenario where there are failed results but no
+        exception classes in the job meta, which should be handled gracefully
+        but currently causes an IndexError. When the bug is present, this test
+        will fail with IndexError: pop from empty list.
+        """
+        # Create and run a failing task normally first
+        result = test_tasks.failing_task_value_error.enqueue()
+        self.run_worker()
+
+        # Get the underlying RQ job
+        job = cast(RQBackend, default_task_backend)._get_job(result.id)
+        self.assertIsNotNone(job)
+        assert job is not None
+
+        # At this point, the job should have failed and have:
+        #
+        # - 1 failed result in job.results()
+        # - 1 exception class in job.meta["_django_tasks_exceptions"]
+        #
+        # Now simulate the bug scenario by removing the exceptions key from meta.
+        # This creates a scenario where there are failed results but no
+        # exception classes.
+        job.meta.pop("_django_tasks_exceptions", None)
+        job.save_meta()  # type: ignore[no-untyped-call]
+
+        # Clear the cached task_result to force re-computation
+        job.__dict__.pop("task_result", None)
+
+        # This should work without throwing an IndexError
+        # When the bug is present, this will fail with IndexError: pop from empty list
+        task_result = job.task_result
+
+        # Verify the task_result is properly constructed despite missing exception classes
+        self.assertEqual(task_result.status, ResultStatus.FAILED)
+        self.assertEqual(task_result.task, test_tasks.failing_task_value_error)
+        self.assertIsInstance(task_result.errors, list)
+        self.assertEqual(
+            task_result.errors[0].exception_class_path, "builtins.Exception"
+        )
