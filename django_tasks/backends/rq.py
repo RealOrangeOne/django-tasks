@@ -124,7 +124,11 @@ class Job(BaseJob):
             if rq_result.type == Result.Type.FAILED:
                 task_result.errors.append(
                     TaskError(
-                        exception_class_path=exception_classes.pop(),
+                        exception_class_path=(
+                            exception_classes.pop()
+                            if len(exception_classes) > 0
+                            else get_module_path(Exception)
+                        ),
                         traceback=rq_result.exc_string,  # type: ignore[arg-type]
                     )
                 )
