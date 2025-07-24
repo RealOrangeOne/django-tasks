@@ -199,6 +199,16 @@ class DummyBackendTestCase(SimpleTestCase):
         result = test_tasks.get_task_id.enqueue()
         self.assertEqual(result.status, ResultStatus.READY)
 
+    def test_clear(self) -> None:
+        result = test_tasks.noop_task.enqueue()
+
+        default_task_backend.get_result(result.id)
+
+        default_task_backend.clear()  # type:ignore[attr-defined]
+
+        with self.assertRaisesMessage(ResultDoesNotExist, result.id):
+            default_task_backend.get_result(result.id)
+
 
 class DummyBackendTransactionTestCase(TransactionTestCase):
     @override_settings(
