@@ -19,7 +19,7 @@ from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec, Self
 
-from .exceptions import ResultDoesNotExist
+from .exceptions import TaskIntegrityError
 from .utils import (
     get_module_path,
     json_normalize,
@@ -151,7 +151,9 @@ class Task(Generic[P, T]):
         result = self.get_backend().get_result(result_id)
 
         if result.task.func != self.func:
-            raise ResultDoesNotExist
+            raise TaskIntegrityError(
+                f"Task does not match (received {result.task.module_path!r})"
+            )
 
         return result
 
@@ -163,7 +165,9 @@ class Task(Generic[P, T]):
         result = await self.get_backend().aget_result(result_id)
 
         if result.task.func != self.func:
-            raise ResultDoesNotExist
+            raise TaskIntegrityError(
+                f"Task does not match (received {result.task.module_path!r})"
+            )
 
         return result
 

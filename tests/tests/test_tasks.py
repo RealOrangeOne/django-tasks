@@ -19,6 +19,7 @@ from django_tasks.exceptions import (
     InvalidTaskBackendError,
     InvalidTaskError,
     ResultDoesNotExist,
+    TaskIntegrityError,
 )
 from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY
 from tests import tasks as test_tasks
@@ -220,12 +221,12 @@ class TaskTestCase(SimpleTestCase):
 
     def test_get_incorrect_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task_async, (), {})
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaisesMessage(TaskIntegrityError, "Task does not match"):
             test_tasks.noop_task.get_result(result.id)
 
     async def test_get_incorrect_result_async(self) -> None:
         result = await default_task_backend.aenqueue(test_tasks.noop_task_async, (), {})
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaisesMessage(TaskIntegrityError, "Task does not match"):
             await test_tasks.noop_task.aget_result(result.id)
 
     def test_invalid_function(self) -> None:

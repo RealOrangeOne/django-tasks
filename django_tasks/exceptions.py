@@ -13,3 +13,7 @@ class InvalidTaskBackendError(ImproperlyConfigured):
 
 class ResultDoesNotExist(ObjectDoesNotExist):
     pass
+
+
+class TaskIntegrityError(ObjectDoesNotExist):
+    pass
