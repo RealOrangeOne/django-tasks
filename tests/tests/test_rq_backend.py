@@ -80,7 +80,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             worker = SimpleWorker([queue], prepare_for_work=False, job_class=Job)
 
             # Use timer death penalty to support Windows
-            worker.death_penalty_class = TimerDeathPenalty  # type: ignore[assignment]
+            worker.death_penalty_class = TimerDeathPenalty
 
             # HACK: Work around fakeredis not supporting `CLIENT LIST`
             worker.hostname = "example-hostname"
