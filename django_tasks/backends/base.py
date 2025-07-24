@@ -132,7 +132,8 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
     async def aget_result(self, result_id: str) -> TaskResult:
         """
-        Queue up a task function (or coroutine) to be executed
+        Retrieve a result by its id (if one exists).
+        If one doesn't, raises ResultDoesNotExist.
         """
         return await sync_to_async(self.get_result, thread_sensitive=True)(
             result_id=result_id
