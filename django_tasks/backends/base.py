@@ -40,6 +40,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
         self.alias = alias
         self.queues = set(params.get("QUEUES", [DEFAULT_QUEUE_NAME]))
         self.enqueue_on_commit = bool(params.get("ENQUEUE_ON_COMMIT", True))
+        self.options = params.get("OPTIONS", {})
 
     def _get_enqueue_on_commit_for_task(self, task: Task) -> bool:
         """
