@@ -9,8 +9,7 @@ from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
 
 from .backends.base import BaseTaskBackend
-from .exceptions import InvalidTaskBackendError
-from .task import (
+from .base import (
     DEFAULT_QUEUE_NAME,
     DEFAULT_TASK_BACKEND_ALIAS,
     ResultStatus,
@@ -19,6 +18,7 @@ from .task import (
     TaskResult,
     task,
 )
+from .exceptions import InvalidTaskBackendError
 
 __version__ = importlib.metadata.version(__name__)
 
@@ -27,11 +27,11 @@ __all__ = [
     "default_task_backend",
     "DEFAULT_TASK_BACKEND_ALIAS",
     "DEFAULT_QUEUE_NAME",
-    "task",
     "ResultStatus",
     "Task",
     "TaskResult",
     "TaskContext",
+    "task",
 ]
 
 

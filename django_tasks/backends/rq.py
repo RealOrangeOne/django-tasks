@@ -16,9 +16,7 @@ from rq.results import Result
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.exceptions import ResultDoesNotExist
-from django_tasks.signals import task_enqueued, task_finished, task_started
-from django_tasks.task import (
+from django_tasks.base import (
     DEFAULT_PRIORITY,
     MAX_PRIORITY,
     ResultStatus,
@@ -27,6 +25,8 @@ from django_tasks.task import (
     TaskError,
     TaskResult,
 )
+from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.signals import task_enqueued, task_finished, task_started
 from django_tasks.utils import get_module_path, get_random_id
 
 T = TypeVar("T")

@@ -14,7 +14,7 @@ from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec
 
-from django_tasks.task import (
+from django_tasks.base import (
     DEFAULT_PRIORITY,
     DEFAULT_QUEUE_NAME,
     MAX_PRIORITY,

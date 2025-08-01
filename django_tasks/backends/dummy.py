@@ -6,9 +6,9 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
+from django_tasks.base import ResultStatus, Task, TaskResult
 from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.signals import task_enqueued
-from django_tasks.task import ResultStatus, Task, TaskResult
 from django_tasks.utils import get_random_id
 
 from .base import BaseTaskBackend

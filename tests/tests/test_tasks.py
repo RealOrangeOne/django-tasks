@@ -15,13 +15,13 @@ from django_tasks import (
 )
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.backends.immediate import ImmediateBackend
+from django_tasks.base import MAX_PRIORITY, MIN_PRIORITY
 from django_tasks.exceptions import (
     InvalidTaskBackendError,
     InvalidTaskError,
     ResultDoesNotExist,
     TaskIntegrityError,
 )
-from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY
 from tests import tasks as test_tasks
 
 

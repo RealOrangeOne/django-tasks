@@ -6,8 +6,8 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
+from django_tasks.base import ResultStatus, Task, TaskContext, TaskError, TaskResult
 from django_tasks.signals import task_enqueued, task_finished, task_started
-from django_tasks.task import ResultStatus, Task, TaskContext, TaskError, TaskResult
 from django_tasks.utils import (
     get_exception_traceback,
     get_module_path,

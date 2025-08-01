@@ -19,9 +19,9 @@ from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction
+from django_tasks.base import DEFAULT_QUEUE_NAME, TaskContext
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
-from django_tasks.task import DEFAULT_QUEUE_NAME, TaskContext
 from django_tasks.utils import get_random_id
 
 package_logger = logging.getLogger("django_tasks")

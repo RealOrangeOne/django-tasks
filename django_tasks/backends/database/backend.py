@@ -9,10 +9,10 @@ from django.db import transaction
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
+from django_tasks.base import Task
+from django_tasks.base import TaskResult as BaseTaskResult
 from django_tasks.exceptions import ResultDoesNotExist
 from django_tasks.signals import task_enqueued
-from django_tasks.task import Task
-from django_tasks.task import TaskResult as BaseTaskResult
 
 if TYPE_CHECKING:
     from .models import DBTaskResult

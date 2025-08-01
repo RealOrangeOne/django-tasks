@@ -3,8 +3,8 @@ from typing import Any
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 
 from django_tasks import ResultStatus, default_task_backend
+from django_tasks.base import TaskResult
 from django_tasks.exceptions import ResultDoesNotExist
-from django_tasks.task import TaskResult
 
 from . import tasks
 

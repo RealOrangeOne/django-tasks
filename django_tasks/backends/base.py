@@ -11,8 +11,8 @@ from django.utils import timezone
 from django.utils.inspect import get_func_args
 from typing_extensions import ParamSpec
 
+from django_tasks.base import MAX_PRIORITY, MIN_PRIORITY, Task, TaskResult
 from django_tasks.exceptions import InvalidTaskError
-from django_tasks.task import MAX_PRIORITY, MIN_PRIORITY, Task, TaskResult
 from django_tasks.utils import is_module_level_function
 
 T = TypeVar("T")
