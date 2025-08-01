@@ -16,7 +16,7 @@ from typing import (
 from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils.module_loading import import_string
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import pgettext_lazy
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import TaskIntegrityError
@@ -47,16 +47,16 @@ TASK_REFRESH_ATTRS = {
 
 
 class ResultStatus(TextChoices):
-    READY = ("READY", _("Ready"))
+    READY = ("READY", pgettext_lazy("Task", "Ready"))
     """The task has just been enqueued, or is ready to be executed again (eg for a retry)."""
 
-    RUNNING = ("RUNNING", _("Running"))
+    RUNNING = ("RUNNING", pgettext_lazy("Task", "Running"))
     """The task is currently running."""
 
-    FAILED = ("FAILED", _("Failed"))
+    FAILED = ("FAILED", pgettext_lazy("Task", "Failed"))
     """The task has finished running, but resulted in an error."""
 
-    SUCCEEDED = ("SUCCEEDED", _("Succeeded"))
+    SUCCEEDED = ("SUCCEEDED", pgettext_lazy("Task", "Succeeded"))
     """The task has finished running successfully."""
 
 
