@@ -64,6 +64,7 @@ postgres = [
 ]
 rq = [
     "django-rq",
+    "rq>=2.5",
     "rq_scheduler",
 ]
 

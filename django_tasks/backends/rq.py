@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from importlib.metadata import version
 from types import TracebackType
 from typing import Any, TypeVar
 
@@ -47,10 +48,6 @@ RQ_STATUS_TO_RESULT_STATUS = {
 
 class Job(BaseJob):
     def perform(self) -> Any:
-        assert self.worker_name is not None
-        self.meta.setdefault("_django_tasks_worker_ids", []).append(self.worker_name)
-        self.save_meta()  # type: ignore[no-untyped-call]
-
         task_started.send(
             type(self.task_result.task.get_backend()), task_result=self.task_result
         )
@@ -113,14 +110,18 @@ class Job(BaseJob):
             kwargs=self.kwargs,
             backend=self.meta["backend_name"],
             errors=[],
-            worker_ids=self.meta.get("_django_tasks_worker_ids", []),
+            worker_ids=[],
         )
 
         exception_classes = self.meta.get("_django_tasks_exceptions", []).copy()
 
+        if self.worker_name and task_result.status == ResultStatus.RUNNING:
+            task_result.worker_ids.append(self.worker_name)
+
         rq_results = self.results()
 
         for rq_result in rq_results:
+            task_result.worker_ids.append(rq_result.worker_name)
             if rq_result.type == Result.Type.FAILED:
                 task_result.errors.append(
                     TaskError(
@@ -272,3 +273,9 @@ class RQBackend(BaseTaskBackend):
                     f"{queue_name!r} is not configured for django-rq",
                     f"Add {queue_name!r} to RQ_QUEUES",
                 )
+
+        if tuple(map(int, (version("rq").split(".")))) < (2, 5, 0):
+            yield messages.Error(
+                "Only rq >= 2.5.0 is supported, found " + version("rq"),
+                "Install a newer version of rq",
+            )

@@ -61,7 +61,7 @@ def get_fake_connection(
     },
 )
 @modify_settings(INSTALLED_APPS={"append": ["django_rq"]})
-class DatabaseBackendTestCase(TransactionTestCase):
+class RQBackendTestCase(TransactionTestCase):
     def setUp(self) -> None:
         super().setUp()
 
