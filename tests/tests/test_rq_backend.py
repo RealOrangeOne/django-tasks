@@ -1,7 +1,7 @@
 import json
 import os
 import uuid
-from typing import Union, cast
+from typing import cast
 from unittest.mock import patch
 
 import django_rq
@@ -25,9 +25,7 @@ from tests import tasks as test_tasks
 # Set up the connection before RQ Django reads the settings.
 # The connection must be the same because in fakeredis connections
 # do not share the state. Therefore, we define a singleton object to reuse it.
-def get_fake_connection(
-    config: dict, strict: bool
-) -> Union[FakeRedis, FakeStrictRedis]:
+def get_fake_connection(config: dict, strict: bool) -> FakeRedis | FakeStrictRedis:
     redis_cls = FakeStrictRedis if strict else FakeRedis
     if "URL" in config:
         return redis_cls.from_url(

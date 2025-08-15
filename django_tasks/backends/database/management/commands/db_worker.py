@@ -94,7 +94,7 @@ class Worker:
 
         if self.startup_delay and self.interval:
             # Add a random small delay before starting to avoid a thundering herd
-            time.sleep(random.random())
+            time.sleep(random.random())  # noqa: S311
 
         while self.running:
             tasks = DBTaskResult.objects.ready().filter(backend_name=self.backend_name)

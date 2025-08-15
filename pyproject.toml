@@ -69,12 +69,13 @@ rq = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W", "N", "B", "A", "C4", "T20", "DJ"]
+select = ["E", "F", "I", "W", "N", "B", "A", "C4", "T20", "DJ", "S", "UP"]
 ignore = ["E501", "DJ008"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/db_worker_test_settings.py" = ["F403", "F405"]
 "tests/settings_fast.py" = ["F403", "F405"]
+"tests/**.py" = ["S101", "S603", "S105"]
 
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]

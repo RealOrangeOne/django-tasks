@@ -9,11 +9,12 @@ import time
 import uuid
 import warnings
 from collections import Counter
+from collections.abc import Sequence
 from contextlib import redirect_stderr
 from datetime import datetime, timedelta
 from functools import partial
 from io import StringIO
-from typing import Any, List, Optional, Sequence, Union, cast
+from typing import Any, cast
 from unittest import mock, skipIf
 
 import django
@@ -944,7 +945,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
     }
 )
 class DatabaseTaskResultTestCase(TransactionTestCase):
-    def execute_in_new_connection(self, sql: Union[str, QuerySet]) -> Sequence:
+    def execute_in_new_connection(self, sql: str | QuerySet) -> Sequence:
         if isinstance(sql, QuerySet):
             sql = str(sql.query)
         new_connection = connections.create_connection("default")
@@ -1423,7 +1424,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
     WORKER_STARTUP_TIME = 1
 
     def setUp(self) -> None:
-        self.processes: List[subprocess.Popen] = []
+        self.processes: list[subprocess.Popen] = []
 
     def tearDown(self) -> None:
         # Try n times to kill any remaining child processes
@@ -1437,10 +1438,10 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
     def start_worker(
         self,
-        args: Optional[List[str]] = None,
+        args: list[str] | None = None,
         *,
         debug: bool = False,
-        worker_id: Optional[str] = None,
+        worker_id: str | None = None,
     ) -> subprocess.Popen:
         if args is None:
             args = []
