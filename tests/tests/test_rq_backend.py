@@ -517,7 +517,9 @@ class DatabaseBackendTestCase(TransactionTestCase):
         """
         # Create and run a failing task normally first
         result = test_tasks.failing_task_value_error.enqueue()
-        self.run_worker()
+
+        with self.assertLogs("django_tasks", level="DEBUG"):
+            self.run_worker()
 
         # Get the underlying RQ job
         job = cast(RQBackend, default_task_backend)._get_job(result.id)
