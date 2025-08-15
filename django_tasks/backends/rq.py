@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from importlib.metadata import version
 from types import TracebackType
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import django_rq
 from django.apps import apps
@@ -10,6 +10,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.db import transaction
 from django.utils.functional import cached_property
 from redis.client import Redis
+from rq.exceptions import NoSuchJobError
 from rq.job import Callback, JobStatus
 from rq.job import Job as BaseJob
 from rq.registry import ScheduledJobRegistry
@@ -238,13 +239,13 @@ class RQBackend(BaseTaskBackend):
     def _get_queues(self) -> list[django_rq.queues.DjangoRQ]:
         return django_rq.queues.get_queues(*self.queues, job_class=Job)  # type: ignore[no-any-return,no-untyped-call]
 
-    def _get_job(self, job_id: str) -> Job | None:
-        for queue in self._get_queues():
-            job = queue.fetch_job(job_id)
-            if job is not None:
-                return job  # type: ignore[return-value]
-
-        return None
+    def _get_job(self, result_id: str) -> Job | None:
+        try:
+            return cast(
+                Job, Job.fetch(result_id, connection=django_rq.get_connection())
+            )
+        except NoSuchJobError:
+            return None
 
     def get_result(self, result_id: str) -> TaskResult:
         job = self._get_job(result_id)
