@@ -11,6 +11,7 @@ from django.db import transaction
 from django.test import TransactionTestCase, modify_settings, override_settings
 from django.urls import reverse
 from fakeredis import FakeRedis, FakeStrictRedis
+from rq.defaults import UNSERIALIZABLE_RETURN_VALUE_PAYLOAD
 from rq.timeouts import TimerDeathPenalty
 
 from django_tasks import ResultStatus, Task, default_task_backend, tasks
@@ -198,6 +199,25 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
         self.assertEqual(result.attempts, 1)
+
+    def test_complex_return_value(self) -> None:
+        result = test_tasks.complex_return_value.enqueue()
+
+        with self.assertLogs("django_tasks", "DEBUG"):
+            self.run_worker()
+
+        result.refresh()
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
+        self.assertIsNotNone(result.finished_at)
+        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
+        self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
+
+        self.assertIsNone(result._return_value)
+        self.assertEqual(result.errors[0].exception_class, Exception)
+        self.assertIn(UNSERIALIZABLE_RETURN_VALUE_PAYLOAD, result.errors[0].traceback)
 
     def test_get_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task, [], {})

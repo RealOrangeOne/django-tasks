@@ -10,6 +10,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.db import transaction
 from django.utils.functional import cached_property
 from redis.client import Redis
+from rq.defaults import UNSERIALIZABLE_RETURN_VALUE_PAYLOAD
 from rq.exceptions import NoSuchJobError
 from rq.job import Callback, JobStatus
 from rq.job import Job as BaseJob
@@ -116,9 +117,6 @@ class Job(BaseJob):
 
         exception_classes = self.meta.get("_django_tasks_exceptions", []).copy()
 
-        if self.worker_name and task_result.status == ResultStatus.RUNNING:
-            task_result.worker_ids.append(self.worker_name)
-
         rq_results = self.results()
 
         for rq_result in rq_results:
@@ -135,11 +133,30 @@ class Job(BaseJob):
                     )
                 )
 
+        if self.worker_name and task_result.status == ResultStatus.RUNNING:
+            task_result.worker_ids.append(self.worker_name)
+
         if rq_results:
-            object.__setattr__(task_result, "_return_value", rq_results[0].return_value)
             object.__setattr__(
-                task_result, "last_attempted_at", rq_results[0].created_at
+                task_result, "_return_value", rq_results[-1].return_value
             )
+            object.__setattr__(
+                task_result, "last_attempted_at", rq_results[-1].created_at
+            )
+
+        # If the return value couldn't be serialized, a specific string is saved instead.
+        if task_result._return_value == UNSERIALIZABLE_RETURN_VALUE_PAYLOAD:
+            # In these cases, the task should be marked as failed instead
+            object.__setattr__(task_result, "status", ResultStatus.FAILED)
+
+            task_result.errors.append(
+                TaskError(
+                    exception_class_path=get_module_path(Exception),
+                    traceback=task_result._return_value,  # The traceback isn't stored, so this is the best we can do
+                )
+            )
+
+            object.__setattr__(task_result, "_return_value", None)
 
         return task_result
 

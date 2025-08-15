@@ -45,6 +45,12 @@ def complex_exception() -> None:
 
 
 @task()
+def complex_return_value() -> Any:
+    # Return something which isn't JSON serializable nor picklable
+    return lambda: True
+
+
+@task()
 def exit_task() -> None:
     exit(1)
 

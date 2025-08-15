@@ -636,6 +636,24 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
+    def test_complex_return_value(self) -> None:
+        result = test_tasks.complex_return_value.enqueue()
+
+        self.run_worker()
+
+        result.refresh()
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
+        self.assertIsNotNone(result.finished_at)
+        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
+        self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
+
+        self.assertIsNone(result._return_value)
+        self.assertEqual(result.errors[0].exception_class, TypeError)
+        self.assertIn("is not JSON serializable", result.errors[0].traceback)
+
     def test_doesnt_process_different_backend(self) -> None:
         result = test_tasks.failing_task_value_error.enqueue()
 

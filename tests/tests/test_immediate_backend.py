@@ -137,6 +137,21 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
 
+    def test_complex_return_value(self) -> None:
+        with self.assertLogs("django_tasks", level="ERROR"):
+            result = test_tasks.complex_return_value.enqueue()
+
+        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertIsNotNone(result.started_at)
+        self.assertIsNotNone(result.last_attempted_at)
+        self.assertIsNotNone(result.finished_at)
+        self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
+        self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
+
+        self.assertIsNone(result._return_value)
+        self.assertEqual(result.errors[0].exception_class, TypeError)
+        self.assertIn("is not JSON serializable", result.errors[0].traceback)
+
     def test_result(self) -> None:
         result = default_task_backend.enqueue(
             test_tasks.calculate_meaning_of_life, [], {}
