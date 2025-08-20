@@ -75,19 +75,19 @@ class Task(Generic[P, T]):
     backend: str
     """The name of the backend the task will run on"""
 
-    queue_name: str = DEFAULT_QUEUE_NAME
+    queue_name: str
     """The name of the queue the task will run on"""
 
-    run_after: datetime | None = None
+    run_after: datetime | None
     """The earliest this task will run"""
 
-    enqueue_on_commit: bool | None = None
+    enqueue_on_commit: bool | None
     """
     Whether the task will be enqueued when the current transaction commits,
     immediately, or whatever the backend decides
     """
 
-    takes_context: bool = False
+    takes_context: bool
     """
     Whether the task receives the task context when executed.
     """
@@ -250,6 +250,7 @@ def task(  # type: ignore[misc]
             backend=backend,
             enqueue_on_commit=enqueue_on_commit,
             takes_context=takes_context,
+            run_after=None,
         )
 
     if function:
