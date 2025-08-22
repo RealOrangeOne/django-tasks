@@ -26,6 +26,7 @@ P = ParamSpec("P")
 
 class ImmediateBackend(BaseTaskBackend):
     supports_async_task = True
+    supports_priority = True
 
     def __init__(self, alias: str, params: dict):
         super().__init__(alias, params)

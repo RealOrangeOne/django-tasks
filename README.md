@@ -251,6 +251,7 @@ Because `django-tasks` enables support for multiple different backends, those ba
 - `supports_defer`: Can tasks be enqueued with the `run_after` attribute?
 - `supports_async_task`: Can coroutines be enqueued?
 - `supports_get_result`: Can results be retrieved after the fact (from **any** thread / process)?
+- `supports_priority`: Can tasks be executed in a given priority order?
 
 ```python
 from django_tasks import default_task_backend

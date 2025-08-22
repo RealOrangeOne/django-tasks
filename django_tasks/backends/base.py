@@ -34,6 +34,9 @@ class BaseTaskBackend(metaclass=ABCMeta):
     supports_get_result = False
     """Can results be retrieved after the fact (from **any** thread / process)"""
 
+    supports_priority = False
+    """Can tasks be executed in a given priority order"""
+
     def __init__(self, alias: str, params: dict) -> None:
         from django_tasks import DEFAULT_QUEUE_NAME
 
