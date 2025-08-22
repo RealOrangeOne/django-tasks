@@ -131,17 +131,13 @@ class Task(Generic[P, T]):
         """
         Queue up the task to be executed
         """
-        return self.get_backend().enqueue(
-            self, json_normalize(args), json_normalize(kwargs)
-        )
+        return self.get_backend().enqueue(self, args, kwargs)
 
     async def aenqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskResult[T]":
         """
         Queue up a task function (or coroutine) to be executed
         """
-        return await self.get_backend().aenqueue(
-            self, json_normalize(args), json_normalize(kwargs)
-        )
+        return await self.get_backend().aenqueue(self, args, kwargs)
 
     def get_result(self, result_id: str) -> "TaskResult[T]":
         """
@@ -318,6 +314,10 @@ class TaskResult(Generic[T]):
     """The workers which have processed the task"""
 
     _return_value: T | None = field(init=False, default=None)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "args", json_normalize(self.args))
+        object.__setattr__(self, "kwargs", json_normalize(self.kwargs))
 
     @property
     def return_value(self) -> T | None:

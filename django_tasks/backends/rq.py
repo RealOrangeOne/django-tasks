@@ -208,8 +208,6 @@ class RQBackend(BaseTaskBackend):
     ) -> TaskResult[T]:
         self.validate_task(task)
 
-        queue = django_rq.get_queue(task.queue_name, job_class=Job)
-
         task_result = TaskResult[T](
             task=task,
             id=get_random_id(),
@@ -224,6 +222,8 @@ class RQBackend(BaseTaskBackend):
             errors=[],
             worker_ids=[],
         )
+
+        queue = django_rq.get_queue(task.queue_name, job_class=Job)
 
         job = queue.create_job(
             task.module_path,
