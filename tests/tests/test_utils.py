@@ -9,6 +9,14 @@ from tests import tasks as test_tasks
 
 
 class IsModuleLevelFunctionTestCase(SimpleTestCase):
+    @classmethod
+    def _class_method(cls) -> None:
+        return None
+
+    @staticmethod
+    def _static_method() -> None:
+        return None
+
     def test_builtin(self) -> None:
         self.assertFalse(utils.is_module_level_function(any))
         self.assertFalse(utils.is_module_level_function(isinstance))
@@ -31,6 +39,12 @@ class IsModuleLevelFunctionTestCase(SimpleTestCase):
         self.assertFalse(utils.is_module_level_function(self.test_method))
         self.assertFalse(utils.is_module_level_function(self.setUp))
 
+    def test_unbound_method(self) -> None:
+        self.assertTrue(
+            utils.is_module_level_function(self.__class__.test_unbound_method)
+        )
+        self.assertTrue(utils.is_module_level_function(self.__class__.setUp))
+
     def test_lambda(self) -> None:
         self.assertFalse(utils.is_module_level_function(lambda: True))
 
@@ -45,6 +59,10 @@ class IsModuleLevelFunctionTestCase(SimpleTestCase):
         self.assertFalse(
             is_module_level_function_fixture.inner_func_is_module_level_function
         )
+
+    def test_class_and_static_method(self) -> None:
+        self.assertTrue(utils.is_module_level_function(self._static_method))
+        self.assertFalse(utils.is_module_level_function(self._class_method))
 
 
 class JSONNormalizeTestCase(SimpleTestCase):
