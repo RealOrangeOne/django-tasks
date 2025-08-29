@@ -61,7 +61,7 @@ def get_module_path(val: Any) -> str:
 
 
 def get_exception_traceback(exc: BaseException) -> str:
-    return "".join(format_exception(type(exc), exc, exc.__traceback__))
+    return "".join(format_exception(exc))
 
 
 def get_random_id() -> str:
