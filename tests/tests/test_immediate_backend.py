@@ -109,13 +109,10 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
     def test_throws_keyboard_interrupt(self) -> None:
         with self.assertRaises(KeyboardInterrupt):
-            with self.assertLogs("django_tasks", level="ERROR") as captured_logs:
+            with self.assertNoLogs("django_tasks", level="ERROR"):
                 default_task_backend.enqueue(
                     test_tasks.failing_task_keyboard_interrupt, [], {}
                 )
-
-        # assert logging
-        self.assertEqual(len(captured_logs.output), 0)
 
     def test_complex_exception(self) -> None:
         with self.assertLogs("django_tasks", level="ERROR"):

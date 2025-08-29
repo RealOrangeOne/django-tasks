@@ -63,11 +63,10 @@ class ImmediateBackend(BaseTaskBackend):
                 "_return_value",
                 json_normalize(raw_return_value),
             )
-        except BaseException as e:
+        except KeyboardInterrupt:
             # If the user tried to terminate, let them
-            if isinstance(e, KeyboardInterrupt):
-                raise
-
+            raise
+        except BaseException as e:
             object.__setattr__(task_result, "finished_at", timezone.now())
 
             task_result.errors.append(
