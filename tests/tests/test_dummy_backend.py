@@ -21,6 +21,7 @@ from tests import tasks as test_tasks
     TASKS={
         "default": {
             "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+            "QUEUES": [],
             "ENQUEUE_ON_COMMIT": False,
         }
     }
@@ -208,6 +209,44 @@ class DummyBackendTestCase(SimpleTestCase):
 
         with self.assertRaisesMessage(ResultDoesNotExist, result.id):
             default_task_backend.get_result(result.id)
+
+    def test_validate_on_enqueue(self) -> None:
+        task_with_custom_queue_name = test_tasks.noop_task.using(
+            queue_name="unknown_queue"
+        )
+
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+                    "QUEUES": ["queue-1"],
+                    "ENQUEUE_ON_COMMIT": False,
+                }
+            }
+        ):
+            with self.assertRaisesMessage(
+                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+            ):
+                task_with_custom_queue_name.enqueue()
+
+    async def test_validate_on_aenqueue(self) -> None:
+        task_with_custom_queue_name = test_tasks.noop_task.using(
+            queue_name="unknown_queue"
+        )
+
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+                    "QUEUES": ["queue-1"],
+                    "ENQUEUE_ON_COMMIT": False,
+                }
+            }
+        ):
+            with self.assertRaisesMessage(
+                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+            ):
+                await task_with_custom_queue_name.aenqueue()
 
 
 class DummyBackendTransactionTestCase(TransactionTestCase):

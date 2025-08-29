@@ -39,7 +39,7 @@ from django_tasks.backends.database.utils import (
     exclusive_transaction,
     normalize_uuid,
 )
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 from django_tasks.utils import get_random_id
 from tests import tasks as test_tasks
 
@@ -474,6 +474,44 @@ class DatabaseBackendTestCase(TransactionTestCase):
                     self.assertIsNone(
                         DBTaskResult.objects.get(id=result.id).task.run_after
                     )
+
+    def test_validate_on_enqueue(self) -> None:
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.rq.RQBackend",
+                    "QUEUES": ["unknown_queue"],
+                    "ENQUEUE_ON_COMMIT": False,
+                }
+            }
+        ):
+            task_with_custom_queue_name = test_tasks.noop_task.using(
+                queue_name="unknown_queue"
+            )
+
+        with self.assertRaisesMessage(
+            InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+        ):
+            task_with_custom_queue_name.enqueue()
+
+    async def test_validate_on_aenqueue(self) -> None:
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.rq.RQBackend",
+                    "QUEUES": ["unknown_queue"],
+                    "ENQUEUE_ON_COMMIT": False,
+                }
+            }
+        ):
+            task_with_custom_queue_name = test_tasks.noop_task.using(
+                queue_name="unknown_queue"
+            )
+
+        with self.assertRaisesMessage(
+            InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+        ):
+            await task_with_custom_queue_name.aenqueue()
 
 
 @override_settings(

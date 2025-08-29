@@ -16,6 +16,7 @@ from tests import tasks as test_tasks
     TASKS={
         "default": {
             "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+            "QUEUES": [],
             "ENQUEUE_ON_COMMIT": False,
         }
     }
@@ -280,6 +281,44 @@ class ImmediateBackendTestCase(SimpleTestCase):
     def test_context(self) -> None:
         result = test_tasks.test_context.enqueue(1)
         self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+
+    def test_validate_on_enqueue(self) -> None:
+        task_with_custom_queue_name = test_tasks.noop_task.using(
+            queue_name="unknown_queue"
+        )
+
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+                    "QUEUES": ["queue-1"],
+                    "ENQUEUE_ON_COMMIT": False,
+                }
+            }
+        ):
+            with self.assertRaisesMessage(
+                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+            ):
+                task_with_custom_queue_name.enqueue()
+
+    async def test_validate_on_aenqueue(self) -> None:
+        task_with_custom_queue_name = test_tasks.noop_task.using(
+            queue_name="unknown_queue"
+        )
+
+        with override_settings(
+            TASKS={
+                "default": {
+                    "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+                    "QUEUES": ["queue-1"],
+                    "ENQUEUE_ON_COMMIT": False,
+                }
+            }
+        ):
+            with self.assertRaisesMessage(
+                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+            ):
+                await task_with_custom_queue_name.aenqueue()
 
 
 class ImmediateBackendTransactionTestCase(TransactionTestCase):
