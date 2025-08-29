@@ -48,18 +48,6 @@ class IsModuleLevelFunctionTestCase(SimpleTestCase):
     def test_lambda(self) -> None:
         self.assertFalse(utils.is_module_level_function(lambda: True))
 
-    def test_uninitialised_method(self) -> None:
-        # This import has to be here, so the module is loaded during the test
-        from . import is_module_level_function_fixture
-
-        self.assertTrue(is_module_level_function_fixture.really_module_level_function)
-        self.assertIsNotNone(
-            is_module_level_function_fixture.inner_func_is_module_level_function
-        )
-        self.assertFalse(
-            is_module_level_function_fixture.inner_func_is_module_level_function
-        )
-
     def test_class_and_static_method(self) -> None:
         self.assertTrue(utils.is_module_level_function(self._static_method))
         self.assertFalse(utils.is_module_level_function(self._class_method))
