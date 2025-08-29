@@ -42,9 +42,11 @@ class ImmediateBackend(BaseTaskBackend):
 
         task = task_result.task
 
+        task_start_time = timezone.now()
+
         object.__setattr__(task_result, "status", ResultStatus.RUNNING)
-        object.__setattr__(task_result, "started_at", timezone.now())
-        object.__setattr__(task_result, "last_attempted_at", timezone.now())
+        object.__setattr__(task_result, "started_at", task_start_time)
+        object.__setattr__(task_result, "last_attempted_at", task_start_time)
         task_result.worker_ids.append(self.worker_id)
         task_started.send(sender=type(self), task_result=task_result)
 
