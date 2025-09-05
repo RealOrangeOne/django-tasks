@@ -17,6 +17,7 @@ from asgiref.sync import async_to_sync, sync_to_async
 from django.db.models.enums import TextChoices
 from django.utils.module_loading import import_string
 from django.utils.translation import pgettext_lazy
+from django.utils.version import PY311
 from typing_extensions import ParamSpec, Self
 
 from .exceptions import TaskIntegrityError
@@ -64,7 +65,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, slots=PY311, kw_only=True)  # type: ignore[literal-required]
 class Task(Generic[P, T]):
     priority: int
     """The Task's priority"""
@@ -252,7 +253,7 @@ def task(  # type: ignore[misc]
     return wrapper
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, slots=PY311, kw_only=True)  # type: ignore[literal-required]
 class TaskError:
     exception_class_path: str
     traceback: str
@@ -272,7 +273,7 @@ class TaskError:
         return exception_class
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, slots=PY311, kw_only=True)  # type: ignore[literal-required]
 class TaskResult(Generic[T]):
     task: Task
     """Task for which this is a result"""
@@ -359,7 +360,7 @@ class TaskResult(Generic[T]):
             object.__setattr__(self, attr, getattr(refreshed_task, attr))
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, slots=PY311, kw_only=True)  # type: ignore[literal-required]
 class TaskContext:
     task_result: TaskResult
 

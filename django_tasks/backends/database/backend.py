@@ -6,6 +6,7 @@ from django.apps import apps
 from django.core import checks
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils.version import PY311
 from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
@@ -21,7 +22,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, slots=PY311, kw_only=True)  # type: ignore[literal-required]
 class TaskResult(BaseTaskResult[T]):
     db_result: "DBTaskResult"
 
