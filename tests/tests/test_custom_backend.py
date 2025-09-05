@@ -34,3 +34,10 @@ class CustomBackendTestCase(SimpleTestCase):
             InvalidTaskError, "Backend does not support async tasks"
         ):
             default_task_backend.validate_task(test_tasks.noop_task_async)
+
+    def test_backend_does_not_support_priority(self) -> None:
+        with self.assertRaisesMessage(
+            InvalidTaskError, "Backend does not support setting priority of tasks."
+        ):
+            test_tasks.noop_task.using(priority=10)
+

@@ -11,7 +11,13 @@ from django.utils import timezone
 from django.utils.inspect import get_func_args
 from typing_extensions import ParamSpec
 
-from django_tasks.base import MAX_PRIORITY, MIN_PRIORITY, Task, TaskResult
+from django_tasks.base import (
+    DEFAULT_PRIORITY,
+    MAX_PRIORITY,
+    MIN_PRIORITY,
+    Task,
+    TaskResult,
+)
 from django_tasks.exceptions import InvalidTaskError
 from django_tasks.utils import is_module_level_function
 
@@ -74,6 +80,11 @@ class BaseTaskBackend(metaclass=ABCMeta):
         ):
             raise InvalidTaskError(
                 "Task takes context but does not have a first argument of 'context'."
+            )
+
+        if not self.supports_priority and task.priority != DEFAULT_PRIORITY:
+            raise InvalidTaskError(
+                "Backend does not support setting priority of tasks."
             )
 
         if (

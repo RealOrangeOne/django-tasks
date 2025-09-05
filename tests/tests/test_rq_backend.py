@@ -467,18 +467,6 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertIn("state=FAILED", captured_logs.output[1])
         self.assertIn(result.id, captured_logs.output[1])
 
-    def test_enqueue_priority(self) -> None:
-        task_1 = test_tasks.noop_task.enqueue()
-        task_2 = test_tasks.noop_task.using(priority=100).enqueue()
-
-        queue = django_rq.get_queue("default")
-
-        self.assertEqual(queue.job_ids, [task_2.id, task_1.id])
-
-        self.assertEqual(task_2.task.priority, 100)
-
-        self.assertEqual(default_task_backend.get_result(task_2.id).task.priority, 0)
-
     def test_queue_isolation(self) -> None:
         default_task = test_tasks.noop_task.enqueue()
         other_task = test_tasks.noop_task.using(queue_name="queue-1").enqueue()
