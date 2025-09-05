@@ -21,12 +21,19 @@ class CustomBackend(BaseTaskBackend):
         logger.info(f"{self.prefix}Task enqueued.")
 
 
+class CustomBackendNoEnqueue(BaseTaskBackend):
+    pass
+
+
 @override_settings(
     TASKS={
         "default": {
             "BACKEND": get_module_path(CustomBackend),
             "ENQUEUE_ON_COMMIT": False,
             "OPTIONS": {"prefix": "PREFIX: "},
+        },
+        "no_enqueue": {
+            "BACKEND": get_module_path(CustomBackendNoEnqueue),
         },
     }
 )
@@ -54,3 +61,10 @@ class CustomBackendTestCase(SimpleTestCase):
         self.assertEqual(len(captured_logs.output), 1)
         self.assertIn("PREFIX: Task enqueued", captured_logs.output[0])
 
+    def test_no_enqueue(self) -> None:
+        with self.assertRaisesMessage(
+            TypeError,
+            "Can't instantiate abstract class CustomBackendNoEnqueue "
+            "without an implementation for abstract method 'enqueue'",
+        ):
+            test_tasks.noop_task.using(backend="no_enqueue")
