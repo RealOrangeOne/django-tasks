@@ -35,6 +35,8 @@ class DummyBackendTestCase(SimpleTestCase):
     def test_using_correct_backend(self) -> None:
         self.assertEqual(default_task_backend, tasks["default"])
         self.assertIsInstance(tasks["default"], DummyBackend)
+        self.assertEqual(default_task_backend.alias, "default")
+        self.assertEqual(default_task_backend.options, {})
 
     def test_enqueue_task(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:

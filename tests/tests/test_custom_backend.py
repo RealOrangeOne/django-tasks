@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from unittest import mock
 
@@ -11,8 +12,13 @@ from tests import tasks as test_tasks
 
 
 class CustomBackend(BaseTaskBackend):
+    def __init__(self, alias: str, params: dict) -> None:
+        super().__init__(alias, params)
+        self.prefix = self.options.get("prefix", "")
+
     def enqueue(self, *args: Any, **kwargs: Any) -> Any:
-        pass
+        logger = logging.getLogger(__name__)
+        logger.info(f"{self.prefix}Task enqueued.")
 
 
 @override_settings(
@@ -20,7 +26,8 @@ class CustomBackend(BaseTaskBackend):
         "default": {
             "BACKEND": get_module_path(CustomBackend),
             "ENQUEUE_ON_COMMIT": False,
-        }
+            "OPTIONS": {"prefix": "PREFIX: "},
+        },
     }
 )
 class CustomBackendTestCase(SimpleTestCase):
@@ -40,4 +47,10 @@ class CustomBackendTestCase(SimpleTestCase):
             InvalidTaskError, "Backend does not support setting priority of tasks."
         ):
             test_tasks.noop_task.using(priority=10)
+
+    def test_options(self) -> None:
+        with self.assertLogs(__name__, level="INFO") as captured_logs:
+            test_tasks.noop_task.enqueue()
+        self.assertEqual(len(captured_logs.output), 1)
+        self.assertIn("PREFIX: Task enqueued", captured_logs.output[0])
 
