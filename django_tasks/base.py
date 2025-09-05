@@ -48,16 +48,16 @@ TASK_REFRESH_ATTRS = {
 
 class ResultStatus(TextChoices):
     READY = ("READY", pgettext_lazy("Task", "Ready"))
-    """The task has just been enqueued, or is ready to be executed again (eg for a retry)."""
+    """The Task has just been enqueued, or is ready to be executed again."""
 
     RUNNING = ("RUNNING", pgettext_lazy("Task", "Running"))
-    """The task is currently running."""
+    """The Task is currently running."""
 
     FAILED = ("FAILED", pgettext_lazy("Task", "Failed"))
-    """The task has finished running, but resulted in an error."""
+    """The Task raised an exception during execution, or was unable to start."""
 
     SUCCEEDED = ("SUCCEEDED", pgettext_lazy("Task", "Succeeded"))
-    """The task has finished running successfully."""
+    """The Task has finished running successfully."""
 
 
 T = TypeVar("T")
@@ -67,29 +67,29 @@ P = ParamSpec("P")
 @dataclass(frozen=True)
 class Task(Generic[P, T]):
     priority: int
-    """The priority of the task"""
+    """The Task's priority"""
 
     func: Callable[P, T]
-    """The task function"""
+    """The Task function"""
 
     backend: str
-    """The name of the backend the task will run on"""
+    """The name of the backend the Task will run on"""
 
     queue_name: str
-    """The name of the queue the task will run on"""
+    """The name of the queue the Task will run on"""
 
     run_after: datetime | None
-    """The earliest this task will run"""
+    """The earliest this Task will run"""
 
     enqueue_on_commit: bool | None
     """
-    Whether the task will be enqueued when the current transaction commits,
-    immediately, or whatever the backend decides
+    Whether the Task will be enqueued when the current transaction commits,
+    immediately, or whatever the backend decides.
     """
 
     takes_context: bool
     """
-    Whether the task receives the task context when executed.
+    Whether the Task receives the Task context when executed.
     """
 
     def __post_init__(self) -> None:
@@ -111,7 +111,7 @@ class Task(Generic[P, T]):
         backend: str | None = None,
     ) -> Self:
         """
-        Create a new task with modified defaults
+        Create a new Task with modified defaults.
         """
 
         changes: dict[str, Any] = {}
@@ -129,20 +129,20 @@ class Task(Generic[P, T]):
 
     def enqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskResult[T]":
         """
-        Queue up the task to be executed
+        Queue up the Task to be executed.
         """
         return self.get_backend().enqueue(self, args, kwargs)
 
     async def aenqueue(self, *args: P.args, **kwargs: P.kwargs) -> "TaskResult[T]":
         """
-        Queue up a task function (or coroutine) to be executed
+        Queue up the Task to be executed.
         """
         return await self.get_backend().aenqueue(self, args, kwargs)
 
     def get_result(self, result_id: str) -> "TaskResult[T]":
         """
-        Retrieve the result for a task of this type by its id (if one exists).
-        If one doesn't, or is the wrong type, raises ResultDoesNotExist.
+        Retrieve the result for a Task of this type by id if it exists,
+        otherwise raise ResultDoesNotExist.
         """
         result = self.get_backend().get_result(result_id)
 
@@ -154,10 +154,7 @@ class Task(Generic[P, T]):
         return result
 
     async def aget_result(self, result_id: str) -> "TaskResult[T]":
-        """
-        Retrieve the result for a task of this type by its id (if one exists).
-        If one doesn't, or is the wrong type, raises ResultDoesNotExist.
-        """
+        """See get_result()."""
         result = await self.get_backend().aget_result(result_id)
 
         if result.task.func != self.func:
@@ -278,25 +275,25 @@ class TaskError:
 @dataclass(frozen=True)
 class TaskResult(Generic[T]):
     task: Task
-    """The task for which this is a result"""
+    """Task for which this is a result"""
 
     id: str
     """A unique identifier for the task result"""
 
     status: ResultStatus
-    """The status of the running task"""
+    """Status of the running Task"""
 
     enqueued_at: datetime | None
-    """The time this task was enqueued"""
+    """Time this Task was enqueued"""
 
     started_at: datetime | None
-    """The time this task was started"""
+    """Time this Task was started"""
 
     finished_at: datetime | None
-    """The time this task was finished"""
+    """Time this Task was finished"""
 
     last_attempted_at: datetime | None
-    """The time this task was last attempted to be run"""
+    """Time this Task was last attempted to be run"""
 
     args: list
     """The arguments to pass to the task function"""
@@ -305,10 +302,10 @@ class TaskResult(Generic[T]):
     """The keyword arguments to pass to the task function"""
 
     backend: str
-    """The name of the backend the task will run on"""
+    """The name of the backend the task is run with"""
 
     errors: list[TaskError]
-    """The errors raised when running the task"""
+    """Errors raised when running the task"""
 
     worker_ids: list[str]
     """The workers which have processed the task"""

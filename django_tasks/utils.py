@@ -66,7 +66,7 @@ def get_exception_traceback(exc: BaseException) -> str:
 
 def get_random_id() -> str:
     """
-    Return a random string for use as a task or worker id.
+    Return a random string for use as a Task or worker id.
 
     Whilst 64 characters is the max, just use 32 as a sensible middle-ground.
     """

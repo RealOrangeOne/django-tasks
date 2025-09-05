@@ -26,16 +26,16 @@ class BaseTaskBackend(metaclass=ABCMeta):
     task_class = Task
 
     supports_defer = False
-    """Can tasks be enqueued with the run_after attribute"""
+    """Does the backend support Tasks to be enqueued with the run_after attribute?"""
 
     supports_async_task = False
-    """Can coroutines be enqueued"""
+    """Does the backend support coroutines to be enqueued?"""
 
     supports_get_result = False
-    """Can results be retrieved after the fact (from **any** thread / process)"""
+    """Does the backend support results being retrieved (from any thread / process)?"""
 
     supports_priority = False
-    """Can tasks be executed in a given priority order"""
+    """Does the backend support tasks being executed in a given priority order?"""
 
     def __init__(self, alias: str, params: dict) -> None:
         from django_tasks import DEFAULT_QUEUE_NAME
@@ -59,13 +59,13 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
     def validate_task(self, task: Task) -> None:
         """
-        Determine whether the provided task is one which can be executed by the backend.
+        Determine whether the provided Task can be executed by the backend.
         """
         if not is_module_level_function(task.func):
-            raise InvalidTaskError("Task function must be defined at a module level")
+            raise InvalidTaskError("Task function must be defined at a module level.")
 
         if not self.supports_async_task and iscoroutinefunction(task.func):
-            raise InvalidTaskError("Backend does not support async tasks")
+            raise InvalidTaskError("Backend does not support async tasks.")
 
         task_func_args = get_func_args(task.func)
 
@@ -73,7 +73,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
             not task_func_args or task_func_args[0] != "context"
         ):
             raise InvalidTaskError(
-                "Task takes context but does not have a first argument of 'context'"
+                "Task takes context but does not have a first argument of 'context'."
             )
 
         if (
@@ -82,22 +82,22 @@ class BaseTaskBackend(metaclass=ABCMeta):
             or int(task.priority) != task.priority
         ):
             raise InvalidTaskError(
-                f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}"
+                f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}."
             )
 
         if not self.supports_defer and task.run_after is not None:
-            raise InvalidTaskError("Backend does not support run_after")
+            raise InvalidTaskError("Backend does not support run_after.")
 
         if (
             settings.USE_TZ
             and task.run_after is not None
             and not timezone.is_aware(task.run_after)
         ):
-            raise InvalidTaskError("run_after must be an aware datetime")
+            raise InvalidTaskError("run_after must be an aware datetime.")
 
         if self.queues and task.queue_name not in self.queues:
             raise InvalidTaskError(
-                f"Queue '{task.queue_name}' is not valid for backend"
+                f"Queue '{task.queue_name}' is not valid for backend."
             )
 
     @abstractmethod
@@ -110,7 +110,6 @@ class BaseTaskBackend(metaclass=ABCMeta):
         """
         Queue up a task to be executed
         """
-        ...
 
     async def aenqueue(
         self,
@@ -127,18 +126,15 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
     def get_result(self, result_id: str) -> TaskResult:
         """
-        Retrieve a result by its id (if one exists).
-        If one doesn't, raises ResultDoesNotExist.
+        Retrieve a result by id if it exists, otherwise raise
+        ResultDoesNotExist.
         """
         raise NotImplementedError(
             "This backend does not support retrieving or refreshing results."
         )
 
     async def aget_result(self, result_id: str) -> TaskResult:
-        """
-        Retrieve a result by its id (if one exists).
-        If one doesn't, raises ResultDoesNotExist.
-        """
+        """See get_result()."""
         return await sync_to_async(self.get_result, thread_sensitive=True)(
             result_id=result_id
         )
@@ -147,7 +143,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
         if self.enqueue_on_commit and not connections._settings:  # type: ignore[attr-defined]
             yield messages.Error(
                 "`ENQUEUE_ON_COMMIT` cannot be used when no databases are configured",
-                hint="Set `ENQUEUE_ON_COMMIT` to False",
+                hint="Set ENQUEUE_ON_COMMIT to False",
                 id="tasks.E001",
             )
 
@@ -157,6 +153,6 @@ class BaseTaskBackend(metaclass=ABCMeta):
         ):
             yield messages.Error(
                 "ENQUEUE_ON_COMMIT cannot be used on a database which doesn't support transactions",
-                hint="Set `ENQUEUE_ON_COMMIT` to False",
+                hint="Set ENQUEUE_ON_COMMIT to False",
                 id="tasks.E002",
             )

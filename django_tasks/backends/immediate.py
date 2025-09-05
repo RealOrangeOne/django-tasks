@@ -35,7 +35,7 @@ class ImmediateBackend(BaseTaskBackend):
 
     def _execute_task(self, task_result: TaskResult) -> None:
         """
-        Execute the task for the given `TaskResult`, mutating it with the outcome
+        Execute the Task for the given TaskResult, mutating it with the outcome
         """
         object.__setattr__(task_result, "enqueued_at", timezone.now())
         task_enqueued.send(type(self), task_result=task_result)
