@@ -64,7 +64,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Task(Generic[P, T]):
     priority: int
     """The Task's priority"""
@@ -252,7 +252,7 @@ def task(  # type: ignore[misc]
     return wrapper
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class TaskError:
     exception_class_path: str
     traceback: str
@@ -272,7 +272,7 @@ class TaskError:
         return exception_class
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class TaskResult(Generic[T]):
     task: Task
     """Task for which this is a result"""
@@ -359,7 +359,7 @@ class TaskResult(Generic[T]):
             object.__setattr__(self, attr, getattr(refreshed_task, attr))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class TaskContext:
     task_result: TaskResult
 

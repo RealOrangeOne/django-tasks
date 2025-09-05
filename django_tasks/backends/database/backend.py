@@ -21,7 +21,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class TaskResult(BaseTaskResult[T]):
     db_result: "DBTaskResult"
 
