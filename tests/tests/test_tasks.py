@@ -34,6 +34,7 @@ from tests import tasks as test_tasks
         "immediate": {
             "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
             "ENQUEUE_ON_COMMIT": False,
+            "QUEUES": [],
         },
         "missing": {"BACKEND": "does.not.exist"},
     }
@@ -184,6 +185,13 @@ class TaskTestCase(SimpleTestCase):
             InvalidTaskError, "Queue 'queue-2' is not valid for backend"
         ):
             test_tasks.noop_task.using(queue_name="queue-2")
+        # Validation is bypassed when the backend QUEUES is an empty list.
+        self.assertEqual(
+            test_tasks.noop_task.using(
+                queue_name="queue-2", backend="immediate"
+            ).queue_name,
+            "queue-2",
+        )
 
     def test_call_task(self) -> None:
         self.assertEqual(test_tasks.calculate_meaning_of_life.call(), 42)
