@@ -3,6 +3,7 @@ from typing import Any
 from unittest import mock
 
 from django.test import SimpleTestCase, override_settings
+from django.utils.version import PY312
 
 from django_tasks import default_task_backend, tasks
 from django_tasks.backends.base import BaseTaskBackend
@@ -62,9 +63,13 @@ class CustomBackendTestCase(SimpleTestCase):
         self.assertIn("PREFIX: Task enqueued", captured_logs.output[0])
 
     def test_no_enqueue(self) -> None:
+        if PY312:
+            error_message = "Can't instantiate abstract class CustomBackendNoEnqueue without an implementation for abstract method 'enqueue'"
+        else:
+            error_message = "Can't instantiate abstract class CustomBackendNoEnqueue with abstract method enqueue"
+
         with self.assertRaisesMessage(
             TypeError,
-            "Can't instantiate abstract class CustomBackendNoEnqueue "
-            "without an implementation for abstract method 'enqueue'",
+            error_message,
         ):
             test_tasks.noop_task.using(backend="no_enqueue")
