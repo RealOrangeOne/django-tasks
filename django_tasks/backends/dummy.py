@@ -71,5 +71,11 @@ class DummyBackend(BaseTaskBackend):
         except StopIteration:
             raise ResultDoesNotExist(result_id) from None
 
+    async def aget_result(self, result_id: str) -> TaskResult:
+        try:
+            return next(result for result in self.results if result.id == result_id)
+        except StopIteration:
+            raise ResultDoesNotExist(result_id) from None
+
     def clear(self) -> None:
         self.results.clear()
