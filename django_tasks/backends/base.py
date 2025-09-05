@@ -5,7 +5,7 @@ from typing import Any, TypeVar
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.core.checks import messages
+from django.core import checks
 from django.db import connections
 from django.utils import timezone
 from django.utils.inspect import get_func_args
@@ -150,9 +150,9 @@ class BaseTaskBackend(metaclass=ABCMeta):
             result_id=result_id
         )
 
-    def check(self, **kwargs: Any) -> Iterable[messages.CheckMessage]:
+    def check(self, **kwargs: Any) -> Iterable[checks.CheckMessage]:
         if self.enqueue_on_commit and not connections._settings:  # type: ignore[attr-defined]
-            yield messages.Error(
+            yield checks.Error(
                 "`ENQUEUE_ON_COMMIT` cannot be used when no databases are configured",
                 hint="Set ENQUEUE_ON_COMMIT to False",
                 id="tasks.E001",
@@ -162,7 +162,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
             self.enqueue_on_commit
             and not connections["default"].features.supports_transactions
         ):
-            yield messages.Error(
+            yield checks.Error(
                 "ENQUEUE_ON_COMMIT cannot be used on a database which doesn't support transactions",
                 hint="Set ENQUEUE_ON_COMMIT to False",
                 id="tasks.E002",
