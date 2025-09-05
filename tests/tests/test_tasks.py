@@ -8,14 +8,13 @@ from django.utils.module_loading import import_string
 from django_tasks import (
     DEFAULT_QUEUE_NAME,
     ResultStatus,
-    Task,
     default_task_backend,
     task,
     tasks,
 )
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.backends.immediate import ImmediateBackend
-from django_tasks.base import MAX_PRIORITY, MIN_PRIORITY
+from django_tasks.base import MAX_PRIORITY, MIN_PRIORITY, Task
 from django_tasks.exceptions import (
     InvalidTaskBackendError,
     InvalidTaskError,

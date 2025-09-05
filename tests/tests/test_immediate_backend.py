@@ -6,8 +6,9 @@ from django.test import SimpleTestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from django_tasks import ResultStatus, Task, default_task_backend, tasks
+from django_tasks import ResultStatus, default_task_backend, tasks
 from django_tasks.backends.immediate import ImmediateBackend
+from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError
 from tests import tasks as test_tasks
 

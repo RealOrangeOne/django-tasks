@@ -12,8 +12,9 @@ from django.test import (
 )
 from django.urls import reverse
 
-from django_tasks import ResultStatus, Task, default_task_backend, tasks
+from django_tasks import ResultStatus, default_task_backend, tasks
 from django_tasks.backends.dummy import DummyBackend
+from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 from tests import tasks as test_tasks
 

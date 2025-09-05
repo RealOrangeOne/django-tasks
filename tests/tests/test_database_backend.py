@@ -28,7 +28,7 @@ from django.test.testcases import _deferredSkip  # type:ignore[attr-defined]
 from django.urls import reverse
 from django.utils import timezone
 
-from django_tasks import ResultStatus, Task, default_task_backend, tasks
+from django_tasks import ResultStatus, default_task_backend, tasks
 from django_tasks.backends.database import DatabaseBackend
 from django_tasks.backends.database.management.commands.prune_db_task_results import (
     logger as prune_db_tasks_logger,
@@ -39,6 +39,7 @@ from django_tasks.backends.database.utils import (
     exclusive_transaction,
     normalize_uuid,
 )
+from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 from django_tasks.utils import get_random_id
 from tests import tasks as test_tasks

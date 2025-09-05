@@ -14,8 +14,9 @@ from fakeredis import FakeRedis, FakeStrictRedis
 from rq.defaults import UNSERIALIZABLE_RETURN_VALUE_PAYLOAD
 from rq.timeouts import TimerDeathPenalty
 
-from django_tasks import ResultStatus, Task, default_task_backend, tasks
+from django_tasks import ResultStatus, default_task_backend, tasks
 from django_tasks.backends.rq import Job, RQBackend
+from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
 from tests import tasks as test_tasks
 
