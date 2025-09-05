@@ -8,6 +8,7 @@ from django.test import (
     SimpleTestCase,
     TransactionTestCase,
     override_settings,
+    skipIfDBFeature,
 )
 from django.urls import reverse
 
@@ -191,10 +192,9 @@ class DummyBackendTestCase(SimpleTestCase):
     )
     @mock.patch("django_tasks.backends.base.connections", ConnectionHandler({}))
     def test_enqueue_on_commit_with_no_databases(self) -> None:
-        errors = list(default_task_backend.check())
-
-        self.assertEqual(len(errors), 1)
-        self.assertIn("Set `ENQUEUE_ON_COMMIT` to False", errors[0].hint)  # type:ignore[arg-type]
+        self.assertIn(
+            "tasks.E001", {error.id for error in default_task_backend.check()}
+        )
 
     def test_takes_context(self) -> None:
         result = test_tasks.get_task_id.enqueue()
@@ -347,3 +347,17 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         self.assertIsNone(result.enqueued_at)
         result.refresh()
         self.assertIsNotNone(result.enqueued_at)
+
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+                "ENQUEUE_ON_COMMIT": True,
+            }
+        }
+    )
+    @skipIfDBFeature("supports_transactions")
+    def test_enqueue_on_commit_with_no_transactions(self) -> None:
+        self.assertIn(
+            "tasks.E002", {error.id for error in default_task_backend.check()}
+        )

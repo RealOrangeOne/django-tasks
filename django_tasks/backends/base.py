@@ -148,4 +148,15 @@ class BaseTaskBackend(metaclass=ABCMeta):
             yield messages.Error(
                 "`ENQUEUE_ON_COMMIT` cannot be used when no databases are configured",
                 hint="Set `ENQUEUE_ON_COMMIT` to False",
+                id="tasks.E001",
+            )
+
+        if (
+            self.enqueue_on_commit
+            and not connections["default"].features.supports_transactions
+        ):
+            yield messages.Error(
+                "ENQUEUE_ON_COMMIT cannot be used on a database which doesn't support transactions",
+                hint="Set `ENQUEUE_ON_COMMIT` to False",
+                id="tasks.E002",
             )
