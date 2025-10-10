@@ -5,7 +5,7 @@ from unittest import mock
 from django.test import SimpleTestCase, override_settings
 from django.utils.version import PY312
 
-from django_tasks import default_task_backend, tasks
+from django_tasks import default_task_backend, task_backends
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.exceptions import InvalidTaskError
 from django_tasks.utils import get_module_path
@@ -40,8 +40,8 @@ class CustomBackendNoEnqueue(BaseTaskBackend):
 )
 class CustomBackendTestCase(SimpleTestCase):
     def test_using_correct_backend(self) -> None:
-        self.assertEqual(default_task_backend, tasks["default"])
-        self.assertIsInstance(tasks["default"], CustomBackend)
+        self.assertEqual(default_task_backend, task_backends["default"])
+        self.assertIsInstance(task_backends["default"], CustomBackend)
 
     @mock.patch.multiple(CustomBackend, supports_async_task=False)
     def test_enqueue_async_task_on_non_async_backend(self) -> None:

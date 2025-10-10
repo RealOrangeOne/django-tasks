@@ -6,10 +6,14 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
 
-from django_tasks import DEFAULT_QUEUE_NAME, DEFAULT_TASK_BACKEND_ALIAS, tasks
+from django_tasks import (
+    DEFAULT_TASK_BACKEND_ALIAS,
+    DEFAULT_TASK_QUEUE_NAME,
+    task_backends,
+)
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
-from django_tasks.base import ResultStatus
+from django_tasks.base import TaskResultStatus
 from django_tasks.exceptions import InvalidTaskBackendError
 
 logger = logging.getLogger("django_tasks.backends.database.prune_db_task_results")
@@ -17,7 +21,7 @@ logger = logging.getLogger("django_tasks.backends.database.prune_db_task_results
 
 def valid_backend_name(val: str) -> DatabaseBackend:
     try:
-        backend = tasks[val]
+        backend = task_backends[val]
     except InvalidTaskBackendError as e:
         raise ArgumentTypeError(e.args[0]) from e
     if not isinstance(backend, DatabaseBackend):
@@ -47,7 +51,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--queue-name",
             nargs="?",
-            default=DEFAULT_QUEUE_NAME,
+            default=DEFAULT_TASK_QUEUE_NAME,
             type=str,
             help="The queues to process. Separate multiple with a comma. To process all queues, use '*' (default: %(default)r)",
         )
@@ -114,8 +118,8 @@ class Command(BaseCommand):
             results = results.filter(finished_at__lte=min_age)
         else:
             results = results.filter(
-                Q(status=ResultStatus.SUCCEEDED, finished_at__lte=min_age)
-                | Q(status=ResultStatus.FAILED, finished_at__lte=failed_min_age)
+                Q(status=TaskResultStatus.SUCCEEDED, finished_at__lte=min_age)
+                | Q(status=TaskResultStatus.FAILED, finished_at__lte=failed_min_age)
             )
 
         if dry_run:

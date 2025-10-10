@@ -1,5 +1,8 @@
 import datetime
+import json
 import subprocess
+from collections import UserList, defaultdict
+from decimal import Decimal
 from unittest.mock import Mock
 
 from django.test import SimpleTestCase
@@ -54,16 +57,49 @@ class IsModuleLevelFunctionTestCase(SimpleTestCase):
 
 
 class JSONNormalizeTestCase(SimpleTestCase):
-    def test_round_trip(self) -> None:
-        self.assertEqual(utils.json_normalize({}), {})
-        self.assertEqual(utils.json_normalize([]), [])
-        self.assertEqual(utils.json_normalize(()), [])
-        self.assertEqual(utils.json_normalize({"foo": ()}), {"foo": []})
+    def test_converts_json_types(self) -> None:
+        for test_case, expected in [  # type: ignore
+            (None, "null"),
+            (True, "true"),
+            (False, "false"),
+            (2, "2"),
+            (3.0, "3.0"),
+            (1e23 + 1, "1e+23"),
+            ("1", '"1"'),
+            (b"hello", '"hello"'),
+            ([], "[]"),
+            (UserList([1, 2]), "[1, 2]"),
+            ({}, "{}"),
+            ({1: "a"}, '{"1": "a"}'),
+            ({"foo": (1, 2, 3)}, '{"foo": [1, 2, 3]}'),
+            (defaultdict(list), "{}"),
+            (float("nan"), "NaN"),
+            (float("inf"), "Infinity"),
+            (float("-inf"), "-Infinity"),
+        ]:
+            with self.subTest(test_case):
+                normalized = utils.normalize_json(test_case)
+                # Ensure that the normalized result is serializable.
+                self.assertEqual(json.dumps(normalized), expected)
+
+    def test_bytes_decode_error(self) -> None:
+        with self.assertRaisesMessage(ValueError, "Unsupported value"):
+            utils.normalize_json(b"\xff")
 
     def test_encode_error(self) -> None:
-        for example in [self, any, datetime.datetime.now()]:
-            with self.subTest(example):
-                self.assertRaises(TypeError, utils.json_normalize, example)
+        for test_case in [
+            self,
+            any,
+            object(),
+            datetime.datetime.now(),
+            set(),
+            Decimal("3.42"),
+        ]:
+            with (
+                self.subTest(test_case),
+                self.assertRaisesMessage(TypeError, "Unsupported type"),
+            ):
+                utils.normalize_json(test_case)
 
 
 class RetryTestCase(SimpleTestCase):

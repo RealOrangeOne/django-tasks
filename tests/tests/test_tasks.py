@@ -6,20 +6,20 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 
 from django_tasks import (
-    DEFAULT_QUEUE_NAME,
-    ResultStatus,
+    DEFAULT_TASK_QUEUE_NAME,
+    TaskResultStatus,
     default_task_backend,
     task,
-    tasks,
+    task_backends,
 )
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.backends.immediate import ImmediateBackend
-from django_tasks.base import MAX_PRIORITY, MIN_PRIORITY, Task
+from django_tasks.base import TASK_MAX_PRIORITY, TASK_MIN_PRIORITY, Task
 from django_tasks.exceptions import (
     InvalidTaskBackendError,
     InvalidTaskError,
-    ResultDoesNotExist,
-    TaskIntegrityError,
+    TaskResultDoesNotExist,
+    TaskResultMismatch,
 )
 from tests import tasks as test_tasks
 
@@ -44,8 +44,8 @@ class TaskTestCase(SimpleTestCase):
         default_task_backend.clear()  # type:ignore[attr-defined]
 
     def test_using_correct_backend(self) -> None:
-        self.assertEqual(default_task_backend, tasks["default"])
-        self.assertIsInstance(tasks["default"], DummyBackend)
+        self.assertEqual(default_task_backend, task_backends["default"])
+        self.assertIsInstance(task_backends["default"], DummyBackend)
 
     def test_task_decorator(self) -> None:
         self.assertIsInstance(test_tasks.noop_task, Task)
@@ -55,7 +55,7 @@ class TaskTestCase(SimpleTestCase):
     def test_enqueue_task(self) -> None:
         result = test_tasks.noop_task.enqueue()
 
-        self.assertEqual(result.status, ResultStatus.READY)
+        self.assertEqual(result.status, TaskResultStatus.READY)
         self.assertEqual(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
@@ -65,7 +65,7 @@ class TaskTestCase(SimpleTestCase):
     async def test_enqueue_task_async(self) -> None:
         result = await test_tasks.noop_task.aenqueue()
 
-        self.assertEqual(result.status, ResultStatus.READY)
+        self.assertEqual(result.status, TaskResultStatus.READY)
         self.assertEqual(result.task, test_tasks.noop_task)
         self.assertEqual(result.args, [])
         self.assertEqual(result.kwargs, {})
@@ -74,13 +74,13 @@ class TaskTestCase(SimpleTestCase):
 
     def test_enqueue_with_invalid_argument(self) -> None:
         with self.assertRaisesMessage(
-            TypeError, "Object of type datetime is not JSON serializable"
+            TypeError, "Unsupported type: <class 'datetime.datetime'>"
         ):
             test_tasks.noop_task.enqueue(datetime.now())
 
     async def test_aenqueue_with_invalid_argument(self) -> None:
         with self.assertRaisesMessage(
-            TypeError, "Object of type datetime is not JSON serializable"
+            TypeError, "Unsupported type: <class 'datetime.datetime'>"
         ):
             await test_tasks.noop_task.aenqueue(datetime.now())
 
@@ -90,11 +90,11 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(test_tasks.noop_task.priority, 0)
 
     def test_using_queue_name(self) -> None:
-        self.assertEqual(test_tasks.noop_task.queue_name, DEFAULT_QUEUE_NAME)
+        self.assertEqual(test_tasks.noop_task.queue_name, DEFAULT_TASK_QUEUE_NAME)
         self.assertEqual(
             test_tasks.noop_task.using(queue_name="queue_1").queue_name, "queue_1"
         )
-        self.assertEqual(test_tasks.noop_task.queue_name, DEFAULT_QUEUE_NAME)
+        self.assertEqual(test_tasks.noop_task.queue_name, DEFAULT_TASK_QUEUE_NAME)
 
     def test_using_run_after(self) -> None:
         now = timezone.now()
@@ -160,19 +160,19 @@ class TaskTestCase(SimpleTestCase):
     def test_invalid_priority(self) -> None:
         with self.assertRaisesMessage(
             InvalidTaskError,
-            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
+            f"priority must be a whole number between {TASK_MIN_PRIORITY} and {TASK_MAX_PRIORITY}",
         ):
             test_tasks.noop_task.using(priority=-101)
 
         with self.assertRaisesMessage(
             InvalidTaskError,
-            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
+            f"priority must be a whole number between {TASK_MIN_PRIORITY} and {TASK_MAX_PRIORITY}",
         ):
             test_tasks.noop_task.using(priority=101)
 
         with self.assertRaisesMessage(
             InvalidTaskError,
-            f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}",
+            f"priority must be a whole number between {TASK_MIN_PRIORITY} and {TASK_MAX_PRIORITY}",
         ):
             test_tasks.noop_task.using(priority=3.1)  # type:ignore[arg-type]
 
@@ -220,20 +220,20 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(result, new_result)
 
     async def test_get_missing_result(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             test_tasks.noop_task.get_result("123")
 
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             await test_tasks.noop_task.aget_result("123")
 
     def test_get_incorrect_result(self) -> None:
         result = default_task_backend.enqueue(test_tasks.noop_task_async, (), {})
-        with self.assertRaisesMessage(TaskIntegrityError, "Task does not match"):
+        with self.assertRaisesMessage(TaskResultMismatch, "Task does not match"):
             test_tasks.noop_task.get_result(result.id)
 
     async def test_get_incorrect_result_async(self) -> None:
         result = await default_task_backend.aenqueue(test_tasks.noop_task_async, (), {})
-        with self.assertRaisesMessage(TaskIntegrityError, "Task does not match"):
+        with self.assertRaisesMessage(TaskResultMismatch, "Task does not match"):
             await test_tasks.noop_task.aget_result(result.id)
 
     def test_invalid_function(self) -> None:

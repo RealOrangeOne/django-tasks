@@ -6,8 +6,8 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
-from django_tasks.base import ResultStatus, Task, TaskResult
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.base import Task, TaskResult, TaskResultStatus
+from django_tasks.exceptions import TaskResultDoesNotExist
 from django_tasks.signals import task_enqueued
 from django_tasks.utils import get_random_id
 
@@ -44,7 +44,7 @@ class DummyBackend(BaseTaskBackend):
         result = TaskResult[T](
             task=task,
             id=get_random_id(),
-            status=ResultStatus.READY,
+            status=TaskResultStatus.READY,
             enqueued_at=None,
             started_at=None,
             last_attempted_at=None,
@@ -69,13 +69,13 @@ class DummyBackend(BaseTaskBackend):
         try:
             return next(result for result in self.results if result.id == result_id)
         except StopIteration:
-            raise ResultDoesNotExist(result_id) from None
+            raise TaskResultDoesNotExist(result_id) from None
 
     async def aget_result(self, result_id: str) -> TaskResult:
         try:
             return next(result for result in self.results if result.id == result_id)
         except StopIteration:
-            raise ResultDoesNotExist(result_id) from None
+            raise TaskResultDoesNotExist(result_id) from None
 
     def clear(self) -> None:
         self.results.clear()

@@ -2,17 +2,17 @@ from typing import Any
 
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 
-from django_tasks import ResultStatus, default_task_backend
+from django_tasks import TaskResultStatus, default_task_backend
 from django_tasks.base import TaskResult
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.exceptions import TaskResultDoesNotExist
 
 from . import tasks
 
 
 def get_result_value(result: TaskResult) -> Any:
-    if result.status == ResultStatus.SUCCEEDED:
+    if result.status == TaskResultStatus.SUCCEEDED:
         return result.return_value
-    elif result.status == ResultStatus.FAILED:
+    elif result.status == TaskResultStatus.FAILED:
         return result.errors[0].traceback
 
     return None
@@ -45,7 +45,7 @@ async def calculate_meaning_of_life_async(request: HttpRequest) -> HttpResponse:
 async def get_task_result(request: HttpRequest, result_id: str) -> HttpResponse:
     try:
         result = await default_task_backend.aget_result(result_id)
-    except ResultDoesNotExist:
+    except TaskResultDoesNotExist:
         raise Http404 from None
 
     return JsonResponse(

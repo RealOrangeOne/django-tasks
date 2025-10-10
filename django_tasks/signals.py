@@ -4,7 +4,7 @@ from asgiref.local import Local
 from django.core.signals import setting_changed
 from django.dispatch import Signal, receiver
 
-from django_tasks import BaseTaskBackend, ResultStatus, TaskResult
+from django_tasks import BaseTaskBackend, TaskResult, TaskResultStatus
 
 task_enqueued = Signal()
 task_finished = Signal()
@@ -20,10 +20,12 @@ def clear_tasks_handlers(*, setting: str, **kwargs: dict) -> None:
     Reset the connection handler whenever the settings change.
     """
     if setting == "TASKS":
-        from django_tasks import tasks
+        from django_tasks import task_backends
 
-        tasks._settings = tasks.settings = tasks.configure_settings(None)  # type:ignore[attr-defined]
-        tasks._connections = Local()  # type:ignore[attr-defined]
+        task_backends._settings = task_backends.settings = (  # type:ignore[attr-defined]
+            task_backends.configure_settings(None)
+        )
+        task_backends._connections = Local()  # type:ignore[attr-defined]
 
 
 @receiver(task_enqueued)
@@ -54,7 +56,7 @@ def log_task_started(
 def log_task_finished(
     sender: type[BaseTaskBackend], task_result: TaskResult, **kwargs: dict
 ) -> None:
-    if task_result.status == ResultStatus.FAILED:
+    if task_result.status == TaskResultStatus.FAILED:
         # Use exception to integrate with error monitoring tools
         log_method = logger.exception
     else:

@@ -4,7 +4,7 @@ from django.db import migrations, models
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
 
-from django_tasks import ResultStatus
+from django_tasks import TaskResultStatus
 
 
 def separate_results_field(
@@ -14,12 +14,12 @@ def separate_results_field(
 
     # If a task succeeded, the result is its return value
     DBTaskResult.objects.using(schema_editor.connection.alias).filter(
-        status=ResultStatus.SUCCEEDED
+        status=TaskResultStatus.SUCCEEDED
     ).update(return_value=models.F("result"))
 
     # If a task failed, the result is the exception data (or nothing)
     DBTaskResult.objects.using(schema_editor.connection.alias).filter(
-        status=ResultStatus.FAILED
+        status=TaskResultStatus.FAILED
     ).update(exception_data=models.F("result"))
 
 
@@ -30,12 +30,12 @@ def merge_results_field(
 
     # If a task succeeded, the result is its return value
     DBTaskResult.objects.using(schema_editor.connection.alias).filter(
-        status=ResultStatus.SUCCEEDED
+        status=TaskResultStatus.SUCCEEDED
     ).update(result=models.F("return_value"))
 
     # If a task failed, the result is the exception data (or nothing)
     DBTaskResult.objects.using(schema_editor.connection.alias).filter(
-        status=ResultStatus.FAILED
+        status=TaskResultStatus.FAILED
     ).update(result=models.F("exception_data"))
 
 

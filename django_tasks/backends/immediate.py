@@ -6,13 +6,13 @@ from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
-from django_tasks.base import ResultStatus, Task, TaskContext, TaskError, TaskResult
+from django_tasks.base import Task, TaskContext, TaskError, TaskResult, TaskResultStatus
 from django_tasks.signals import task_enqueued, task_finished, task_started
 from django_tasks.utils import (
     get_exception_traceback,
     get_module_path,
     get_random_id,
-    json_normalize,
+    normalize_json,
 )
 
 from .base import BaseTaskBackend
@@ -44,7 +44,7 @@ class ImmediateBackend(BaseTaskBackend):
 
         task_start_time = timezone.now()
 
-        object.__setattr__(task_result, "status", ResultStatus.RUNNING)
+        object.__setattr__(task_result, "status", TaskResultStatus.RUNNING)
         object.__setattr__(task_result, "started_at", task_start_time)
         object.__setattr__(task_result, "last_attempted_at", task_start_time)
         task_result.worker_ids.append(self.worker_id)
@@ -63,7 +63,7 @@ class ImmediateBackend(BaseTaskBackend):
             object.__setattr__(
                 task_result,
                 "_return_value",
-                json_normalize(raw_return_value),
+                normalize_json(raw_return_value),
             )
         except KeyboardInterrupt:
             # If the user tried to terminate, let them
@@ -78,12 +78,12 @@ class ImmediateBackend(BaseTaskBackend):
                 )
             )
 
-            object.__setattr__(task_result, "status", ResultStatus.FAILED)
+            object.__setattr__(task_result, "status", TaskResultStatus.FAILED)
 
             task_finished.send(type(self), task_result=task_result)
         else:
             object.__setattr__(task_result, "finished_at", timezone.now())
-            object.__setattr__(task_result, "status", ResultStatus.SUCCEEDED)
+            object.__setattr__(task_result, "status", TaskResultStatus.SUCCEEDED)
 
             task_finished.send(type(self), task_result=task_result)
 
@@ -98,7 +98,7 @@ class ImmediateBackend(BaseTaskBackend):
         task_result = TaskResult[T](
             task=task,
             id=get_random_id(),
-            status=ResultStatus.READY,
+            status=TaskResultStatus.READY,
             enqueued_at=None,
             started_at=None,
             last_attempted_at=None,

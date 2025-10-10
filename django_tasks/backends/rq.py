@@ -20,15 +20,15 @@ from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.base import (
-    DEFAULT_PRIORITY,
-    MAX_PRIORITY,
-    ResultStatus,
+    TASK_DEFAULT_PRIORITY,
+    TASK_MAX_PRIORITY,
     Task,
     TaskContext,
     TaskError,
     TaskResult,
+    TaskResultStatus,
 )
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.exceptions import TaskResultDoesNotExist
 from django_tasks.signals import task_enqueued, task_finished, task_started
 from django_tasks.utils import get_module_path, get_random_id
 
@@ -36,15 +36,15 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 RQ_STATUS_TO_RESULT_STATUS = {
-    JobStatus.QUEUED: ResultStatus.READY,
-    JobStatus.FINISHED: ResultStatus.SUCCEEDED,
-    JobStatus.FAILED: ResultStatus.FAILED,
-    JobStatus.STARTED: ResultStatus.RUNNING,
-    JobStatus.DEFERRED: ResultStatus.READY,
-    JobStatus.SCHEDULED: ResultStatus.READY,
-    JobStatus.STOPPED: ResultStatus.FAILED,
-    JobStatus.CANCELED: ResultStatus.FAILED,
-    None: ResultStatus.READY,
+    JobStatus.QUEUED: TaskResultStatus.READY,
+    JobStatus.FINISHED: TaskResultStatus.SUCCEEDED,
+    JobStatus.FAILED: TaskResultStatus.FAILED,
+    JobStatus.STARTED: TaskResultStatus.RUNNING,
+    JobStatus.DEFERRED: TaskResultStatus.READY,
+    JobStatus.SCHEDULED: TaskResultStatus.READY,
+    JobStatus.STOPPED: TaskResultStatus.FAILED,
+    JobStatus.CANCELED: TaskResultStatus.FAILED,
+    None: TaskResultStatus.READY,
 }
 
 
@@ -97,7 +97,7 @@ class Job(BaseJob):
 
         task_result: TaskResult = TaskResult(
             task=task.using(
-                priority=DEFAULT_PRIORITY,
+                priority=TASK_DEFAULT_PRIORITY,
                 queue_name=self.origin,
                 run_after=run_after,
                 backend=self.meta["backend_name"],
@@ -133,7 +133,7 @@ class Job(BaseJob):
                     )
                 )
 
-        if self.worker_name and task_result.status == ResultStatus.RUNNING:
+        if self.worker_name and task_result.status == TaskResultStatus.RUNNING:
             task_result.worker_ids.append(self.worker_name)
 
         if rq_results:
@@ -147,7 +147,7 @@ class Job(BaseJob):
         # If the return value couldn't be serialized, a specific string is saved instead.
         if task_result._return_value == UNSERIALIZABLE_RETURN_VALUE_PAYLOAD:
             # In these cases, the task should be marked as failed instead
-            object.__setattr__(task_result, "status", ResultStatus.FAILED)
+            object.__setattr__(task_result, "status", TaskResultStatus.FAILED)
 
             task_result.errors.append(
                 TaskError(
@@ -176,7 +176,7 @@ def failed_callback(
 
     task_result = job.task_result
 
-    object.__setattr__(task_result, "status", ResultStatus.FAILED)
+    object.__setattr__(task_result, "status", TaskResultStatus.FAILED)
 
     task_finished.send(type(task_result.task.get_backend()), task_result=task_result)
 
@@ -184,7 +184,7 @@ def failed_callback(
 def success_callback(job: Job, connection: Redis | None, result: Any) -> None:
     task_result = job.task_result
 
-    object.__setattr__(task_result, "status", ResultStatus.SUCCEEDED)
+    object.__setattr__(task_result, "status", TaskResultStatus.SUCCEEDED)
 
     task_finished.send(type(task_result.task.get_backend()), task_result=task_result)
 
@@ -211,7 +211,7 @@ class RQBackend(BaseTaskBackend):
         task_result = TaskResult[T](
             task=task,
             id=get_random_id(),
-            status=ResultStatus.READY,
+            status=TaskResultStatus.READY,
             enqueued_at=None,
             started_at=None,
             last_attempted_at=None,
@@ -239,7 +239,9 @@ class RQBackend(BaseTaskBackend):
         def save_result() -> None:
             nonlocal job
             if task.run_after is None:
-                job = queue.enqueue_job(job, at_front=task.priority == MAX_PRIORITY)
+                job = queue.enqueue_job(
+                    job, at_front=task.priority == TASK_MAX_PRIORITY
+                )
             else:
                 job = queue.schedule_job(job, task.run_after)
 
@@ -268,7 +270,7 @@ class RQBackend(BaseTaskBackend):
         job = self._get_job(result_id)
 
         if job is None:
-            raise ResultDoesNotExist(result_id)
+            raise TaskResultDoesNotExist(result_id)
 
         return job.task_result
 

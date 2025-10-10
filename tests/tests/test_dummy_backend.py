@@ -12,10 +12,10 @@ from django.test import (
 )
 from django.urls import reverse
 
-from django_tasks import ResultStatus, default_task_backend, tasks
+from django_tasks import TaskResultStatus, default_task_backend, task_backends
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.base import Task
-from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
+from django_tasks.exceptions import InvalidTaskError, TaskResultDoesNotExist
 from tests import tasks as test_tasks
 
 
@@ -33,8 +33,8 @@ class DummyBackendTestCase(SimpleTestCase):
         default_task_backend.clear()  # type:ignore[attr-defined]
 
     def test_using_correct_backend(self) -> None:
-        self.assertEqual(default_task_backend, tasks["default"])
-        self.assertIsInstance(tasks["default"], DummyBackend)
+        self.assertEqual(default_task_backend, task_backends["default"])
+        self.assertIsInstance(task_backends["default"], DummyBackend)
         self.assertEqual(default_task_backend.alias, "default")
         self.assertEqual(default_task_backend.options, {})
 
@@ -43,7 +43,7 @@ class DummyBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.READY)
+                self.assertEqual(result.status, TaskResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.last_attempted_at)
@@ -62,7 +62,7 @@ class DummyBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.READY)
+                self.assertEqual(result.status, TaskResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.last_attempted_at)
@@ -96,11 +96,11 @@ class DummyBackendTestCase(SimpleTestCase):
         )
 
         enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
-        object.__setattr__(enqueued_result, "status", ResultStatus.SUCCEEDED)
+        object.__setattr__(enqueued_result, "status", TaskResultStatus.SUCCEEDED)
 
-        self.assertEqual(result.status, ResultStatus.READY)
+        self.assertEqual(result.status, TaskResultStatus.READY)
         result.refresh()
-        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
 
     async def test_refresh_result_async(self) -> None:
         result = await default_task_backend.aenqueue(
@@ -108,17 +108,17 @@ class DummyBackendTestCase(SimpleTestCase):
         )
 
         enqueued_result = default_task_backend.results[0]  # type:ignore[attr-defined]
-        object.__setattr__(enqueued_result, "status", ResultStatus.SUCCEEDED)
+        object.__setattr__(enqueued_result, "status", TaskResultStatus.SUCCEEDED)
 
-        self.assertEqual(result.status, ResultStatus.READY)
+        self.assertEqual(result.status, TaskResultStatus.READY)
         await result.arefresh()
-        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
 
     async def test_get_missing_result(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             default_task_backend.get_result("123")
 
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             await default_task_backend.aget_result("123")
 
     def test_meaning_of_life_view(self) -> None:
@@ -133,10 +133,10 @@ class DummyBackendTestCase(SimpleTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], None)
-                self.assertEqual(data["status"], ResultStatus.READY)
+                self.assertEqual(data["status"], TaskResultStatus.READY)
 
                 result = default_task_backend.get_result(data["result_id"])
-                self.assertEqual(result.status, ResultStatus.READY)
+                self.assertEqual(result.status, TaskResultStatus.READY)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -150,7 +150,7 @@ class DummyBackendTestCase(SimpleTestCase):
 
         self.assertEqual(
             json.loads(response.content),
-            {"result_id": result_id, "result": None, "status": ResultStatus.READY},
+            {"result_id": result_id, "result": None, "status": TaskResultStatus.READY},
         )
 
     def test_enqueue_on_commit(self) -> None:
@@ -201,7 +201,7 @@ class DummyBackendTestCase(SimpleTestCase):
 
     def test_takes_context(self) -> None:
         result = test_tasks.get_task_id.enqueue()
-        self.assertEqual(result.status, ResultStatus.READY)
+        self.assertEqual(result.status, TaskResultStatus.READY)
 
     def test_clear(self) -> None:
         result = test_tasks.noop_task.enqueue()
@@ -210,7 +210,7 @@ class DummyBackendTestCase(SimpleTestCase):
 
         default_task_backend.clear()  # type:ignore[attr-defined]
 
-        with self.assertRaisesMessage(ResultDoesNotExist, result.id):
+        with self.assertRaisesMessage(TaskResultDoesNotExist, result.id):
             default_task_backend.get_result(result.id)
 
     def test_validate_on_enqueue(self) -> None:

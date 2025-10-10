@@ -14,10 +14,10 @@ from fakeredis import FakeRedis, FakeStrictRedis
 from rq.defaults import UNSERIALIZABLE_RETURN_VALUE_PAYLOAD
 from rq.timeouts import TimerDeathPenalty
 
-from django_tasks import ResultStatus, default_task_backend, tasks
+from django_tasks import TaskResultStatus, default_task_backend, task_backends
 from django_tasks.backends.rq import Job, RQBackend
 from django_tasks.base import Task
-from django_tasks.exceptions import InvalidTaskError, ResultDoesNotExist
+from django_tasks.exceptions import InvalidTaskError, TaskResultDoesNotExist
 from tests import tasks as test_tasks
 
 
@@ -90,8 +90,8 @@ class RQBackendTestCase(TransactionTestCase):
                 worker.work(burst=True)
 
     def test_using_correct_backend(self) -> None:
-        self.assertEqual(default_task_backend, tasks["default"])
-        self.assertIsInstance(tasks["default"], RQBackend)
+        self.assertEqual(default_task_backend, task_backends["default"])
+        self.assertIsInstance(task_backends["default"], RQBackend)
         self.assertEqual(default_task_backend.alias, "default")
         self.assertEqual(default_task_backend.options, {})
 
@@ -100,7 +100,7 @@ class RQBackendTestCase(TransactionTestCase):
             with self.subTest(task):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, ResultStatus.READY)
+                self.assertEqual(result.status, TaskResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.last_attempted_at)
@@ -117,7 +117,7 @@ class RQBackendTestCase(TransactionTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, ResultStatus.READY)
+                self.assertEqual(result.status, TaskResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
                 self.assertIsNone(result.last_attempted_at)
@@ -154,7 +154,7 @@ class RQBackendTestCase(TransactionTestCase):
                 result.refresh()
 
                 # assert result
-                self.assertEqual(result.status, ResultStatus.FAILED)
+                self.assertEqual(result.status, TaskResultStatus.FAILED)
                 with self.assertRaisesMessage(ValueError, "Task failed"):
                     result.return_value  # noqa: B018
                 self.assertTrue(result.is_finished)
@@ -183,7 +183,7 @@ class RQBackendTestCase(TransactionTestCase):
 
         result.refresh()
 
-        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.status, TaskResultStatus.FAILED)
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
@@ -209,7 +209,7 @@ class RQBackendTestCase(TransactionTestCase):
 
         result.refresh()
 
-        self.assertEqual(result.status, ResultStatus.FAILED)
+        self.assertEqual(result.status, TaskResultStatus.FAILED)
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
@@ -241,7 +241,7 @@ class RQBackendTestCase(TransactionTestCase):
 
         self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.READY)
+        self.assertEqual(result.status, TaskResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.last_attempted_at)
@@ -253,7 +253,7 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
         self.assertEqual(result.attempts, 1)
@@ -265,7 +265,7 @@ class RQBackendTestCase(TransactionTestCase):
 
         self.run_worker()
 
-        self.assertEqual(result.status, ResultStatus.READY)
+        self.assertEqual(result.status, TaskResultStatus.READY)
         self.assertFalse(result.is_finished)
         self.assertIsNone(result.started_at)
         self.assertIsNone(result.last_attempted_at)
@@ -277,25 +277,25 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
         self.assertEqual(result.attempts, 1)
 
     def test_get_missing_result(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             default_task_backend.get_result(str(uuid.uuid4()))
 
     async def test_async_get_missing_result(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             await default_task_backend.aget_result(str(uuid.uuid4()))
 
     def test_invalid_uuid(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             default_task_backend.get_result("123")
 
     async def test_async_invalid_uuid(self) -> None:
-        with self.assertRaises(ResultDoesNotExist):
+        with self.assertRaises(TaskResultDoesNotExist):
             await default_task_backend.aget_result("123")
 
     def test_meaning_of_life_view(self) -> None:
@@ -310,10 +310,10 @@ class RQBackendTestCase(TransactionTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], None)
-                self.assertEqual(data["status"], ResultStatus.READY)
+                self.assertEqual(data["status"], TaskResultStatus.READY)
 
                 result = default_task_backend.get_result(data["result_id"])
-                self.assertEqual(result.status, ResultStatus.READY)
+                self.assertEqual(result.status, TaskResultStatus.READY)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -327,7 +327,7 @@ class RQBackendTestCase(TransactionTestCase):
 
         self.assertEqual(
             json.loads(response.content),
-            {"result_id": result_id, "result": None, "status": ResultStatus.READY},
+            {"result_id": result_id, "result": None, "status": TaskResultStatus.READY},
         )
 
     def test_invalid_task_path(self) -> None:
@@ -514,7 +514,7 @@ class RQBackendTestCase(TransactionTestCase):
         result = test_tasks.test_context.enqueue(1)
         self.run_worker()
         result.refresh()
-        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
 
     def test_exception_classes_pop_empty_list_bug(self) -> None:
         """Test for IndexError: pop from empty list bug in task_result property
@@ -554,7 +554,7 @@ class RQBackendTestCase(TransactionTestCase):
         task_result = job.task_result
 
         # Verify the task_result is properly constructed despite missing exception classes
-        self.assertEqual(task_result.status, ResultStatus.FAILED)
+        self.assertEqual(task_result.status, TaskResultStatus.FAILED)
         self.assertEqual(task_result.task, test_tasks.failing_task_value_error)
         self.assertIsInstance(task_result.errors, list)
         self.assertEqual(

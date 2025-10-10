@@ -4,7 +4,7 @@ from typing import Any
 from django.apps.config import AppConfig
 from django.core import checks
 
-from django_tasks import tasks
+from django_tasks import task_backends
 
 
 @checks.register
@@ -13,5 +13,5 @@ def check_tasks(
 ) -> Iterable[checks.CheckMessage]:
     """Checks all registered task backends."""
 
-    for backend in tasks.all():
+    for backend in task_backends.all():
         yield from backend.check()

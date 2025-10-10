@@ -10,11 +10,11 @@ from django.utils.module_loading import import_string
 
 from .backends.base import BaseTaskBackend
 from .base import (
-    DEFAULT_QUEUE_NAME,
     DEFAULT_TASK_BACKEND_ALIAS,
-    ResultStatus,
+    DEFAULT_TASK_QUEUE_NAME,
     TaskContext,
     TaskResult,
+    TaskResultStatus,
     task,
 )
 from .exceptions import InvalidTaskBackendError
@@ -22,18 +22,18 @@ from .exceptions import InvalidTaskBackendError
 __version__ = importlib.metadata.version(__name__)
 
 __all__ = [
-    "tasks",
+    "task_backends",
     "default_task_backend",
     "DEFAULT_TASK_BACKEND_ALIAS",
-    "DEFAULT_QUEUE_NAME",
-    "ResultStatus",
+    "DEFAULT_TASK_QUEUE_NAME",
+    "TaskResultStatus",
     "TaskResult",
     "TaskContext",
     "task",
 ]
 
 
-class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
+class TaskBackendHandler(BaseConnectionHandler[BaseTaskBackend]):
     settings_name = "TASKS"
     exception_class = InvalidTaskBackendError
 
@@ -64,8 +64,8 @@ class TasksHandler(BaseConnectionHandler[BaseTaskBackend]):
         return backend_cls(alias=alias, params=params)  # type:ignore[no-any-return]
 
 
-tasks = TasksHandler()
+task_backends = TaskBackendHandler()
 
 default_task_backend: BaseTaskBackend = ConnectionProxy(  # type:ignore[assignment]
-    tasks, DEFAULT_TASK_BACKEND_ALIAS
+    task_backends, DEFAULT_TASK_BACKEND_ALIAS
 )

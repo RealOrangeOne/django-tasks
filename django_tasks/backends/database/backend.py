@@ -12,8 +12,9 @@ from typing_extensions import ParamSpec
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.base import Task
 from django_tasks.base import TaskResult as BaseTaskResult
-from django_tasks.exceptions import ResultDoesNotExist
+from django_tasks.exceptions import TaskResultDoesNotExist
 from django_tasks.signals import task_enqueued
+from django_tasks.utils import normalize_json
 
 if TYPE_CHECKING:
     from .models import DBTaskResult
@@ -42,7 +43,7 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         return DBTaskResult(
-            args_kwargs={"args": args, "kwargs": kwargs},
+            args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
             priority=task.priority,
             task_path=task.module_path,
             queue_name=task.queue_name,
@@ -77,7 +78,7 @@ class DatabaseBackend(BaseTaskBackend):
         try:
             return DBTaskResult.objects.get(id=result_id).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
-            raise ResultDoesNotExist(result_id) from e
+            raise TaskResultDoesNotExist(result_id) from e
 
     async def aget_result(self, result_id: str) -> TaskResult:
         from .models import DBTaskResult
@@ -85,7 +86,7 @@ class DatabaseBackend(BaseTaskBackend):
         try:
             return (await DBTaskResult.objects.aget(id=result_id)).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
-            raise ResultDoesNotExist(result_id) from e
+            raise TaskResultDoesNotExist(result_id) from e
 
     def check(self, **kwargs: Any) -> Iterable[checks.CheckMessage]:
         yield from super().check(**kwargs)

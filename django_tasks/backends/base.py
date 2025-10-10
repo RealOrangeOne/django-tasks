@@ -12,9 +12,9 @@ from django.utils.inspect import get_func_args
 from typing_extensions import ParamSpec
 
 from django_tasks.base import (
-    DEFAULT_PRIORITY,
-    MAX_PRIORITY,
-    MIN_PRIORITY,
+    TASK_DEFAULT_PRIORITY,
+    TASK_MAX_PRIORITY,
+    TASK_MIN_PRIORITY,
     Task,
     TaskResult,
 )
@@ -44,10 +44,10 @@ class BaseTaskBackend(metaclass=ABCMeta):
     """Does the backend support tasks being executed in a given priority order?"""
 
     def __init__(self, alias: str, params: dict) -> None:
-        from django_tasks import DEFAULT_QUEUE_NAME
+        from django_tasks import DEFAULT_TASK_QUEUE_NAME
 
         self.alias = alias
-        self.queues = set(params.get("QUEUES", [DEFAULT_QUEUE_NAME]))
+        self.queues = set(params.get("QUEUES", [DEFAULT_TASK_QUEUE_NAME]))
         self.enqueue_on_commit = bool(params.get("ENQUEUE_ON_COMMIT", True))
         self.options = params.get("OPTIONS", {})
 
@@ -82,18 +82,18 @@ class BaseTaskBackend(metaclass=ABCMeta):
                 "Task takes context but does not have a first argument of 'context'."
             )
 
-        if not self.supports_priority and task.priority != DEFAULT_PRIORITY:
+        if not self.supports_priority and task.priority != TASK_DEFAULT_PRIORITY:
             raise InvalidTaskError(
                 "Backend does not support setting priority of tasks."
             )
 
         if (
-            task.priority < MIN_PRIORITY
-            or task.priority > MAX_PRIORITY
+            task.priority < TASK_MIN_PRIORITY
+            or task.priority > TASK_MAX_PRIORITY
             or int(task.priority) != task.priority
         ):
             raise InvalidTaskError(
-                f"priority must be a whole number between {MIN_PRIORITY} and {MAX_PRIORITY}."
+                f"priority must be a whole number between {TASK_MIN_PRIORITY} and {TASK_MAX_PRIORITY}."
             )
 
         if not self.supports_defer and task.run_after is not None:

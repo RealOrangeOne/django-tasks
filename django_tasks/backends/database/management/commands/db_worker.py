@@ -15,11 +15,11 @@ from django.db import close_old_connections
 from django.db.utils import OperationalError
 from django.utils.autoreload import DJANGO_AUTORELOAD_ENV, run_with_reloader
 
-from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, tasks
+from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, task_backends
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction
-from django_tasks.base import DEFAULT_QUEUE_NAME, TaskContext
+from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, TaskContext
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
 from django_tasks.utils import get_random_id
@@ -193,7 +193,7 @@ class Worker:
 
 def valid_backend_name(val: str) -> str:
     try:
-        backend = tasks[val]
+        backend = task_backends[val]
     except InvalidTaskBackendError as e:
         raise ArgumentTypeError(e.args[0]) from e
     if not isinstance(backend, DatabaseBackend):
@@ -232,7 +232,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--queue-name",
             nargs="?",
-            default=DEFAULT_QUEUE_NAME,
+            default=DEFAULT_TASK_QUEUE_NAME,
             type=str,
             help="The queues to process. Separate multiple with a comma. To process all queues, use '*' (default: %(default)r)",
         )

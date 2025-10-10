@@ -210,16 +210,16 @@ default_task_backend.get_result(result_id)
 If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unsuccessful task (ie not `SUCCEEDED`) will raise a `ValueError`.
 
 ```python
-assert result.status == ResultStatus.SUCCEEDED
+assert result.status == TaskResultStatus.SUCCEEDED
 assert result.return_value == 42
 ```
 
 If a result has been updated in the background, you can call `refresh` on it to update its values. Results obtained using `get_result` will always be up-to-date.
 
 ```python
-assert result.status == ResultStatus.READY
+assert result.status == TaskResultStatus.READY
 result.refresh()
-assert result.status == ResultStatus.SUCCEEDED
+assert result.status == TaskResultStatus.SUCCEEDED
 ```
 
 #### Errors

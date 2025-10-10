@@ -20,20 +20,20 @@ from django.utils.translation import pgettext_lazy
 from django.utils.version import PY311
 from typing_extensions import ParamSpec, Self
 
-from .exceptions import TaskIntegrityError
+from .exceptions import TaskResultMismatch
 from .utils import (
     get_module_path,
-    json_normalize,
+    normalize_json,
 )
 
 if TYPE_CHECKING:
     from .backends.base import BaseTaskBackend
 
 DEFAULT_TASK_BACKEND_ALIAS = "default"
-DEFAULT_QUEUE_NAME = "default"
-MIN_PRIORITY = -100
-MAX_PRIORITY = 100
-DEFAULT_PRIORITY = 0
+DEFAULT_TASK_QUEUE_NAME = "default"
+TASK_MIN_PRIORITY = -100
+TASK_MAX_PRIORITY = 100
+TASK_DEFAULT_PRIORITY = 0
 
 TASK_REFRESH_ATTRS = {
     "errors",
@@ -47,7 +47,7 @@ TASK_REFRESH_ATTRS = {
 }
 
 
-class ResultStatus(TextChoices):
+class TaskResultStatus(TextChoices):
     READY = ("READY", pgettext_lazy("Task", "Ready"))
     """The Task has just been enqueued, or is ready to be executed again."""
 
@@ -148,7 +148,7 @@ class Task(Generic[P, T]):
         result = self.get_backend().get_result(result_id)
 
         if result.task.func != self.func:
-            raise TaskIntegrityError(
+            raise TaskResultMismatch(
                 f"Task does not match (received {result.task.module_path!r})"
             )
 
@@ -159,7 +159,7 @@ class Task(Generic[P, T]):
         result = await self.get_backend().aget_result(result_id)
 
         if result.task.func != self.func:
-            raise TaskIntegrityError(
+            raise TaskResultMismatch(
                 f"Task does not match (received {result.task.module_path!r})"
             )
 
@@ -176,9 +176,9 @@ class Task(Generic[P, T]):
         return await sync_to_async(self.func)(*args, **kwargs)
 
     def get_backend(self) -> "BaseTaskBackend":
-        from . import tasks
+        from . import task_backends
 
-        return tasks[self.backend]
+        return task_backends[self.backend]
 
     @property
     def module_path(self) -> str:
@@ -196,8 +196,8 @@ def task(function: Callable[P, T], /) -> Task[P, T]: ...
 @overload
 def task(
     *,
-    priority: int = DEFAULT_PRIORITY,
-    queue_name: str = DEFAULT_QUEUE_NAME,
+    priority: int = TASK_DEFAULT_PRIORITY,
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     enqueue_on_commit: bool | None = None,
     takes_context: Literal[False] = False,
@@ -209,8 +209,8 @@ def task(
 @overload
 def task(
     *,
-    priority: int = DEFAULT_PRIORITY,
-    queue_name: str = DEFAULT_QUEUE_NAME,
+    priority: int = TASK_DEFAULT_PRIORITY,
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     enqueue_on_commit: bool | None = None,
     takes_context: Literal[True],
@@ -221,8 +221,8 @@ def task(
 def task(  # type: ignore[misc]
     function: Callable[P, T] | None = None,
     *,
-    priority: int = DEFAULT_PRIORITY,
-    queue_name: str = DEFAULT_QUEUE_NAME,
+    priority: int = TASK_DEFAULT_PRIORITY,
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     enqueue_on_commit: bool | None = None,
     takes_context: bool = False,
@@ -234,10 +234,10 @@ def task(  # type: ignore[misc]
     """
     A decorator used to create a task.
     """
-    from . import tasks
+    from . import task_backends
 
     def wrapper(f: Callable[P, T]) -> Task[P, T]:
-        return tasks[backend].task_class(
+        return task_backends[backend].task_class(
             priority=priority,
             func=f,
             queue_name=queue_name,
@@ -281,7 +281,7 @@ class TaskResult(Generic[T]):
     id: str
     """A unique identifier for the task result"""
 
-    status: ResultStatus
+    status: TaskResultStatus
     """Status of the running Task"""
 
     enqueued_at: datetime | None
@@ -314,8 +314,8 @@ class TaskResult(Generic[T]):
     _return_value: T | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "args", json_normalize(self.args))
-        object.__setattr__(self, "kwargs", json_normalize(self.kwargs))
+        object.__setattr__(self, "args", normalize_json(self.args))
+        object.__setattr__(self, "kwargs", normalize_json(self.kwargs))
 
     @property
     def return_value(self) -> T | None:
@@ -325,9 +325,9 @@ class TaskResult(Generic[T]):
         If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
         """
-        if self.status == ResultStatus.SUCCEEDED:
+        if self.status == TaskResultStatus.SUCCEEDED:
             return cast(T, self._return_value)
-        elif self.status == ResultStatus.FAILED:
+        elif self.status == TaskResultStatus.FAILED:
             raise ValueError("Task failed")
         else:
             raise ValueError("Task has not finished yet")
@@ -335,7 +335,7 @@ class TaskResult(Generic[T]):
     @property
     def is_finished(self) -> bool:
         """Has the task finished?"""
-        return self.status in {ResultStatus.FAILED, ResultStatus.SUCCEEDED}
+        return self.status in {TaskResultStatus.FAILED, TaskResultStatus.SUCCEEDED}
 
     @property
     def attempts(self) -> int:

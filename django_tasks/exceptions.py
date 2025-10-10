@@ -1,7 +1,11 @@
-from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
+from django.core.exceptions import ImproperlyConfigured
 
 
-class InvalidTaskError(Exception):
+class TaskException(Exception):  # noqa: N818
+    """Base class for task-related exceptions. Do not raise directly."""
+
+
+class InvalidTaskError(TaskException):
     """
     The provided Task is invalid.
     """
@@ -11,9 +15,9 @@ class InvalidTaskBackendError(ImproperlyConfigured):
     pass
 
 
-class ResultDoesNotExist(ObjectDoesNotExist):
+class TaskResultDoesNotExist(TaskException):
     pass
 
 
-class TaskIntegrityError(ObjectDoesNotExist):
+class TaskResultMismatch(TaskException):
     pass

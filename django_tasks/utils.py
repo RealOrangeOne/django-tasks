@@ -1,7 +1,6 @@
 import inspect
-import json
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from functools import wraps
 from traceback import format_exception
 from typing import Any, TypeVar
@@ -23,11 +22,22 @@ def is_module_level_function(func: Callable) -> bool:
     return True
 
 
-def json_normalize(obj: Any) -> Any:
-    """
-    Round-trip encode object as JSON to normalize types.
-    """
-    return json.loads(json.dumps(obj))
+def normalize_json(obj: Any) -> Any:
+    """Recursively normalize an object into JSON-compatible types."""
+    match obj:
+        case Mapping():
+            return {normalize_json(k): normalize_json(v) for k, v in obj.items()}
+        case bytes():
+            try:
+                return obj.decode("utf-8")
+            except UnicodeDecodeError as e:
+                raise ValueError(f"Unsupported value: {type(obj)}") from e
+        case str() | int() | float() | bool() | None:
+            return obj
+        case Sequence():  # str and bytes were already handled.
+            return [normalize_json(v) for v in obj]
+        case _:  # Other types can't be serialized to JSON
+            raise TypeError(f"Unsupported type: {type(obj)}")
 
 
 def retry(*, retries: int = 3, backoff_delay: float = 0.1) -> Callable:
