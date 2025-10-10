@@ -6,9 +6,7 @@
 ![PyPI - Status](https://img.shields.io/pypi/status/django-tasks.svg)
 ![PyPI - License](https://img.shields.io/pypi/l/django-tasks.svg)
 
-An implementation and backport of background workers and tasks in Django, as defined in [DEP 0014](https://github.com/django/deps/blob/main/accepted/0014-background-workers.rst).
-
-**Warning**: This package is under active development, and breaking changes may be released at any time. Be sure to pin to specific versions if you're using this package in a production environment.
+An implementation and backport of background workers and tasks in Django. This is the out of tree implementation of `django.tasks`.
 
 ## Installation
 
