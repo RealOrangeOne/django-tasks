@@ -82,12 +82,6 @@ class Task(Generic[P, T]):
     run_after: datetime | None
     """The earliest this Task will run"""
 
-    enqueue_on_commit: bool | None
-    """
-    Whether the Task will be enqueued when the current transaction commits,
-    immediately, or whatever the backend decides.
-    """
-
     takes_context: bool
     """
     Whether the Task receives the Task context when executed.
@@ -199,7 +193,6 @@ def task(
     priority: int = TASK_DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-    enqueue_on_commit: bool | None = None,
     takes_context: Literal[False] = False,
 ) -> Callable[[Callable[P, T]], Task[P, T]]: ...
 
@@ -212,7 +205,6 @@ def task(
     priority: int = TASK_DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-    enqueue_on_commit: bool | None = None,
     takes_context: Literal[True],
 ) -> Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]]: ...
 
@@ -224,7 +216,6 @@ def task(  # type: ignore[misc]
     priority: int = TASK_DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
-    enqueue_on_commit: bool | None = None,
     takes_context: bool = False,
 ) -> (
     Task[P, T]
@@ -242,7 +233,6 @@ def task(  # type: ignore[misc]
             func=f,
             queue_name=queue_name,
             backend=backend,
-            enqueue_on_commit=enqueue_on_commit,
             takes_context=takes_context,
             run_after=None,
         )

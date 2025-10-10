@@ -66,9 +66,6 @@ The task decorator accepts a few arguments to customize the task:
 - `priority`: The priority of the task (between -100 and 100. Larger numbers are higher priority. 0 by default)
 - `queue_name`: Whether to run the task on a specific queue
 - `backend`: Name of the backend for this task to use (as defined in `TASKS`)
-- `enqueue_on_commit`: Whether the task is enqueued when the current transaction commits successfully, or enqueued immediately. By default, this is handled by the backend (see below). `enqueue_on_commit` may not be modified with `.using`.
-
-These attributes (besides `enqueue_on_commit`) can also be modified at run-time with `.using`:
 
 ```python
 modified_task = calculate_meaning_of_life.using(priority=10)
@@ -107,23 +104,6 @@ result = calculate_meaning_of_life.enqueue()
 The returned `TaskResult` can be interrogated to query the current state of the running task, as well as its return value.
 
 If the task takes arguments, these can be passed as-is to `enqueue`.
-
-#### Transactions
-
-By default, tasks are enqueued after the current transaction (if there is one) commits successfully (using Django's `transaction.on_commit` method), rather than enqueueing immediately.
-
-This can be configured using the `ENQUEUE_ON_COMMIT` setting. `True` and `False` force the behaviour.
-
-```python
-TASKS = {
-    "default": {
-        "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
-        "ENQUEUE_ON_COMMIT": False
-    }
-}
-```
-
-This can also be configured per-task by passing `enqueue_on_commit` to the `task` decorator.
 
 ### Queue names
 

@@ -3,12 +3,10 @@ from typing import cast
 from unittest import mock
 
 from django.db import transaction
-from django.db.utils import ConnectionHandler
 from django.test import (
     SimpleTestCase,
     TransactionTestCase,
     override_settings,
-    skipIfDBFeature,
 )
 from django.urls import reverse
 
@@ -24,7 +22,6 @@ from tests import tasks as test_tasks
         "default": {
             "BACKEND": "django_tasks.backends.dummy.DummyBackend",
             "QUEUES": [],
-            "ENQUEUE_ON_COMMIT": False,
         }
     }
 )
@@ -153,13 +150,6 @@ class DummyBackendTestCase(SimpleTestCase):
             {"result_id": result_id, "result": None, "status": TaskResultStatus.READY},
         )
 
-    def test_enqueue_on_commit(self) -> None:
-        self.assertTrue(
-            default_task_backend._get_enqueue_on_commit_for_task(
-                test_tasks.enqueue_on_commit_task
-            )
-        )
-
     def test_enqueue_logs(self) -> None:
         with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
             result = test_tasks.noop_task.enqueue()
@@ -185,20 +175,6 @@ class DummyBackendTestCase(SimpleTestCase):
 
         self.assertEqual(len(errors), 0, errors)
 
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-                "ENQUEUE_ON_COMMIT": True,
-            }
-        }
-    )
-    @mock.patch("django_tasks.backends.base.connections", ConnectionHandler({}))
-    def test_enqueue_on_commit_with_no_databases(self) -> None:
-        self.assertIn(
-            "tasks.E001", {error.id for error in default_task_backend.check()}
-        )
-
     def test_takes_context(self) -> None:
         result = test_tasks.get_task_id.enqueue()
         self.assertEqual(result.status, TaskResultStatus.READY)
@@ -223,7 +199,6 @@ class DummyBackendTestCase(SimpleTestCase):
                 "default": {
                     "BACKEND": "django_tasks.backends.dummy.DummyBackend",
                     "QUEUES": ["queue-1"],
-                    "ENQUEUE_ON_COMMIT": False,
                 }
             }
         ):
@@ -242,7 +217,6 @@ class DummyBackendTestCase(SimpleTestCase):
                 "default": {
                     "BACKEND": "django_tasks.backends.dummy.DummyBackend",
                     "QUEUES": ["queue-1"],
-                    "ENQUEUE_ON_COMMIT": False,
                 }
             }
         ):
@@ -257,37 +231,10 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
         TASKS={
             "default": {
                 "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-                "ENQUEUE_ON_COMMIT": True,
-            }
-        }
-    )
-    def test_wait_until_transaction_commit(self) -> None:
-        self.assertTrue(default_task_backend.enqueue_on_commit)
-        self.assertTrue(
-            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
-        )
-
-        with transaction.atomic():
-            test_tasks.noop_task.enqueue()
-
-            self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
-
-        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
-
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-                "ENQUEUE_ON_COMMIT": False,
             }
         }
     )
     def test_doesnt_wait_until_transaction_commit(self) -> None:
-        self.assertFalse(default_task_backend.enqueue_on_commit)
-        self.assertFalse(
-            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
-        )
-
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
 
@@ -296,71 +243,3 @@ class DummyBackendTransactionTestCase(TransactionTestCase):
             self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
 
         self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
-
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-            }
-        }
-    )
-    def test_wait_until_transaction_by_default(self) -> None:
-        self.assertTrue(default_task_backend.enqueue_on_commit)
-        self.assertTrue(
-            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
-        )
-
-        with transaction.atomic():
-            result = test_tasks.noop_task.enqueue()
-
-            self.assertIsNone(result.enqueued_at)
-
-            self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
-
-        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
-        self.assertIsNone(result.enqueued_at)
-        result.refresh()
-        self.assertIsNotNone(result.enqueued_at)
-
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-                "ENQUEUE_ON_COMMIT": False,
-            }
-        }
-    )
-    def test_task_specific_enqueue_on_commit(self) -> None:
-        self.assertFalse(default_task_backend.enqueue_on_commit)
-        self.assertTrue(test_tasks.enqueue_on_commit_task.enqueue_on_commit)
-        self.assertTrue(
-            default_task_backend._get_enqueue_on_commit_for_task(
-                test_tasks.enqueue_on_commit_task
-            )
-        )
-
-        with transaction.atomic():
-            result = test_tasks.enqueue_on_commit_task.enqueue()
-
-            self.assertIsNone(result.enqueued_at)
-
-            self.assertEqual(len(default_task_backend.results), 0)  # type:ignore[attr-defined]
-
-        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
-        self.assertIsNone(result.enqueued_at)
-        result.refresh()
-        self.assertIsNotNone(result.enqueued_at)
-
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-                "ENQUEUE_ON_COMMIT": True,
-            }
-        }
-    )
-    @skipIfDBFeature("supports_transactions")
-    def test_enqueue_on_commit_with_no_transactions(self) -> None:
-        self.assertIn(
-            "tasks.E002", {error.id for error in default_task_backend.check()}
-        )

@@ -1,8 +1,6 @@
 import logging
-from functools import partial
 from typing import TypeVar
 
-from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
@@ -110,9 +108,6 @@ class ImmediateBackend(BaseTaskBackend):
             worker_ids=[],
         )
 
-        if self._get_enqueue_on_commit_for_task(task) is not False:
-            transaction.on_commit(partial(self._execute_task, task_result))
-        else:
-            self._execute_task(task_result)
+        self._execute_task(task_result)
 
         return task_result
