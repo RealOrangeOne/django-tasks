@@ -23,6 +23,7 @@ from django_tasks.base import (
     TaskError,
     TaskResultStatus,
 )
+from django_tasks.compat import TASK_CLASSES
 from django_tasks.utils import get_exception_traceback, get_module_path, retry
 
 from .utils import normalize_uuid
@@ -155,12 +156,12 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     def task(self) -> Task[P, T]:
         task = import_string(self.task_path)
 
-        if not isinstance(task, Task):
+        if not isinstance(task, TASK_CLASSES):
             raise SuspiciousOperation(
                 f"Task {self.id} does not point to a Task ({self.task_path})"
             )
 
-        return task.using(
+        return task.using(  # type: ignore[no-any-return]
             priority=self.priority,
             queue_name=self.queue_name,
             run_after=None if self.run_after == get_date_max() else self.run_after,

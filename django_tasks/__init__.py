@@ -5,6 +5,7 @@ django_stubs_ext.monkeypatch()
 
 import importlib.metadata
 
+from django.conf import global_settings
 from django.utils.connection import BaseConnectionHandler, ConnectionProxy
 from django.utils.module_loading import import_string
 
@@ -39,15 +40,22 @@ class TaskBackendHandler(BaseConnectionHandler[BaseTaskBackend]):
 
     def configure_settings(self, settings: dict | None) -> dict:
         try:
-            return super().configure_settings(settings)
+            task_settings = super().configure_settings(settings)
         except AttributeError:
             # HACK: Force a default task backend.
             # Can be replaced with `django.conf.global_settings` once vendored.
-            return {
+            task_settings = None
+
+        if task_settings is None or task_settings is getattr(
+            global_settings, self.settings_name, None
+        ):
+            task_settings = {
                 DEFAULT_TASK_BACKEND_ALIAS: {
                     "BACKEND": "django_tasks.backends.immediate.ImmediateBackend"
                 }
             }
+
+        return task_settings
 
     def create_connection(self, alias: str) -> BaseTaskBackend:
         params = self.settings[alias]
