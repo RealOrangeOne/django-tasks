@@ -28,6 +28,7 @@ from django_tasks.base import (
     TaskResult,
     TaskResultStatus,
 )
+from django_tasks.compat import TASK_CLASSES
 from django_tasks.exceptions import TaskResultDoesNotExist
 from django_tasks.signals import task_enqueued, task_finished, task_started
 from django_tasks.utils import get_module_path, get_random_id
@@ -75,12 +76,12 @@ class Job(BaseJob):
     def func(self) -> Task:
         func = super().func
 
-        if not isinstance(func, Task):
+        if not isinstance(func, TASK_CLASSES):
             raise SuspiciousOperation(
                 f"Task {self.id} does not point to a Task ({self.func_name})"
             )
 
-        return func
+        return func  # type: ignore[no-any-return]
 
     @cached_property
     def task_result(self) -> TaskResult:
