@@ -29,11 +29,9 @@ from tests import tasks as test_tasks
         "default": {
             "BACKEND": "django_tasks.backends.dummy.DummyBackend",
             "QUEUES": ["default", "queue_1"],
-            "ENQUEUE_ON_COMMIT": False,
         },
         "immediate": {
             "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
-            "ENQUEUE_ON_COMMIT": False,
             "QUEUES": [],
         },
         "missing": {"BACKEND": "does.not.exist"},

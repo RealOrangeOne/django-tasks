@@ -1,8 +1,6 @@
 from copy import deepcopy
-from functools import partial
 from typing import TypeVar
 
-from django.db import transaction
 from django.utils import timezone
 from typing_extensions import ParamSpec
 
@@ -28,11 +26,6 @@ class DummyBackend(BaseTaskBackend):
 
         self.results = []
 
-    def _store_result(self, result: TaskResult) -> None:
-        object.__setattr__(result, "enqueued_at", timezone.now())
-        self.results.append(result)
-        task_enqueued.send(type(self), task_result=result)
-
     def enqueue(
         self,
         task: Task[P, T],
@@ -45,7 +38,7 @@ class DummyBackend(BaseTaskBackend):
             task=task,
             id=get_random_id(),
             status=TaskResultStatus.READY,
-            enqueued_at=None,
+            enqueued_at=timezone.now(),
             started_at=None,
             last_attempted_at=None,
             finished_at=None,
@@ -56,10 +49,9 @@ class DummyBackend(BaseTaskBackend):
             worker_ids=[],
         )
 
-        if self._get_enqueue_on_commit_for_task(task) is not False:
-            transaction.on_commit(partial(self._store_result, result))
-        else:
-            self._store_result(result)
+        self.results.append(result)
+
+        task_enqueued.send(type(self), task_result=result)
 
         # Copy the task to prevent mutation issues
         return deepcopy(result)
