@@ -291,7 +291,7 @@ Any queues defined in `QUEUES` must also be defined in `django-rq`'s `RQ_QUEUES`
 To use `rq` with `django-tasks`, a custom `Job` class must be used. This can be passed to the worker using `--job-class`:
 
 ```shell
-./manage.py rqworker --job-class django_tasks.backend.rq.Job
+./manage.py rqworker --job-class django_tasks.backends.rq.Job
 ```
 
 ### Priorities
