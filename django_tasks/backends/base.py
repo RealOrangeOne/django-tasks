@@ -6,7 +6,6 @@ from typing import Any, TypeVar
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core import checks
-from django.db import connections
 from django.utils import timezone
 from django.utils.inspect import get_func_args
 from typing_extensions import ParamSpec
@@ -27,7 +26,6 @@ P = ParamSpec("P")
 
 class BaseTaskBackend(metaclass=ABCMeta):
     alias: str
-    enqueue_on_commit: bool
 
     task_class = Task
 
@@ -48,20 +46,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
         self.alias = alias
         self.queues = set(params.get("QUEUES", [DEFAULT_TASK_QUEUE_NAME]))
-        self.enqueue_on_commit = bool(params.get("ENQUEUE_ON_COMMIT", True))
         self.options = params.get("OPTIONS", {})
-
-    def _get_enqueue_on_commit_for_task(self, task: Task) -> bool:
-        """
-        Determine the correct `enqueue_on_commit` setting to use for a given task.
-        """
-
-        # If the task defines it, use that, otherwise, fall back to the backend.
-        return (
-            task.enqueue_on_commit
-            if task.enqueue_on_commit is not None
-            else self.enqueue_on_commit
-        )
 
     def validate_task(self, task: Task) -> None:
         """
@@ -151,19 +136,4 @@ class BaseTaskBackend(metaclass=ABCMeta):
         )
 
     def check(self, **kwargs: Any) -> Iterable[checks.CheckMessage]:
-        if self.enqueue_on_commit and not connections._settings:  # type: ignore[attr-defined]
-            yield checks.Error(
-                "`ENQUEUE_ON_COMMIT` cannot be used when no databases are configured",
-                hint="Set ENQUEUE_ON_COMMIT to False",
-                id="tasks.E001",
-            )
-
-        if (
-            self.enqueue_on_commit
-            and not connections["default"].features.supports_transactions
-        ):
-            yield checks.Error(
-                "ENQUEUE_ON_COMMIT cannot be used on a database which doesn't support transactions",
-                hint="Set ENQUEUE_ON_COMMIT to False",
-                id="tasks.E002",
-            )
+        return []
