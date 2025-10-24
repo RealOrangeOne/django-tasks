@@ -16,12 +16,14 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        django-version: ["4.2", "5.0", "5.1", "5.2", "6.0a1"]
+        django-version: ["4.2", "5.0", "5.1", "5.2", "6.0b1"]
         exclude:
           - django-version: "6.0b1"
             python-version: "3.10"
           - django-version: "6.0b1"
             python-version: "3.11"
+          - django-version: "4.2"
+            python-version: "3.14"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -62,6 +64,8 @@ jobs:
       fail-fast: false
       matrix:
         django-version: ["4.2", "5.0", "5.1", "5.2"]
+        exclude:
+          - django-version: "4.2"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.14
@@ -97,6 +101,8 @@ jobs:
       fail-fast: false
       matrix:
         django-version: ["4.2", "5.0", "5.1", "5.2"]
+        exclude:
+          - django-version: "4.2"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.14
