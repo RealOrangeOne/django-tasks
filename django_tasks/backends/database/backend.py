@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from django.apps import apps
 from django.core import checks
 from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.utils.version import PY311
 from typing_extensions import ParamSpec
 
@@ -61,14 +60,8 @@ class DatabaseBackend(BaseTaskBackend):
 
         db_result = self._task_to_db_task(task, args, kwargs)
 
-        def save_result() -> None:
-            db_result.save()
-            task_enqueued.send(type(self), task_result=db_result.task_result)
-
-        if self._get_enqueue_on_commit_for_task(task):
-            transaction.on_commit(save_result)
-        else:
-            save_result()
+        db_result.save()
+        task_enqueued.send(type(self), task_result=db_result.task_result)
 
         return db_result.task_result
 

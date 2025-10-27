@@ -7,7 +7,6 @@ import django_rq
 from django.apps import apps
 from django.core.checks import messages
 from django.core.exceptions import SuspiciousOperation
-from django.db import transaction
 from django.utils.functional import cached_property
 from redis.client import Redis
 from rq.defaults import UNSERIALIZABLE_RETURN_VALUE_PAYLOAD
@@ -237,22 +236,13 @@ class RQBackend(BaseTaskBackend):
             meta={"backend_name": self.alias},
         )
 
-        def save_result() -> None:
-            nonlocal job
-            if task.run_after is None:
-                job = queue.enqueue_job(
-                    job, at_front=task.priority == TASK_MAX_PRIORITY
-                )
-            else:
-                job = queue.schedule_job(job, task.run_after)
-
-            object.__setattr__(task_result, "enqueued_at", job.enqueued_at)
-            task_enqueued.send(type(self), task_result=task_result)
-
-        if self._get_enqueue_on_commit_for_task(task):
-            transaction.on_commit(save_result)
+        if task.run_after is None:
+            job = queue.enqueue_job(job, at_front=task.priority == TASK_MAX_PRIORITY)
         else:
-            save_result()
+            job = queue.schedule_job(job, task.run_after)
+
+        object.__setattr__(task_result, "enqueued_at", job.enqueued_at)
+        task_enqueued.send(type(self), task_result=task_result)
 
         return task_result
 
