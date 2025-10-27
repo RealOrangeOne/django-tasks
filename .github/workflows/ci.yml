@@ -15,13 +15,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         django-version: ["4.2", "5.0", "5.1", "5.2", "6.0b1"]
         exclude:
           - django-version: "6.0b1"
             python-version: "3.10"
           - django-version: "6.0b1"
             python-version: "3.11"
+          - django-version: "4.2"
+            python-version: "3.14"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -62,12 +64,14 @@ jobs:
       fail-fast: false
       matrix:
         django-version: ["4.2", "5.0", "5.1", "5.2"]
+        exclude:
+          - django-version: "4.2"
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -97,12 +101,14 @@ jobs:
       fail-fast: false
       matrix:
         django-version: ["4.2", "5.0", "5.1", "5.2"]
+        exclude:
+          - django-version: "4.2"
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -133,7 +139,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
+        python-version: "3.14"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip build
