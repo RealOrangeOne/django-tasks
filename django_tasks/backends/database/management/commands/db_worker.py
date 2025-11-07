@@ -4,6 +4,7 @@ import os
 import random
 import signal
 import sys
+import threading
 import time
 from argparse import ArgumentParser, ArgumentTypeError, BooleanOptionalAction
 from types import FrameType
@@ -19,7 +20,7 @@ from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, task_backends
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction
-from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, TaskContext
+from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, MAX_WORKERS, TaskContext
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
 from django_tasks.utils import get_random_id
@@ -39,6 +40,7 @@ class Worker:
         startup_delay: bool,
         max_tasks: int | None,
         worker_id: str,
+        max_workers: int,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -47,6 +49,7 @@ class Worker:
         self.backend_name = backend_name
         self.startup_delay = startup_delay
         self.max_tasks = max_tasks
+        self.max_workers = max_workers
 
         self.running = True
         self.running_task = False
@@ -105,7 +108,7 @@ class Worker:
             # it be as efficient as possible.
             with exclusive_transaction(tasks.db):
                 try:
-                    task_results = list(tasks.get_locked(self.max_tasks))
+                    task_results = list(tasks.get_locked(self.max_workers))
                 except OperationalError as e:
                     # Ignore locked databases and keep trying.
                     # It should unlock eventually.
@@ -120,8 +123,15 @@ class Worker:
                         task_result.claim(self.worker_id)
 
             if task_results is not None and len(task_results) > 0:
+                threads = []
                 for task_result in task_results:
-                    self.run_task(task_result)
+                    thread = threading.Thread(target=self.run_task, args=(task_result,))
+                    thread.start()
+                    threads.append(thread)
+
+                # Wait for all threads to complete
+                for thread in threads:
+                    thread.join()
 
             if self.batch and (task_results is None or len(task_results) == 0):
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
@@ -284,6 +294,13 @@ class Command(BaseCommand):
             help="Worker id. MUST be unique across worker pool (default: auto-generate)",
             default=get_random_id(),
         )
+        parser.add_argument(
+            "--max-workers",
+            nargs="?",
+            type=valid_max_tasks,
+            help="Maximum number of worker threads to process tasks concurrently (default: %(default)r)",
+            default=MAX_WORKERS,
+        )
 
     def configure_logging(self, verbosity: int) -> None:
         if verbosity == 0:
@@ -310,6 +327,7 @@ class Command(BaseCommand):
         reload: bool,
         max_tasks: int | None,
         worker_id: str,
+        max_workers: int,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -328,6 +346,7 @@ class Command(BaseCommand):
             startup_delay=startup_delay,
             max_tasks=max_tasks,
             worker_id=worker_id,
+            max_workers=max_workers,
         )
 
         if reload:
