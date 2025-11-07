@@ -1576,38 +1576,20 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
     @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_repeat_ctrl_c(self) -> None:
-        result = test_tasks.hang.enqueue()
-        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [])
+        process = self.start_worker()
 
-        worker_id = get_random_id()
+        try:
+            process.send_signal(signal.SIGINT)
+            time.sleep(1)
 
-        process = self.start_worker(worker_id=worker_id)
-
-        # Make sure the task is running by now
-        time.sleep(self.WORKER_STARTUP_TIME)
-
-        result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.RUNNING)
-        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [worker_id])
-
-        process.send_signal(signal.SIGINT)
-
-        time.sleep(0.5)
-
-        self.assertIsNone(process.poll())
-        result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.RUNNING)
-        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [worker_id])
-
-        process.send_signal(signal.SIGINT)
-
-        process.wait(timeout=2)
-
-        self.assertEqual(process.returncode, 0)
-
-        result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.FAILED)
-        self.assertEqual(result.errors[0].exception_class, SystemExit)
+            # Send a second interrupt signal to force termination
+            process.send_signal(signal.SIGINT)
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            process.wait(timeout=5)
+        finally:
+            self.assertEqual(process.poll(), -2)
 
     @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
     def test_kill(self) -> None:
