@@ -105,23 +105,25 @@ class Worker:
             # it be as efficient as possible.
             with exclusive_transaction(tasks.db):
                 try:
-                    task_result = tasks.get_locked()
+                    task_results = tasks.get_locked(self.max_tasks)
                 except OperationalError as e:
                     # Ignore locked databases and keep trying.
                     # It should unlock eventually.
                     if "is locked" in e.args[0]:
-                        task_result = None
+                        task_results = None
                     else:
                         raise
 
-                if task_result is not None:
+                if task_results is not None and task_results.exists():
                     # "claim" the task, so it isn't run by another worker process
-                    task_result.claim(self.worker_id)
+                    for task_result in task_results:
+                        task_result.claim(self.worker_id)
 
-            if task_result is not None:
-                self.run_task(task_result)
+            if task_results is not None and task_results.exists():
+                for task_result in task_results:
+                    self.run_task(task_result)
 
-            if self.batch and task_result is None:
+            if self.batch and (task_results is None or not task_results.exists()):
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
                 logger.info(
                     "No more tasks to run for worker_id=%s - exiting gracefully.",
