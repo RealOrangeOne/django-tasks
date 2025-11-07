@@ -559,7 +559,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
                 self.assertEqual(result.status, TaskResultStatus.READY)
 
-                with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
+                with self.assertNumQueries(9 if connection.vendor == "mysql" else 11):
                     self.run_worker()
 
                 self.assertEqual(result.status, TaskResultStatus.READY)
@@ -582,7 +582,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 4)
 
-        with self.assertNumQueries(27 if connection.vendor == "mysql" else 23):
+        with self.assertNumQueries(27 if connection.vendor == "mysql" else 17):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -590,7 +590,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.failed().count(), 1)
 
     def test_no_tasks(self) -> None:
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(5):
             self.run_worker()
 
     def test_doesnt_process_different_queue(self) -> None:
@@ -598,12 +598,12 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(5):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 11):
             self.run_worker(queue_name=result.task.queue_name)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -613,12 +613,12 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(5):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 11):
             self.run_worker(queue_name="*")
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -627,7 +627,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.failing_task_value_error.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 11):
             self.run_worker()
 
         self.assertEqual(result.status, TaskResultStatus.READY)
@@ -656,7 +656,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.complex_exception.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 11):
             self.run_worker()
 
         self.assertEqual(result.status, TaskResultStatus.READY)
@@ -701,12 +701,12 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(5):
             self.run_worker(backend_name="dummy")
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 11):
             self.run_worker(backend_name=result.backend)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -794,7 +794,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.count(), 1)
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(5):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.count(), 1)
@@ -805,7 +805,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
+        with self.assertNumQueries(9 if connection.vendor == "mysql" else 11):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -1055,7 +1055,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         result = test_tasks.noop_task.enqueue()
 
         with exclusive_transaction():
-            locked_result = DBTaskResult.objects.get_locked()
+            locked_result = DBTaskResult.objects.get_locked().first()
 
             self.assertEqual(result.id, str(locked_result.id))  # type:ignore[union-attr]
 
@@ -1115,9 +1115,11 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
         test_tasks.noop_task.enqueue()
 
         with exclusive_transaction():
-            locked_result = DBTaskResult.objects.filter(
-                priority=result.task.priority
-            ).get_locked()
+            locked_result = (
+                DBTaskResult.objects.filter(priority=result.task.priority)
+                .get_locked()
+                .first()
+            )
 
             self.assertEqual(result.id, str(locked_result.id))
 
@@ -1134,7 +1136,7 @@ class DatabaseTaskResultTestCase(TransactionTestCase):
     @exclusive_transaction()
     def test_lock_no_rows(self) -> None:
         self.assertEqual(DBTaskResult.objects.count(), 0)
-        self.assertIsNone(DBTaskResult.objects.all().get_locked())
+        self.assertEqual(DBTaskResult.objects.all().get_locked().count(), 0)
 
     @skipIf(connection.vendor == "sqlite", "SQLite handles locks differently")
     def test_get_locked_with_locked_rows(self) -> None:
