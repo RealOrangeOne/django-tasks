@@ -295,7 +295,7 @@ class Command(BaseCommand):
             "--max-threads",
             nargs="?",
             default=MAX_THREADS,
-            type=int,
+            type=valid_max_tasks,
             help=f"The maximum number of threads to use for processing tasks (default: {MAX_THREADS})",
         )
 
