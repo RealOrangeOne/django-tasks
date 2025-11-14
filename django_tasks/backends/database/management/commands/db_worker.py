@@ -4,9 +4,9 @@ import os
 import random
 import signal
 import sys
-import threading
 import time
 from argparse import ArgumentParser, ArgumentTypeError, BooleanOptionalAction
+from concurrent.futures import ThreadPoolExecutor
 from types import FrameType
 
 from django.conf import settings
@@ -20,7 +20,7 @@ from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, task_backends
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction
-from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, MAX_WORKERS, TaskContext
+from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, MAX_THREADS, TaskContext
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
 from django_tasks.utils import get_random_id
@@ -40,7 +40,7 @@ class Worker:
         startup_delay: bool,
         max_tasks: int | None,
         worker_id: str,
-        max_workers: int,
+        max_threads: int = MAX_THREADS,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -49,7 +49,7 @@ class Worker:
         self.backend_name = backend_name
         self.startup_delay = startup_delay
         self.max_tasks = max_tasks
-        self.max_workers = max_workers
+        self.max_threads = max_threads
 
         self.running = True
         self.running_task = False
@@ -88,6 +88,12 @@ class Worker:
         if hasattr(signal, "SIGQUIT"):
             signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
+    def run_parallel(self) -> None:
+        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+            futures = [executor.submit(self.run) for _ in range(self.max_threads)]
+            for future in futures:
+                future.result()
+
     def run(self) -> None:
         logger.info(
             "Starting worker worker_id=%s queues=%s",
@@ -108,32 +114,23 @@ class Worker:
             # it be as efficient as possible.
             with exclusive_transaction(tasks.db):
                 try:
-                    task_results = list(tasks.get_locked(self.max_workers))
+                    task_result = tasks.get_locked()
                 except OperationalError as e:
                     # Ignore locked databases and keep trying.
                     # It should unlock eventually.
                     if "is locked" in e.args[0]:
-                        task_results = None
+                        task_result = None
                     else:
                         raise
 
-                if task_results is not None and len(task_results) > 0:
+                if task_result is not None:
                     # "claim" the task, so it isn't run by another worker process
-                    for task_result in task_results:
-                        task_result.claim(self.worker_id)
+                    task_result.claim(self.worker_id)
 
-            if task_results is not None and len(task_results) > 0:
-                threads = []
-                for task_result in task_results:
-                    thread = threading.Thread(target=self.run_task, args=(task_result,))
-                    thread.start()
-                    threads.append(thread)
+            if task_result is not None:
+                self.run_task(task_result)
 
-                # Wait for all threads to complete
-                for thread in threads:
-                    thread.join()
-
-            if self.batch and (task_results is None or len(task_results) == 0):
+            if self.batch and task_result is None:
                 # If we're running in "batch" mode, terminate the loop (and thus the worker)
                 logger.info(
                     "No more tasks to run for worker_id=%s - exiting gracefully.",
@@ -155,7 +152,7 @@ class Worker:
 
             # If ctrl-c has just interrupted a task, self.running was cleared,
             # and we should not sleep, but rather exit immediately.
-            if self.running and not task_results:
+            if self.running and not task_result:
                 # Wait before checking for another task
                 time.sleep(self.interval)
 
@@ -295,11 +292,11 @@ class Command(BaseCommand):
             default=get_random_id(),
         )
         parser.add_argument(
-            "--max-workers",
+            "--max-threads",
             nargs="?",
-            type=valid_max_tasks,
-            help="Maximum number of worker threads to process tasks concurrently (default: %(default)r)",
-            default=MAX_WORKERS,
+            default=MAX_THREADS,
+            type=int,
+            help=f"The maximum number of threads to use for processing tasks (default: {MAX_THREADS})",
         )
 
     def configure_logging(self, verbosity: int) -> None:
@@ -327,7 +324,6 @@ class Command(BaseCommand):
         reload: bool,
         max_tasks: int | None,
         worker_id: str,
-        max_workers: int,
         **options: dict,
     ) -> None:
         self.configure_logging(verbosity)
@@ -346,7 +342,6 @@ class Command(BaseCommand):
             startup_delay=startup_delay,
             max_tasks=max_tasks,
             worker_id=worker_id,
-            max_workers=max_workers,
         )
 
         if reload:
@@ -354,7 +349,7 @@ class Command(BaseCommand):
                 # Only the child process should configure its signals
                 worker.configure_signals()
 
-            run_with_reloader(worker.run)
+            run_with_reloader(worker.run_parallel)
         else:
             worker.configure_signals()
-            worker.run()
+            worker.run_parallel()

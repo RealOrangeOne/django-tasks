@@ -1,13 +1,13 @@
 import datetime
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
 
 import django
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 from django.db import models
-from django.db.models import F, Q, QuerySet
+from django.db.models import F, Q
 from django.db.models.constraints import CheckConstraint
 from django.utils import timezone
 from django.utils.module_loading import import_string
@@ -80,11 +80,11 @@ class DBTaskResultQuerySet(models.QuerySet):
         return self.failed() | self.succeeded()
 
     @retry()
-    def get_locked(self, size: int = 1) -> QuerySet["DBTaskResult"]:
+    def get_locked(self) -> Optional["DBTaskResult"]:
         """
         Get a job, locking the row and accounting for deadlocks.
         """
-        return self.select_for_update(skip_locked=True)[:size]
+        return self.select_for_update(skip_locked=True).first()
 
 
 class DBTaskResult(GenericBase[P, T], models.Model):
