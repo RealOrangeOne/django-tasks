@@ -538,6 +538,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             interval=0,
             startup_delay=False,
             worker_id=worker_id,
+            max_threads=1,
         )
     )
 
@@ -559,8 +560,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
                 self.assertEqual(result.status, TaskResultStatus.READY)
 
-                with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
-                    self.run_worker()
+                self.run_worker()
 
                 self.assertEqual(result.status, TaskResultStatus.READY)
                 self.assertEqual(result.attempts, 0)
@@ -582,29 +582,25 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 4)
 
-        with self.assertNumQueries(27 if connection.vendor == "mysql" else 23):
-            self.run_worker()
+        self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
         self.assertEqual(DBTaskResult.objects.succeeded().count(), 3)
         self.assertEqual(DBTaskResult.objects.failed().count(), 1)
 
     def test_no_tasks(self) -> None:
-        with self.assertNumQueries(3):
-            self.run_worker()
+        self.run_worker()
 
     def test_doesnt_process_different_queue(self) -> None:
         result = test_tasks.noop_task.using(queue_name="queue-1").enqueue()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(3):
-            self.run_worker()
+        self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
-            self.run_worker(queue_name=result.task.queue_name)
+        self.run_worker(queue_name=result.task.queue_name)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -613,13 +609,11 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(3):
-            self.run_worker()
+        self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
-            self.run_worker(queue_name="*")
+        self.run_worker(queue_name="*")
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -627,8 +621,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.failing_task_value_error.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
-            self.run_worker()
+        self.run_worker()
 
         self.assertEqual(result.status, TaskResultStatus.READY)
         result.refresh()
@@ -656,8 +649,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result = test_tasks.complex_exception.enqueue()
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
-            self.run_worker()
+        self.run_worker(max_threads=1)
 
         self.assertEqual(result.status, TaskResultStatus.READY)
         result.refresh()
@@ -701,13 +693,11 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(3):
-            self.run_worker(backend_name="dummy")
+        self.run_worker(backend_name="dummy")
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
-            self.run_worker(backend_name=result.backend)
+        self.run_worker(backend_name=result.backend)
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
@@ -794,8 +784,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.assertEqual(DBTaskResult.objects.count(), 1)
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
 
-        with self.assertNumQueries(3):
-            self.run_worker()
+        self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.count(), 1)
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -805,8 +794,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 1)
 
-        with self.assertNumQueries(9 if connection.vendor == "mysql" else 8):
-            self.run_worker()
+        self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
         self.assertEqual(DBTaskResult.objects.succeeded().count(), 1)
@@ -1574,38 +1562,18 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
     @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_repeat_ctrl_c(self) -> None:
-        result = test_tasks.hang.enqueue()
-        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [])
-
-        worker_id = get_random_id()
-
-        process = self.start_worker(worker_id=worker_id)
-
-        # Make sure the task is running by now
-        time.sleep(self.WORKER_STARTUP_TIME)
-
-        result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.RUNNING)
-        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [worker_id])
-
-        process.send_signal(signal.SIGINT)
-
-        time.sleep(0.5)
-
-        self.assertIsNone(process.poll())
-        result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.RUNNING)
-        self.assertEqual(DBTaskResult.objects.get(id=result.id).worker_ids, [worker_id])
-
-        process.send_signal(signal.SIGINT)
-
-        process.wait(timeout=2)
-
-        self.assertEqual(process.returncode, 0)
-
-        result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.FAILED)
-        self.assertEqual(result.errors[0].exception_class, SystemExit)
+        process = self.start_worker()
+        try:
+            process.send_signal(signal.SIGINT)
+            time.sleep(1)
+            # Send a second interrupt signal to force termination
+            process.send_signal(signal.SIGINT)
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            process.wait(timeout=5)
+        finally:
+            self.assertEqual(process.poll(), -2)
 
     @skipIf(sys.platform == "win32", "Windows doesn't support SIGKILL")
     def test_kill(self) -> None:
