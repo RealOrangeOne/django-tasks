@@ -20,7 +20,7 @@ from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, task_backends
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction
-from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, MAX_THREADS, TaskContext
+from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, DEFAULT_THREADS, TaskContext
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
 from django_tasks.utils import get_random_id
@@ -40,7 +40,7 @@ class Worker:
         startup_delay: bool,
         max_tasks: int | None,
         worker_id: str,
-        max_threads: int = MAX_THREADS,
+        max_threads: int = DEFAULT_THREADS,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -294,9 +294,9 @@ class Command(BaseCommand):
         parser.add_argument(
             "--max-threads",
             nargs="?",
-            default=MAX_THREADS,
+            default=DEFAULT_THREADS,
             type=valid_max_tasks,
-            help=f"The maximum number of threads to use for processing tasks (default: {MAX_THREADS})",
+            help=f"The maximum number of threads to use for processing tasks (default: {DEFAULT_THREADS})",
         )
 
     def configure_logging(self, verbosity: int) -> None:
