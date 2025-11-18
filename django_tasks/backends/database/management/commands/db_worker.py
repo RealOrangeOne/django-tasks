@@ -6,7 +6,7 @@ import signal
 import sys
 import time
 from argparse import ArgumentParser, ArgumentTypeError, BooleanOptionalAction
-from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
 from types import FrameType
 
 from django.conf import settings
@@ -89,10 +89,14 @@ class Worker:
             signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
     def run_parallel(self) -> None:
-        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
-            futures = [executor.submit(self.run) for _ in range(self.max_threads)]
-            for future in futures:
-                future.result()
+        threads = []
+        for _ in range(self.max_threads):
+            t = Thread(target=self.run, daemon=True)
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
 
     def run(self) -> None:
         logger.info(
