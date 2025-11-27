@@ -65,9 +65,17 @@ class RQBackendTestCase(TransactionTestCase):
     def setUp(self) -> None:
         super().setUp()
 
-        fake_connection_patcher = patch(
-            "django_rq.queues.get_redis_connection", get_fake_connection
-        )
+        try:
+            from django_rq.connection_utils import get_redis_connection  # noqa: F401
+        except ImportError:
+            # django-rq < 3.2
+            fake_connection_patcher = patch(
+                "django_rq.queues.get_redis_connection", get_fake_connection
+            )
+        else:
+            fake_connection_patcher = patch(
+                "django_rq.connection_utils.get_redis_connection", get_fake_connection
+            )
         fake_connection_patcher.start()
         self.addCleanup(fake_connection_patcher.stop)
 
