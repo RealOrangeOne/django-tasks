@@ -8,6 +8,8 @@
 
 An implementation and backport of background workers and tasks in Django. This is the out of tree implementation of `django.tasks`.
 
+**Note**: Whilst much of `django-tasks` is available in `django` itself as of 6.0, some features of `django-tasks` do not have the same production-grade guarantees. The package is still marked as "beta" to reflect this.
+
 ## Installation
 
 ```
@@ -45,8 +47,6 @@ A few backends are included by default:
 Note: `DatabaseBackend` additionally requires `django_tasks.backends.database` adding to `INSTALLED_APPS`.
 
 ## Usage
-
-**Note**: This documentation is still work-in-progress. Further details can also be found on the [DEP](https://github.com/django/deps/blob/main/accepted/0014-background-workers.rst). [The tests](./tests/tests/) are also a good exhaustive reference.
 
 ### Defining tasks
 
