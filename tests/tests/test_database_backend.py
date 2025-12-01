@@ -322,45 +322,10 @@ class DatabaseBackendTestCase(TransactionTestCase):
         TASKS={
             "default": {
                 "BACKEND": "django_tasks.backends.database.DatabaseBackend",
-                "ENQUEUE_ON_COMMIT": True,
-            }
-        }
-    )
-    def test_wait_until_transaction_commit(self) -> None:
-        self.assertTrue(default_task_backend.enqueue_on_commit)
-        self.assertTrue(
-            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
-        )
-
-        with transaction.atomic():
-            result = test_tasks.noop_task.enqueue()
-
-            self.assertIsNone(result.enqueued_at)
-
-            self.assertEqual(DBTaskResult.objects.count(), 0)
-            # SQLite locks the table during this transaction
-            if connection.vendor != "sqlite":
-                self.assertEqual(self.get_task_count_in_new_connection(), 0)
-
-        if connection.vendor != "sqlite":
-            self.assertEqual(self.get_task_count_in_new_connection(), 1)
-        result.refresh()
-        self.assertIsNotNone(result.enqueued_at)
-
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.database.DatabaseBackend",
-                "ENQUEUE_ON_COMMIT": False,
             }
         }
     )
     def test_doesnt_wait_until_transaction_commit(self) -> None:
-        self.assertFalse(default_task_backend.enqueue_on_commit)
-        self.assertFalse(
-            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
-        )
-
         with transaction.atomic():
             result = test_tasks.noop_task.enqueue()
 
@@ -374,36 +339,6 @@ class DatabaseBackendTestCase(TransactionTestCase):
 
         if connection.vendor != "sqlite":
             self.assertEqual(self.get_task_count_in_new_connection(), 1)
-
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.database.DatabaseBackend",
-            }
-        }
-    )
-    def test_wait_until_transaction_by_default(self) -> None:
-        self.assertTrue(default_task_backend.enqueue_on_commit)
-        self.assertTrue(
-            default_task_backend._get_enqueue_on_commit_for_task(test_tasks.noop_task)
-        )
-
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.database.DatabaseBackend",
-                "ENQUEUE_ON_COMMIT": False,
-            }
-        }
-    )
-    def test_task_specific_enqueue_on_commit(self) -> None:
-        self.assertFalse(default_task_backend.enqueue_on_commit)
-        self.assertTrue(test_tasks.enqueue_on_commit_task.enqueue_on_commit)
-        self.assertTrue(
-            default_task_backend._get_enqueue_on_commit_for_task(
-                test_tasks.enqueue_on_commit_task
-            )
-        )
 
     def test_enqueue_logs(self) -> None:
         with self.assertLogs("django_tasks", level="DEBUG") as captured_logs:
@@ -484,7 +419,6 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 "default": {
                     "BACKEND": "django_tasks.backends.rq.RQBackend",
                     "QUEUES": ["unknown_queue"],
-                    "ENQUEUE_ON_COMMIT": False,
                 }
             }
         ):
@@ -503,7 +437,6 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 "default": {
                     "BACKEND": "django_tasks.backends.rq.RQBackend",
                     "QUEUES": ["unknown_queue"],
-                    "ENQUEUE_ON_COMMIT": False,
                 }
             }
         ):
