@@ -87,13 +87,13 @@ def add_to_metadata(context: TaskContext, new_metadata: dict) -> None:
 
 @task(takes_context=True)
 def save_metadata(context: TaskContext) -> None:
-    context.metadata["flushes"] = 0
+    context.metadata["flushes"] = "flush 1"
     context.save_metadata()
-    context.metadata["flushes"] += 1
+    context.metadata["flushes"] = "flush 2"
 
 
 @task(takes_context=True)
 async def asave_metadata(context: TaskContext) -> None:
-    context.metadata["flushes"] = 0
+    context.metadata["flushes"] = "flush 1"
     await context.asave_metadata()
-    context.metadata["flushes"] += 1
+    context.metadata["flushes"] = "flush 2"

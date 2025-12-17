@@ -286,7 +286,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = task.enqueue()  # type: ignore[attr-defined]
                 self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
-                self.assertEqual(result.metadata["flushes"], 1)
+                self.assertEqual(result.metadata["flushes"], "flush 2")
 
     def test_validate_on_enqueue(self) -> None:
         task_with_custom_queue_name = test_tasks.noop_task.using(

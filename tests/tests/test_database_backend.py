@@ -930,19 +930,17 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
                 result.refresh()
                 self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
-                self.assertEqual(result.metadata["flushes"], 1)
+                self.assertEqual(result.metadata["flushes"], "flush 2")
 
-                update_query = next(
-                    (
-                        q["sql"]
-                        for q in c.captured_queries
-                        if q["sql"].startswith(
-                            'UPDATE "django_tasks_database_dbtaskresult" SET "metadata"'
-                        )
-                    ),
-                )
+                update_queries = [
+                    q["sql"]
+                    for q in c.captured_queries
+                    if q["sql"].startswith("UPDATE")
+                ]
 
-                self.assertIn(json.dumps({"flushes": 0}), update_query)
+                self.assertEqual(len(update_queries), 3)
+                metadata_update_query = update_queries[1]
+                self.assertIn("flush 1", metadata_update_query)
 
 
 @override_settings(
