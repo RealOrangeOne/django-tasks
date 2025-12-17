@@ -303,3 +303,12 @@ class RQBackend(BaseTaskBackend):
                 "Only rq >= 2.5.0 is supported, found " + version("rq"),
                 "Install a newer version of rq",
             )
+
+    def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
+        job = self._get_job(result_id)
+
+        if job is None:
+            raise TaskResultDoesNotExist(result_id)
+
+        job.meta = metadata
+        job.save_meta()  # type: ignore[no-untyped-call]

@@ -366,3 +366,13 @@ class TaskContext:
     @property
     def metadata(self) -> dict[str, Any]:
         return self.task_result.metadata
+
+    def save_metadata(self) -> None:
+        self.task_result.task.get_backend().save_metadata(
+            self.task_result.id, self.metadata
+        )
+
+    async def asave_metadata(self) -> None:
+        await self.task_result.task.get_backend().asave_metadata(
+            self.task_result.id, self.metadata
+        )

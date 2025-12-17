@@ -469,6 +469,16 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
         self.assertEqual(result.metadata["foo"], "bar")
 
+    def test_save_metadata(self) -> None:
+        for task in [test_tasks.save_metadata, test_tasks.asave_metadata]:
+            with self.subTest(task):
+                result = task.enqueue()  # type: ignore[attr-defined]
+                self.assertNotIn("flushes", result.metadata)
+                self.run_worker()
+                result.refresh()
+                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.metadata["flushes"], 1)
+
     def test_exception_classes_pop_empty_list_bug(self) -> None:
         """Test for IndexError: pop from empty list bug in task_result property
 

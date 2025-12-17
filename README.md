@@ -92,6 +92,10 @@ The task context has the following attributes:
 - `attempt`: The current attempt number for the task
 - `metadata`: A `dict` which can be used to write arbitrary metadata. Keys starting `_django_tasks` should be reserved for backend implementations. Metadata when a task is finished, regardless of whether it succeeded or failed.
 
+And the following methods:
+
+- `save_metadata` (and `asave_metadata`): Save any modifications to `metadata` to the queue. These modifications can then be seen by other requests.
+
 This API will be extended with additional features in future.
 
 ### Enqueueing tasks

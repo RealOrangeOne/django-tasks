@@ -25,6 +25,7 @@ from django.db.models import QuerySet
 from django.db.utils import IntegrityError, OperationalError
 from django.test import TransactionTestCase, override_settings
 from django.test.testcases import _deferredSkip  # type:ignore[attr-defined]
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -917,6 +918,31 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result.refresh()
         self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
         self.assertEqual(result.metadata["foo"], "bar")
+
+    def test_save_metadata(self) -> None:
+        for task in [test_tasks.save_metadata, test_tasks.asave_metadata]:
+            with self.subTest(task):
+                result = task.enqueue()  # type: ignore[attr-defined]
+                self.assertNotIn("flushes", result.metadata)
+
+                with CaptureQueriesContext(connection) as c:
+                    self.run_worker()
+
+                result.refresh()
+                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.metadata["flushes"], 1)
+
+                update_query = next(
+                    (
+                        q["sql"]
+                        for q in c.captured_queries
+                        if q["sql"].startswith(
+                            'UPDATE "django_tasks_database_dbtaskresult" SET "metadata"'
+                        )
+                    ),
+                )
+
+                self.assertIn(json.dumps({"flushes": 0}), update_query)
 
 
 @override_settings(

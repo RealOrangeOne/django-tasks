@@ -83,3 +83,17 @@ def test_context(context: TaskContext, attempt: int) -> None:
 @task(takes_context=True)
 def add_to_metadata(context: TaskContext, new_metadata: dict) -> None:
     context.metadata.update(new_metadata)
+
+
+@task(takes_context=True)
+def save_metadata(context: TaskContext) -> None:
+    context.metadata["flushes"] = 0
+    context.save_metadata()
+    context.metadata["flushes"] += 1
+
+
+@task(takes_context=True)
+async def asave_metadata(context: TaskContext) -> None:
+    context.metadata["flushes"] = 0
+    await context.asave_metadata()
+    context.metadata["flushes"] += 1

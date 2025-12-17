@@ -281,6 +281,13 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
         self.assertEqual(result.metadata["foo"], "bar")
 
+    def test_save_metadata(self) -> None:
+        for task in [test_tasks.save_metadata, test_tasks.asave_metadata]:
+            with self.subTest(task):
+                result = task.enqueue()  # type: ignore[attr-defined]
+                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.metadata["flushes"], 1)
+
     def test_validate_on_enqueue(self) -> None:
         task_with_custom_queue_name = test_tasks.noop_task.using(
             queue_name="unknown_queue"

@@ -21,8 +21,12 @@ class CustomBackend(BaseTaskBackend):
         logger = logging.getLogger(__name__)
         logger.info(f"{self.prefix}Task enqueued.")
 
+    def save_metadata(self, *args: Any, **kwargs: Any) -> Any:
+        logger = logging.getLogger(__name__)
+        logger.info(f"{self.prefix}Saved metadata.")
 
-class CustomBackendNoEnqueue(BaseTaskBackend):
+
+class CustomBackendNoAbstract(BaseTaskBackend):
     pass
 
 
@@ -32,8 +36,8 @@ class CustomBackendNoEnqueue(BaseTaskBackend):
             "BACKEND": get_module_path(CustomBackend),
             "OPTIONS": {"prefix": "PREFIX: "},
         },
-        "no_enqueue": {
-            "BACKEND": get_module_path(CustomBackendNoEnqueue),
+        "no_abstract": {
+            "BACKEND": get_module_path(CustomBackendNoAbstract),
         },
     }
 )
@@ -61,14 +65,14 @@ class CustomBackendTestCase(SimpleTestCase):
         self.assertEqual(len(captured_logs.output), 1)
         self.assertIn("PREFIX: Task enqueued", captured_logs.output[0])
 
-    def test_no_enqueue(self) -> None:
+    def test_no_abstract_methods(self) -> None:
         if PY312:
-            error_message = "Can't instantiate abstract class CustomBackendNoEnqueue without an implementation for abstract method 'enqueue'"
+            error_message = "Can't instantiate abstract class CustomBackendNoAbstract without an implementation for abstract methods 'enqueue', 'save_metadata"
         else:
-            error_message = "Can't instantiate abstract class CustomBackendNoEnqueue with abstract method enqueue"
+            error_message = "Can't instantiate abstract class CustomBackendNoAbstract with abstract methods enqueue, save_metadata"
 
         with self.assertRaisesMessage(
             TypeError,
             error_message,
         ):
-            test_tasks.noop_task.using(backend="no_enqueue")
+            test_tasks.noop_task.using(backend="no_abstract")
