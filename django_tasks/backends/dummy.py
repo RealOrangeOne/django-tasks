@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from django.utils import timezone
 from typing_extensions import ParamSpec
@@ -47,6 +47,7 @@ class DummyBackend(BaseTaskBackend):
             backend=self.alias,
             errors=[],
             worker_ids=[],
+            metadata={},
         )
 
         self.results.append(result)
@@ -68,6 +69,12 @@ class DummyBackend(BaseTaskBackend):
             return next(result for result in self.results if result.id == result_id)
         except StopIteration:
             raise TaskResultDoesNotExist(result_id) from None
+
+    def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
+        pass
+
+    async def asave_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
+        pass
 
     def clear(self) -> None:
         self.results.clear()

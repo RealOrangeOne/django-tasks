@@ -137,3 +137,13 @@ class BaseTaskBackend(metaclass=ABCMeta):
 
     def check(self, **kwargs: Any) -> Iterable[checks.CheckMessage]:
         return []
+
+    @abstractmethod
+    def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
+        """Save metadata"""
+
+    async def asave_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
+        """Save metadata"""
+        return await sync_to_async(self.save_metadata, thread_sensitive=True)(
+            result_id, metadata
+        )

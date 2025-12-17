@@ -67,9 +67,11 @@ class Job(BaseJob):
                 )
             return self.func.call(*self.args, **self.kwargs)
         finally:
+            # Ensure modified metadata is persisted correctly
+            self.meta = self.task_result.metadata
+
             # Clear the task result cache, as it's changed now
             self.__dict__.pop("task_result", None)
-            pass
 
     @property
     def func(self) -> Task:
@@ -95,12 +97,17 @@ class Job(BaseJob):
         else:
             run_after = None
 
+        # Fall back to unprefixed key
+        backend_name = self.meta.get(
+            "_django_tasks_backend_name", self.meta.get("backend_name")
+        )
+
         task_result: TaskResult = TaskResult(
             task=task.using(
                 priority=TASK_DEFAULT_PRIORITY,
                 queue_name=self.origin,
                 run_after=run_after,
-                backend=self.meta["backend_name"],
+                backend=backend_name,
             ),
             id=self.id,
             status=RQ_STATUS_TO_RESULT_STATUS[self.get_status()],
@@ -110,9 +117,10 @@ class Job(BaseJob):
             finished_at=self.ended_at,
             args=list(self.args),
             kwargs=self.kwargs,
-            backend=self.meta["backend_name"],
+            backend=backend_name,  # type: ignore[arg-type]
             errors=[],
             worker_ids=[],
+            metadata=self.meta,
         )
 
         exception_classes = self.meta.get("_django_tasks_exceptions", []).copy()
@@ -182,6 +190,8 @@ def failed_callback(
 
 
 def success_callback(job: Job, connection: Redis | None, result: Any) -> None:
+    job.save_meta()  # type: ignore[no-untyped-call]
+
     task_result = job.task_result
 
     object.__setattr__(task_result, "status", TaskResultStatus.SUCCEEDED)
@@ -208,6 +218,8 @@ class RQBackend(BaseTaskBackend):
     ) -> TaskResult[T]:
         self.validate_task(task)
 
+        metadata = {"_django_tasks_backend_name": self.alias}
+
         task_result = TaskResult[T](
             task=task,
             id=get_random_id(),
@@ -221,6 +233,7 @@ class RQBackend(BaseTaskBackend):
             backend=self.alias,
             errors=[],
             worker_ids=[],
+            metadata=metadata,
         )
 
         queue = django_rq.get_queue(task.queue_name, job_class=Job)
@@ -233,7 +246,7 @@ class RQBackend(BaseTaskBackend):
             status=JobStatus.SCHEDULED if task.run_after else JobStatus.QUEUED,
             on_failure=Callback(failed_callback),
             on_success=Callback(success_callback),
-            meta={"backend_name": self.alias},
+            meta=metadata,
         )
 
         if task.run_after is None:
@@ -290,3 +303,12 @@ class RQBackend(BaseTaskBackend):
                 "Only rq >= 2.5.0 is supported, found " + version("rq"),
                 "Install a newer version of rq",
             )
+
+    def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
+        job = self._get_job(result_id)
+
+        if job is None:
+            raise TaskResultDoesNotExist(result_id)
+
+        job.meta = metadata
+        job.save_meta()  # type: ignore[no-untyped-call]
