@@ -910,6 +910,14 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
 
+    def test_metadata(self) -> None:
+        result = test_tasks.add_to_metadata.enqueue({"foo": "bar"})
+        self.assertNotIn("foo", result.metadata)
+        self.run_worker()
+        result.refresh()
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.metadata["foo"], "bar")
+
 
 @override_settings(
     TASKS={

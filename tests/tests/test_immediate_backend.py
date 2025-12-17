@@ -45,6 +45,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
                 self.assertEqual(result.attempts, 1)
+                self.assertEqual(result.metadata, {})
 
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
@@ -63,6 +64,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
                 self.assertEqual(result.attempts, 1)
+                self.assertEqual(result.metadata, {})
 
     def test_catches_exception(self) -> None:
         test_data = [
@@ -273,6 +275,11 @@ class ImmediateBackendTestCase(SimpleTestCase):
     def test_context(self) -> None:
         result = test_tasks.test_context.enqueue(1)
         self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+
+    def test_metadata(self) -> None:
+        result = test_tasks.add_to_metadata.enqueue({"foo": "bar"})
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.metadata["foo"], "bar")
 
     def test_validate_on_enqueue(self) -> None:
         task_with_custom_queue_name = test_tasks.noop_task.using(

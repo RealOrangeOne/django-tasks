@@ -47,6 +47,7 @@ class DummyBackend(BaseTaskBackend):
             backend=self.alias,
             errors=[],
             worker_ids=[],
+            metadata={},
         )
 
         self.results.append(result)

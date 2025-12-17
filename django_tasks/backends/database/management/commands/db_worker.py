@@ -170,12 +170,18 @@ class Worker:
 
             # Setting the return and success value inside the error handling,
             # So errors setting it (eg JSON encode) can still be recorded
-            db_task_result.set_succeeded(return_value)
+            db_task_result.set_succeeded(return_value, task_result.metadata)
             task_finished.send(
                 sender=backend_type, task_result=db_task_result.task_result
             )
         except BaseException as e:
-            db_task_result.set_failed(e)
+            try:
+                metadata = task_result.metadata
+            except NameError:
+                metadata = None
+
+            db_task_result.set_failed(e, metadata)
+
             try:
                 sender = type(db_task_result.task.get_backend())
                 task_result = db_task_result.task_result

@@ -90,6 +90,7 @@ The task context has the following attributes:
 
 - `task_result`: The running task result
 - `attempt`: The current attempt number for the task
+- `metadata`: A `dict` which can be used to write arbitrary metadata. Keys starting `_django_tasks` should be reserved for backend implementations. Metadata when a task is finished, regardless of whether it succeeded or failed.
 
 This API will be extended with additional features in future.
 

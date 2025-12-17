@@ -77,3 +77,9 @@ def get_task_id(context: TaskContext) -> str:
 def test_context(context: TaskContext, attempt: int) -> None:
     assert isinstance(context, TaskContext)
     assert context.attempt == attempt
+    assert {k: v for k, v in context.metadata.items() if not k.startswith("_")} == {}
+
+
+@task(takes_context=True)
+def add_to_metadata(context: TaskContext, new_metadata: dict) -> None:
+    context.metadata.update(new_metadata)

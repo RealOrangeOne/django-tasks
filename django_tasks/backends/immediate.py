@@ -106,6 +106,7 @@ class ImmediateBackend(BaseTaskBackend):
             backend=self.alias,
             errors=[],
             worker_ids=[],
+            metadata={},
         )
 
         self._execute_task(task_result)

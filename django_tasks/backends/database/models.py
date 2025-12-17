@@ -24,7 +24,12 @@ from django_tasks.base import (
     TaskResultStatus,
 )
 from django_tasks.compat import TASK_CLASSES
-from django_tasks.utils import get_exception_traceback, get_module_path, retry
+from django_tasks.utils import (
+    get_exception_traceback,
+    get_module_path,
+    normalize_json,
+    retry,
+)
 
 from .utils import normalize_uuid
 
@@ -120,6 +125,8 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     exception_class_path = models.TextField(_("exception class path"))
     traceback = models.TextField(_("traceback"))
 
+    metadata = models.JSONField(_("metadata"), default=dict)
+
     objects = DBTaskResultQuerySet.as_manager()
 
     class Meta:
@@ -186,6 +193,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
             backend=self.backend_name,
             errors=[],
             worker_ids=self.worker_ids,
+            metadata=self.metadata,
         )
 
         if self.status == TaskResultStatus.FAILED:
@@ -225,12 +233,14 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.save(update_fields=["status", "started_at", "worker_ids"])
 
     @retry()
-    def set_succeeded(self, return_value: Any) -> None:
+    def set_succeeded(self, return_value: Any, metadata: dict) -> None:
         self.status = TaskResultStatus.SUCCEEDED
         self.finished_at = timezone.now()
         self.return_value = return_value
         self.exception_class_path = ""
         self.traceback = ""
+        self.metadata = normalize_json(metadata)
+
         self.save(
             update_fields=[
                 "status",
@@ -238,16 +248,21 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "finished_at",
                 "exception_class_path",
                 "traceback",
+                "metadata",
             ]
         )
 
     @retry()
-    def set_failed(self, exc: BaseException) -> None:
+    def set_failed(self, exc: BaseException, metadata: dict | None) -> None:
         self.status = TaskResultStatus.FAILED
         self.finished_at = timezone.now()
         self.exception_class_path = get_module_path(type(exc))
         self.traceback = get_exception_traceback(exc)
         self.return_value = None
+
+        if metadata is not None:
+            self.metadata = normalize_json(metadata)
+
         self.save(
             update_fields=[
                 "status",
@@ -255,5 +270,6 @@ class DBTaskResult(GenericBase[P, T], models.Model):
                 "finished_at",
                 "exception_class_path",
                 "traceback",
+                "metadata",
             ]
         )
