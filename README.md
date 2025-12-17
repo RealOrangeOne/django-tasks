@@ -90,11 +90,11 @@ The task context has the following attributes:
 
 - `task_result`: The running task result
 - `attempt`: The current attempt number for the task
-- `metadata`: A `dict` which can be used to write arbitrary metadata. Keys starting `_django_tasks` should be reserved for backend implementations. Metadata when a task is finished, regardless of whether it succeeded or failed.
+- `metadata`: A `dict` which can be used to write arbitrary [metadata](#metadata). Keys starting `_django_tasks` should be reserved for backend implementations.
 
 And the following methods:
 
-- `save_metadata` (and `asave_metadata`): Save any modifications to `metadata` to the queue. These modifications can then be seen by other requests.
+- `save_metadata` (and `asave_metadata`): Save any modifications to `metadata` to the queue.
 
 This API will be extended with additional features in future.
 
@@ -221,11 +221,19 @@ assert isinstance(result.errors[0].traceback, str)
 
 Note that currently, whilst `.errors` is a list, it will only ever contain a single element.
 
-#### Attempts
+### Attempts
 
 The number of times a task has been run is stored as the `.attempts` attribute. This will currently only ever be 0 or 1.
 
 The date of the last attempt is stored as `.last_attempted_at`.
+
+### Metadata
+
+Attacked to a task result is "metadata". This metadata can be used as a space to store other data about a task - especially useful for progress or implementing additional functionality around tasks. Metadata is a dictionary, and must be serializable to JSON.
+
+During a task, metadata can be accessed from `context.metadata`, and `result.metadata` from retrieved results.
+
+Metadata is saved when a task is finished, regardless of whether it succeeded or failed. Additionally, metadata can be saved manually using `context.save_metadata`.
 
 ### Backend introspecting
 
