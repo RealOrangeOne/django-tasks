@@ -9,7 +9,10 @@ on:
       - "*"
 
 jobs:
+  validate:
+    uses: ./.github/workflows/pre-commit.yml
   test:
+    needs: validate
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -50,6 +53,7 @@ jobs:
         run: just test -v2 --keepdb
 
   test-postgres:
+    needs: validate
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -88,6 +92,7 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost/postgres
 
   test-mysql:
+    needs: validate
     runs-on: ubuntu-latest
     services:
       mysql:
