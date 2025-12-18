@@ -50,6 +50,26 @@ Issues = "https://github.com/RealOrangeOne/django-tasks/issues"
 Changelog = "https://github.com/RealOrangeOne/django-tasks/releases"
 
 [project.optional-dependencies]
+rq = [
+    "django-rq",
+    "rq>=2.5",
+    "rq_scheduler",
+]
+
+[dependency-groups]
+dev-all = [
+    {include-group = "dev"},
+    {include-group = "mysql"},
+    {include-group = "postgres"},
+]
+dev-mysql=[
+    {include-group = "dev"},
+    {include-group = "mysql"},
+]
+dev-postgres=[
+    {include-group = "dev"},
+    {include-group = "postgres"}
+]
 dev = [
     "ruff",
     "coverage",
@@ -63,11 +83,6 @@ mysql = [
 ]
 postgres = [
     "psycopg[binary]",
-]
-rq = [
-    "django-rq",
-    "rq>=2.5",
-    "rq_scheduler",
 ]
 
 [tool.ruff.lint]
