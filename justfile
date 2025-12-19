@@ -12,13 +12,7 @@ test *ARGS:
 test-fast *ARGS:
     python -m manage test --shuffle --noinput --settings tests.settings_fast {{ ARGS }}
 
-format:
-    python -m ruff check django_tasks tests --fix
-    python -m ruff format django_tasks tests
-
 lint:
-    python -m ruff check django_tasks tests
-    python -m ruff format django_tasks tests --check
     python -m mypy django_tasks tests
 
 start-dbs:
