@@ -1,5 +1,8 @@
+from typing import Any
+
 from django.contrib import admin
 from django.http import HttpRequest
+from django.utils.html import format_html
 
 from .models import DBTaskResult
 
@@ -38,3 +41,20 @@ class DBTaskResultAdmin(admin.ModelAdmin):
         self, request: HttpRequest, obj: DBTaskResult | None = None
     ) -> list[str]:
         return [f.name for f in self.model._meta.fields]
+
+    def get_fields(
+        self, request: HttpRequest, obj: DBTaskResult | None = None
+    ) -> list[Any]:
+        fields = [f.name for f in self.model._meta.fields]
+        fields.remove("traceback")
+        fields.append("formatted_traceback")
+        return fields
+
+    @admin.display(description="traceback")
+    def formatted_traceback(self, obj: DBTaskResult) -> str:
+        if not obj.traceback:
+            return "-"
+        return format_html(
+            "<pre>{}</pre>",
+            obj.traceback,
+        )
