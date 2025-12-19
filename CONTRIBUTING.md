@@ -17,11 +17,11 @@ Set up a venv:
 ```sh
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]'
+python -m pip install -e --group dev
 ```
 
 > [!TIP]
-> Add an extra name for each database you want to develop with (e.g. `[dev,mysql]`,  `[dev,postgres]` or `[dev,mysql,postgres]`). This is optional.
+> To include support for a specific database, add its corresponding group flag (e.g., `--group dev-mysql`, `--group dev-postgres` or `--group dev-all`). This is optional
 
 Then you can run the tests with the [just](https://just.systems/man/en/) command runner:
 
