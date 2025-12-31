@@ -229,7 +229,7 @@ The date of the last attempt is stored as `.last_attempted_at`.
 
 ### Metadata
 
-Attacked to a task result is "metadata". This metadata can be used as a space to store other data about a task - especially useful for progress or implementing additional functionality around tasks. Metadata is a dictionary, and must be serializable to JSON.
+Attached to a task result is "metadata". This metadata can be used as a space to store other data about a task - especially useful for progress or implementing additional functionality around tasks. Metadata is a dictionary, and must be serializable to JSON.
 
 During a task, metadata can be accessed from `context.metadata`, and `result.metadata` from retrieved results.
 
