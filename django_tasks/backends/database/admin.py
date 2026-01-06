@@ -40,15 +40,14 @@ class DBTaskResultAdmin(admin.ModelAdmin):
     def get_readonly_fields(
         self, request: HttpRequest, obj: DBTaskResult | None = None
     ) -> list[str]:
-        return [f.name for f in self.model._meta.fields]
+        fields = [f.name for f in self.model._meta.fields]
+        fields[fields.index("traceback")] = "formatted_traceback"
+        return fields
 
     def get_fields(
         self, request: HttpRequest, obj: DBTaskResult | None = None
     ) -> list[Any]:
-        fields = [f.name for f in self.model._meta.fields]
-        fields.remove("traceback")
-        fields.append("formatted_traceback")
-        return fields
+        return self.get_readonly_fields(request, obj)
 
     @admin.display(description="traceback")
     def formatted_traceback(self, obj: DBTaskResult) -> str:
