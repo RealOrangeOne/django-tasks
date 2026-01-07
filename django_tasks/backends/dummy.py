@@ -34,7 +34,7 @@ class DummyBackend(BaseTaskBackend):
     ) -> TaskResult[T]:
         self.validate_task(task)
 
-        result = TaskResult[T](
+        result: TaskResult[T] = TaskResult(
             task=task,
             id=get_random_id(),
             status=TaskResultStatus.READY,

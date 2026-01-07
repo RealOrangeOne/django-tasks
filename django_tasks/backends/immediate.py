@@ -93,7 +93,7 @@ class ImmediateBackend(BaseTaskBackend):
     ) -> TaskResult[T]:
         self.validate_task(task)
 
-        task_result = TaskResult[T](
+        task_result: TaskResult[T] = TaskResult(
             task=task,
             id=get_random_id(),
             status=TaskResultStatus.READY,
