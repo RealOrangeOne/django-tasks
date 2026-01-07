@@ -179,7 +179,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
     def task_result(self) -> "TaskResult[T]":
         from .backend import TaskResult
 
-        task_result = TaskResult[T](
+        task_result: TaskResult[T] = TaskResult(
             db_result=self,
             task=self.task,
             id=normalize_uuid(self.id),

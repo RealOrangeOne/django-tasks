@@ -220,7 +220,7 @@ class RQBackend(BaseTaskBackend):
 
         metadata = {"_django_tasks_backend_name": self.alias}
 
-        task_result = TaskResult[T](
+        task_result: TaskResult[T] = TaskResult(
             task=task,
             id=get_random_id(),
             status=TaskResultStatus.READY,
