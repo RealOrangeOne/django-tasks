@@ -1,0 +1,108 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <dannluciano@gmail.com>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: 0.10.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-12-14 19:45-0600\n"
+"PO-Revision-Date: 2025-12-14 22:34-0300\n"
+"Last-Translator: Dann Luciano <dannluciano@gmail.com>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: backends/database/apps.py:8
+msgctxt "Database Backend"
+msgid "Tasks Database Backend"
+msgstr "Motor de Tarefas no Banco de Dados"
+
+#: backends/database/models.py:94
+msgid "status"
+msgstr "estado"
+
+#: backends/database/models.py:100
+msgid "enqueued at"
+msgstr "enfileirado em"
+
+#: backends/database/models.py:101
+msgid "started at"
+msgstr "iniciou em"
+
+#: backends/database/models.py:102
+msgid "finished at"
+msgstr "finalizou em"
+
+#: backends/database/models.py:104
+msgid "args kwargs"
+msgstr "args kwargs"
+
+#: backends/database/models.py:106
+msgid "priority"
+msgstr "prioridade"
+
+#: backends/database/models.py:108
+msgid "task path"
+msgstr "caminho da tarefa"
+
+#: backends/database/models.py:109
+msgid "worker id"
+msgstr "id trabalhador"
+
+#: backends/database/models.py:112
+msgid "queue name"
+msgstr "nome da fila"
+
+#: backends/database/models.py:114
+msgid "backend name"
+msgstr "processador de tarefas"
+
+#: backends/database/models.py:116
+msgid "run after"
+msgstr "executar depois"
+
+#: backends/database/models.py:118
+msgid "return value"
+msgstr "valor retornado"
+
+#: backends/database/models.py:120
+msgid "exception class path"
+msgstr "Caminho da Classe de Exceção"
+
+#: backends/database/models.py:121
+msgid "traceback"
+msgstr "rastreamento"
+
+#: backends/database/models.py:127
+msgid "Task Result"
+msgstr "Resultado da Tarefa"
+
+#: backends/database/models.py:128
+msgid "Task Results"
+msgstr "Resultados da Tarefa"
+
+#: base.py:51
+msgctxt "Task"
+msgid "Ready"
+msgstr "Pronta"
+
+#: base.py:54
+msgctxt "Task"
+msgid "Running"
+msgstr "Executando"
+
+#: base.py:57
+msgctxt "Task"
+msgid "Failed"
+msgstr "Finalizou com Falha"
+
+#: base.py:60
+msgctxt "Task"
+msgid "Succeeded"
+msgstr "Finalizou com Sucesso"
