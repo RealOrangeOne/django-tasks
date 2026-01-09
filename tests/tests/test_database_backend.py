@@ -18,7 +18,8 @@ from typing import Any, cast
 from unittest import mock, skipIf
 
 import django
-from django.core.exceptions import SuspiciousOperation
+from django import VERSION
+from django.core.exceptions import ImproperlyConfigured, SuspiciousOperation
 from django.core.management import call_command, execute_from_command_line
 from django.db import connection, connections, transaction
 from django.db.models import QuerySet
@@ -86,6 +87,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task), self.assertNumQueries(1):
                 result = cast(Task, task).enqueue(1, two=3)
 
+                self.assertEqual(uuid.UUID(result.id).version, 4)
                 self.assertEqual(result.status, TaskResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
@@ -103,6 +105,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
+                self.assertEqual(uuid.UUID(result.id).version, 4)
                 self.assertEqual(result.status, TaskResultStatus.READY)
                 self.assertFalse(result.is_finished)
                 self.assertIsNone(result.started_at)
@@ -449,6 +452,67 @@ class DatabaseBackendTestCase(TransactionTestCase):
             InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
         ):
             await task_with_custom_queue_name.aenqueue()
+
+    def test_custom_id_function(self) -> None:
+        for id_function in ["uuid.uuid1", uuid.uuid1]:
+            with self.subTest(id_function):
+                with override_settings(
+                    TASKS={
+                        "default": {
+                            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+                            "OPTIONS": {"id_function": id_function},
+                        }
+                    }
+                ):
+                    result = test_tasks.noop_task.enqueue()
+                    self.assertEqual(uuid.UUID(result.id).version, 1)
+
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+                "OPTIONS": {"id_function": "missing.function"},
+            }
+        }
+    )
+    def test_unknown_id_function(self) -> None:
+        with self.assertRaises(ImportError):
+            test_tasks.noop_task.enqueue()
+
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+                "OPTIONS": {
+                    "id_function": "django.contrib.postgres.functions.RandomUUID"
+                },
+            }
+        }
+    )
+    @skipIf(connection.vendor != "postgresql", "RandomUUID only works on postgres")
+    @skipIf(VERSION < (6, 0), "DB expressions are only supported on 6.0+")
+    def test_postgres_db_id_function(self) -> None:
+        with self.assertNumQueries(1) as c:
+            result = test_tasks.noop_task.enqueue()
+
+        self.assertIn("GEN_RANDOM_UUID", c.captured_queries[0]["sql"])
+        self.assertEqual(uuid.UUID(result.id).version, 4)
+
+    @override_settings(
+        TASKS={
+            "default": {
+                "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+                "OPTIONS": {"id_function": "django.db.models.functions.Now"},
+            }
+        }
+    )
+    @skipIf(VERSION >= (6, 0), "DB expressions are supported on 6.0+")
+    def test_postgres_id_function_expression(self) -> None:
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            "id_function cannot be a database expression until Django 6.0",
+        ):
+            test_tasks.noop_task.enqueue()
 
 
 @override_settings(

@@ -66,9 +66,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        django-version: ["4.2", "5.0", "5.1", "5.2"]
-        exclude:
-          - django-version: "4.2"
+        django-version: ["5.0", "5.1", "5.2", "6.0"]
     steps:
       - uses: actions/checkout@v6
       - name: Set up Python 3.14
@@ -103,9 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        django-version: ["4.2", "5.0", "5.1", "5.2"]
-        exclude:
-          - django-version: "4.2"
+        django-version: ["5.0", "5.1", "5.2", "6.0"]
     steps:
       - uses: actions/checkout@v6
       - name: Set up Python 3.14

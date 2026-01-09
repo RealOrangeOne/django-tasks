@@ -167,6 +167,25 @@ In `DEBUG`, the worker will automatically reload when code is changed (or by usi
 
 After a while, tasks may start to build up in your database. This can be managed using the `prune_db_task_results` management command, which deletes completed tasks according to the given retention policy. Check the `--help` for the available options.
 
+### Customizing the task id
+
+By default, the database worker uses `uuid.uuid4` to generate a task id. This can be customized using the `id_function` option:
+
+```python
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+        "OPTIONS": {
+            "id_function": "uuid.uuid7"
+        }
+    }
+}
+```
+
+The `id_function` must return a UUID (either `uuid.UUID` or string representation). Additionally, the PostgreSQL-specific [`RandomUUID`](https://docs.djangoproject.com/en/stable/ref/contrib/postgres/functions/#django.contrib.postgres.functions.RandomUUID) or other database expressions are supported on Django 6.0+.
+
+Note: This functionality only exists for the database backend.
+
 ### Retrieving task result
 
 When enqueueing a task, you get a `TaskResult`, however it may be useful to retrieve said result from somewhere else (another request, another task etc). This can be done with `get_result` (or `aget_result`):
