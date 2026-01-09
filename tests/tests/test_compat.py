@@ -53,7 +53,9 @@ class DjangoCompatTestCase(SimpleTestCase):
         ):
             self.assertIsInstance(task_backends["default"], ImmediateBackend)
 
-            test_task_func_task = task(_test_task_func)
+            test_task_func_task = task(
+                _test_task_func,
+            )
             self.assertIsInstance(test_task_func_task, Task)
 
             result = test_task_func_task.enqueue()

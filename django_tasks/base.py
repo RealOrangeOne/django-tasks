@@ -68,22 +68,22 @@ P = ParamSpec("P")
 
 @dataclass(frozen=True, slots=PY311, kw_only=True)  # type: ignore[literal-required]
 class Task(Generic[P, T]):
-    priority: int
-    """The Task's priority"""
-
     func: Callable[P, T]
     """The Task function"""
 
-    backend: str
+    priority: int = TASK_DEFAULT_PRIORITY
+    """The Task's priority"""
+
+    backend: str = DEFAULT_TASK_BACKEND_ALIAS
     """The name of the backend the Task will run on"""
 
-    queue_name: str
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME
     """The name of the queue the Task will run on"""
 
-    run_after: datetime | None
+    run_after: datetime | None = None
     """The earliest this Task will run"""
 
-    takes_context: bool
+    takes_context: bool = False
     """
     Whether the Task receives the Task context when executed.
     """
@@ -183,7 +183,7 @@ class Task(Generic[P, T]):
 # Bare decorator usage
 # e.g. @task
 @overload
-def task(function: Callable[P, T], /) -> Task[P, T]: ...
+def task(function: Callable[P, T], **kwargs: Any) -> Task[P, T]: ...
 
 
 # Decorator with arguments
@@ -195,6 +195,7 @@ def task(
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: Literal[False] = False,
+    **kwargs: Any,
 ) -> Callable[[Callable[P, T]], Task[P, T]]: ...
 
 
@@ -207,17 +208,19 @@ def task(
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: Literal[True],
+    **kwargs: Any,
 ) -> Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]]: ...
 
 
 # Implementation
-def task(  # type: ignore[misc]
+def task(
     function: Callable[P, T] | None = None,
     *,
     priority: int = TASK_DEFAULT_PRIORITY,
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: bool = False,
+    **kwargs: Any,
 ) -> (
     Task[P, T]
     | Callable[[Callable[P, T]], Task[P, T]]
@@ -236,6 +239,7 @@ def task(  # type: ignore[misc]
             backend=backend,
             takes_context=takes_context,
             run_after=None,
+            **kwargs,
         )
 
     if function:
