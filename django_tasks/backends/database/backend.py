@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from django.apps import apps
 from django.core import checks
 from django.core.exceptions import ValidationError
+from django.utils.module_loading import import_string
 from django.utils.version import PY311
 from typing_extensions import ParamSpec
 
@@ -33,6 +34,20 @@ class DatabaseBackend(BaseTaskBackend):
     supports_defer = True
     supports_priority = True
 
+    def __init__(self, alias: str, params: dict) -> None:
+        from .models import DBTaskResult
+
+        super().__init__(alias, params)
+
+        if id_function := self.options.get("id_function"):
+            if callable(id_function):
+                self.id_function = id_function
+            else:
+                self.id_function = import_string(id_function)
+        else:
+            # Fall back to the default defined on the model
+            self.id_function = DBTaskResult._meta.pk.default
+
     def _task_to_db_task(
         self,
         task: Task[P, T],
@@ -41,7 +56,8 @@ class DatabaseBackend(BaseTaskBackend):
     ) -> "DBTaskResult":
         from .models import DBTaskResult
 
-        return DBTaskResult(
+        return DBTaskResult.objects.create(
+            id=self.id_function(),
             args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
             priority=task.priority,
             task_path=task.module_path,
@@ -60,7 +76,6 @@ class DatabaseBackend(BaseTaskBackend):
 
         db_result = self._task_to_db_task(task, args, kwargs)
 
-        db_result.save()
         task_enqueued.send(type(self), task_result=db_result.task_result)
 
         return db_result.task_result
