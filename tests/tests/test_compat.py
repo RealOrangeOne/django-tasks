@@ -3,7 +3,7 @@ from unittest import skipUnless
 from django import VERSION
 from django.test import SimpleTestCase, override_settings
 
-from django_tasks import compat, task, task_backends
+from django_tasks import DEFAULT_TASK_QUEUE_NAME, compat, task, task_backends
 from django_tasks.backends.immediate import ImmediateBackend
 from django_tasks.base import Task, TaskResult
 
@@ -53,7 +53,14 @@ class DjangoCompatTestCase(SimpleTestCase):
         ):
             self.assertIsInstance(task_backends["default"], ImmediateBackend)
 
-            test_task_func_task = task(_test_task_func)
+            # HACK: Explicitly pass in missing arguments until Django sets the defaults
+            # See https://code.djangoproject.com/ticket/36816
+            test_task_func_task = task(
+                _test_task_func,
+                priority=10,
+                queue_name=DEFAULT_TASK_QUEUE_NAME,
+                run_after=None,
+            )
             self.assertIsInstance(test_task_func_task, Task)
 
             result = test_task_func_task.enqueue()

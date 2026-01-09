@@ -1,15 +1,22 @@
 import logging
+from dataclasses import dataclass
 from typing import Any
 from unittest import mock
 
 from django.test import SimpleTestCase, override_settings
-from django.utils.version import PY312
+from django.utils.version import PY311, PY312
 
-from django_tasks import default_task_backend, task_backends
+from django_tasks import default_task_backend, task, task_backends
 from django_tasks.backends.base import BaseTaskBackend
+from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError
 from django_tasks.utils import get_module_path
 from tests import tasks as test_tasks
+
+
+@dataclass(frozen=True, slots=PY311, kw_only=True)  # type: ignore[literal-required]
+class CustomTask(Task):
+    other_data: str = ""
 
 
 class CustomBackend(BaseTaskBackend):
@@ -28,6 +35,17 @@ class CustomBackend(BaseTaskBackend):
 
 class CustomBackendNoAbstract(BaseTaskBackend):
     pass
+
+
+class CustomTaskBackend(BaseTaskBackend):
+    task_class = CustomTask
+    supports_priority = True
+
+    def enqueue(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+    def save_metadata(self, *args: Any, **kwargs: Any) -> Any:
+        pass
 
 
 @override_settings(
@@ -76,3 +94,42 @@ class CustomBackendTestCase(SimpleTestCase):
             error_message,
         ):
             test_tasks.noop_task.using(backend="no_abstract")
+
+
+@override_settings(
+    TASKS={
+        "default": {
+            "BACKEND": f"{CustomTaskBackend.__module__}."
+            f"{CustomTaskBackend.__qualname__}",
+            "QUEUES": ["default", "high"],
+        },
+    }
+)
+class CustomTaskTestCase(SimpleTestCase):
+    def test_custom_task_default_values(self) -> None:
+        my_task = task()(test_tasks.noop_task.func)
+
+        self.assertIsInstance(my_task, CustomTask)
+        self.assertEqual(my_task.other_data, "")  # type: ignore[attr-defined]
+
+    def test_custom_task_with_custom_values(self) -> None:
+        my_task = task(other_data="other")(test_tasks.noop_task.func)
+
+        self.assertIsInstance(my_task, CustomTask)
+        self.assertEqual(my_task.other_data, "other")  # type: ignore[attr-defined]
+
+    def test_custom_task_with_standard_and_custom_values(self) -> None:
+        my_task = task(priority=10, queue_name="high", other_data="other")(
+            test_tasks.noop_task.func
+        )
+
+        self.assertIsInstance(my_task, CustomTask)
+        self.assertEqual(my_task.priority, 10)
+        self.assertEqual(my_task.queue_name, "high")
+        self.assertEqual(my_task.other_data, "other")  # type: ignore[attr-defined]
+        self.assertFalse(my_task.takes_context)
+        self.assertIsNone(my_task.run_after)
+
+    def test_custom_task_invalid_argument(self) -> None:
+        with self.assertRaises(TypeError):
+            task(unknown_param=123)(test_tasks.noop_task.func)
