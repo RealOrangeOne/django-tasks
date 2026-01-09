@@ -191,6 +191,9 @@ def task(function: Callable[P, T], **kwargs: Any) -> Task[P, T]: ...
 @overload
 def task(
     *,
+    priority: int = TASK_DEFAULT_PRIORITY,
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME,
+    backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: Literal[False] = False,
     **kwargs: Any,
 ) -> Callable[[Callable[P, T]], Task[P, T]]: ...
@@ -201,6 +204,9 @@ def task(
 @overload
 def task(
     *,
+    priority: int = TASK_DEFAULT_PRIORITY,
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME,
+    backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: Literal[True],
     **kwargs: Any,
 ) -> Callable[[Callable[Concatenate["TaskContext", P], T]], Task[P, T]]: ...
@@ -210,6 +216,9 @@ def task(
 def task(
     function: Callable[P, T] | None = None,
     *,
+    priority: int = TASK_DEFAULT_PRIORITY,
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME,
+    backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: bool = False,
     **kwargs: Any,
 ) -> (
@@ -222,13 +231,14 @@ def task(
     """
     from . import task_backends
 
-    backend = kwargs.get("backend", DEFAULT_TASK_BACKEND_ALIAS)
-
     def wrapper(f: Callable[P, T]) -> Task[P, T]:
         return task_backends[backend].task_class(
+            priority=priority,
             func=f,
-            takes_context=takes_context,
+            queue_name=queue_name,
             backend=backend,
+            takes_context=takes_context,
+            run_after=None,
             **kwargs,
         )
 
