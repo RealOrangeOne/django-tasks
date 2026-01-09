@@ -2,9 +2,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, TypeVar
 
+from django import VERSION
 from django.apps import apps
 from django.core import checks
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.db.models import Expression
 from django.utils.module_loading import import_string
 from django.utils.version import PY311
 from typing_extensions import ParamSpec
@@ -56,8 +58,15 @@ class DatabaseBackend(BaseTaskBackend):
     ) -> "DBTaskResult":
         from .models import DBTaskResult
 
+        result_id = self.id_function()
+
+        if VERSION < (6, 0) and isinstance(result_id, Expression):
+            raise ImproperlyConfigured(
+                "id_function cannot be a database expression until Django 6.0"
+            )
+
         return DBTaskResult.objects.create(
-            id=self.id_function(),
+            id=result_id,
             args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
             priority=task.priority,
             task_path=task.module_path,
