@@ -33,7 +33,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = cast(Task, task).enqueue(1, two=3)
 
-                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
                 self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.last_attempted_at)
@@ -52,7 +52,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             with self.subTest(task):
                 result = await cast(Task, task).aenqueue()
 
-                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
                 self.assertTrue(result.is_finished)
                 self.assertIsNotNone(result.started_at)
                 self.assertIsNotNone(result.last_attempted_at)
@@ -159,7 +159,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, [], {}
         )
 
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertEqual(result.return_value, 42)
 
     async def test_result_async(self) -> None:
@@ -167,7 +167,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             test_tasks.calculate_meaning_of_life, [], {}
         )
 
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertEqual(result.return_value, 42)
 
     async def test_cannot_get_result(self) -> None:
@@ -221,7 +221,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
                 data = json.loads(response.content)
 
                 self.assertEqual(data["result"], 42)
-                self.assertEqual(data["status"], TaskResultStatus.SUCCEEDED)
+                self.assertEqual(data["status"], TaskResultStatus.SUCCESSFUL)
 
     def test_get_result_from_different_request(self) -> None:
         response = self.client.get(reverse("meaning-of-life"))
@@ -248,7 +248,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertIn("state=RUNNING", captured_logs.output[1])
         self.assertIn(result.id, captured_logs.output[1])
 
-        self.assertIn("state=SUCCEEDED", captured_logs.output[2])
+        self.assertIn("state=SUCCESSFUL", captured_logs.output[2])
         self.assertIn(result.id, captured_logs.output[2])
 
     def test_failed_logs(self) -> None:
@@ -274,18 +274,18 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
     def test_context(self) -> None:
         result = test_tasks.test_context.enqueue(1)
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
 
     def test_metadata(self) -> None:
         result = test_tasks.add_to_metadata.enqueue({"foo": "bar"})
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertEqual(result.metadata["foo"], "bar")
 
     def test_save_metadata(self) -> None:
         for task in [test_tasks.save_metadata, test_tasks.asave_metadata]:
             with self.subTest(task):
                 result = task.enqueue()  # type: ignore[attr-defined]
-                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
                 self.assertEqual(result.metadata["flushes"], "flush 2")
 
     def test_validate_on_enqueue(self) -> None:
@@ -339,6 +339,6 @@ class ImmediateBackendTransactionTestCase(TransactionTestCase):
 
             self.assertIsNotNone(result.enqueued_at)
 
-            self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+            self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
 
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
