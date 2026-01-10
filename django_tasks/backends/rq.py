@@ -37,7 +37,7 @@ P = ParamSpec("P")
 
 RQ_STATUS_TO_RESULT_STATUS = {
     JobStatus.QUEUED: TaskResultStatus.READY,
-    JobStatus.FINISHED: TaskResultStatus.SUCCEEDED,
+    JobStatus.FINISHED: TaskResultStatus.SUCCESSFUL,
     JobStatus.FAILED: TaskResultStatus.FAILED,
     JobStatus.STARTED: TaskResultStatus.RUNNING,
     JobStatus.DEFERRED: TaskResultStatus.READY,
@@ -194,7 +194,7 @@ def success_callback(job: Job, connection: Redis | None, result: Any) -> None:
 
     task_result = job.task_result
 
-    object.__setattr__(task_result, "status", TaskResultStatus.SUCCEEDED)
+    object.__setattr__(task_result, "status", TaskResultStatus.SUCCESSFUL)
 
     task_finished.send(type(task_result.task.get_backend()), task_result=task_result)
 

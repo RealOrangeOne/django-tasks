@@ -73,7 +73,7 @@ class DBTaskResultQuerySet(models.QuerySet):
         )
 
     def succeeded(self) -> "DBTaskResultQuerySet":
-        return self.filter(status=TaskResultStatus.SUCCEEDED)
+        return self.filter(status=TaskResultStatus.SUCCESSFUL)
 
     def failed(self) -> "DBTaskResultQuerySet":
         return self.filter(status=TaskResultStatus.FAILED)
@@ -234,7 +234,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     @retry()
     def set_succeeded(self, return_value: Any, metadata: dict) -> None:
-        self.status = TaskResultStatus.SUCCEEDED
+        self.status = TaskResultStatus.SUCCESSFUL
         self.finished_at = timezone.now()
         self.return_value = return_value
         self.exception_class_path = ""
