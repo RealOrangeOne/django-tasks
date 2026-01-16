@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import json
 import logging
@@ -9,7 +10,7 @@ import time
 import uuid
 import warnings
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from contextlib import redirect_stderr
 from datetime import datetime, timedelta
 from functools import partial
@@ -43,6 +44,7 @@ from django_tasks.backends.database.utils import (
 )
 from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError, TaskResultDoesNotExist
+from django_tasks.signals import task_enqueued
 from django_tasks.utils import get_random_id
 from tests import tasks as test_tasks
 
@@ -64,6 +66,25 @@ def skipIfInMemoryDB() -> Any:  # noqa:N802
     }
 )
 class DatabaseBackendTestCase(TransactionTestCase):
+    @contextlib.contextmanager
+    def _capture_task_enqueued_signal(
+        self,
+    ) -> Iterator[list[tuple[type[DatabaseBackend], Any]]]:
+        received: list[tuple[type[DatabaseBackend], Any]] = []
+
+        def capture_signal(
+            sender: type[DatabaseBackend], task_result: Any, **kwargs: Any
+        ) -> None:
+            received.append((sender, task_result))
+
+        task_enqueued.connect(
+            capture_signal, dispatch_uid="db_enqueue_signal", weak=False
+        )
+        try:
+            yield received
+        finally:
+            task_enqueued.disconnect(capture_signal, dispatch_uid="db_enqueue_signal")
+
     def get_task_count_in_new_connection(self) -> int:
         """
         See what other connections see
@@ -85,7 +106,8 @@ class DatabaseBackendTestCase(TransactionTestCase):
     def test_enqueue_task(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task), self.assertNumQueries(1):
-                result = cast(Task, task).enqueue(1, two=3)
+                with self._capture_task_enqueued_signal() as received:
+                    result = cast(Task, task).enqueue(1, two=3)
 
                 self.assertEqual(uuid.UUID(result.id).version, 4)
                 self.assertEqual(result.status, TaskResultStatus.READY)
@@ -100,10 +122,13 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertEqual(result.kwargs, {"two": 3})
                 self.assertEqual(result.attempts, 0)
 
+                self.assertEqual(received, [(DatabaseBackend, result)])
+
     async def test_enqueue_task_async(self) -> None:
         for task in [test_tasks.noop_task, test_tasks.noop_task_async]:
             with self.subTest(task):
-                result = await cast(Task, task).aenqueue()
+                with self._capture_task_enqueued_signal() as received:
+                    result = await cast(Task, task).aenqueue()
 
                 self.assertEqual(uuid.UUID(result.id).version, 4)
                 self.assertEqual(result.status, TaskResultStatus.READY)
@@ -117,6 +142,8 @@ class DatabaseBackendTestCase(TransactionTestCase):
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
                 self.assertEqual(result.attempts, 0)
+
+                self.assertEqual(received, [(DatabaseBackend, result)])
 
     def test_get_result(self) -> None:
         with self.assertNumQueries(1):
