@@ -261,7 +261,7 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
         self.assertEqual(result.attempts, 1)
@@ -285,7 +285,7 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
         self.assertEqual(result.attempts, 1)
@@ -398,7 +398,7 @@ class RQBackendTestCase(TransactionTestCase):
         self.assertIn("state=RUNNING", captured_logs.output[0])
         self.assertIn(result.id, captured_logs.output[0])
 
-        self.assertIn("state=SUCCEEDED", captured_logs.output[1])
+        self.assertIn("state=SUCCESSFUL", captured_logs.output[1])
         self.assertIn(result.id, captured_logs.output[1])
 
     def test_failed_logs(self) -> None:
@@ -459,14 +459,14 @@ class RQBackendTestCase(TransactionTestCase):
         result = test_tasks.test_context.enqueue(1)
         self.run_worker()
         result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
 
     def test_metadata(self) -> None:
         result = test_tasks.add_to_metadata.enqueue({"foo": "bar"})
         self.assertNotIn("foo", result.metadata)
         self.run_worker()
         result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertEqual(result.metadata["foo"], "bar")
 
     def test_save_metadata(self) -> None:
@@ -476,7 +476,7 @@ class RQBackendTestCase(TransactionTestCase):
                 self.assertNotIn("flushes", result.metadata)
                 self.run_worker()
                 result.refresh()
-                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
                 self.assertEqual(result.metadata["flushes"], "flush 2")
 
     def test_exception_classes_pop_empty_list_bug(self) -> None:

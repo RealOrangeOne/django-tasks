@@ -167,7 +167,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         )
 
         DBTaskResult.objects.all().update(
-            status=TaskResultStatus.SUCCEEDED,
+            status=TaskResultStatus.SUCCESSFUL,
             started_at=timezone.now(),
             finished_at=timezone.now(),
             return_value=42,
@@ -187,7 +187,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
         self.assertEqual(result.attempts, 1)
@@ -198,7 +198,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         )
 
         await DBTaskResult.objects.all().aupdate(
-            status=TaskResultStatus.SUCCEEDED,
+            status=TaskResultStatus.SUCCESSFUL,
             started_at=timezone.now(),
             finished_at=timezone.now(),
             return_value=42,
@@ -217,7 +217,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         self.assertIsNotNone(result.started_at)
         self.assertIsNotNone(result.last_attempted_at)
         self.assertIsNotNone(result.finished_at)
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertTrue(result.is_finished)
         self.assertEqual(result.return_value, 42)
         self.assertEqual(result.attempts, 1)
@@ -595,7 +595,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 self.assertIsNotNone(result.finished_at)
                 self.assertGreaterEqual(result.started_at, result.enqueued_at)  # type:ignore[arg-type,misc]
                 self.assertGreaterEqual(result.finished_at, result.started_at)  # type:ignore[arg-type,misc]
-                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
                 self.assertEqual(result.attempts, 1)
 
                 self.assertEqual(DBTaskResult.objects.ready().count(), 0)
@@ -898,7 +898,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             [
                 f"Starting worker worker_id={self.worker_id} queues=default",
                 f"Task id={result.id} path=tests.tasks.noop_task state=RUNNING",
-                f"Task id={result.id} path=tests.tasks.noop_task state=SUCCEEDED",
+                f"Task id={result.id} path=tests.tasks.noop_task state=SUCCESSFUL",
                 f"No more tasks to run for worker_id={self.worker_id} - exiting gracefully.",
             ],
         )
@@ -967,7 +967,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         result_2.refresh()
 
         self.assertEqual(result_1.status, TaskResultStatus.READY)
-        self.assertEqual(result_2.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result_2.status, TaskResultStatus.SUCCESSFUL)
 
     def test_max_tasks(self) -> None:
         results = [test_tasks.noop_task.enqueue() for _ in range(5)]
@@ -982,7 +982,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         statuses = Counter(result.status for result in results)
 
-        self.assertEqual(statuses[TaskResultStatus.SUCCEEDED], 2)
+        self.assertEqual(statuses[TaskResultStatus.SUCCESSFUL], 2)
         self.assertEqual(statuses[TaskResultStatus.READY], 3)
 
     def test_takes_context(self) -> None:
@@ -1000,14 +1000,14 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
         self.run_worker()
         result.refresh()
 
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
 
     def test_metadata(self) -> None:
         result = test_tasks.add_to_metadata.enqueue({"foo": "bar"})
         self.assertNotIn("foo", result.metadata)
         self.run_worker()
         result.refresh()
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
         self.assertEqual(result.metadata["foo"], "bar")
 
     def test_save_metadata(self) -> None:
@@ -1020,7 +1020,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                     self.run_worker()
 
                 result.refresh()
-                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
                 self.assertEqual(result.metadata["flushes"], "flush 2")
 
                 update_queries = [
@@ -1309,7 +1309,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         result = test_tasks.noop_task.enqueue()
 
         DBTaskResult.objects.all().update(
-            status=TaskResultStatus.SUCCEEDED, finished_at=timezone.now()
+            status=TaskResultStatus.SUCCESSFUL, finished_at=timezone.now()
         )
 
         self.assertEqual(DBTaskResult.objects.finished().count(), 1)
@@ -1360,7 +1360,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         queue_1_result = test_tasks.noop_task.using(queue_name="queue-1").enqueue()
 
         DBTaskResult.objects.all().update(
-            status=TaskResultStatus.SUCCEEDED, finished_at=timezone.now()
+            status=TaskResultStatus.SUCCESSFUL, finished_at=timezone.now()
         )
 
         self.assertEqual(DBTaskResult.objects.succeeded().count(), 2)
@@ -1380,7 +1380,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         test_tasks.noop_task.using(queue_name="queue-1").enqueue()
 
         DBTaskResult.objects.all().update(
-            status=TaskResultStatus.SUCCEEDED, finished_at=timezone.now()
+            status=TaskResultStatus.SUCCESSFUL, finished_at=timezone.now()
         )
 
         self.assertEqual(DBTaskResult.objects.succeeded().count(), 2)
@@ -1394,13 +1394,13 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         one_day_result = test_tasks.noop_task.enqueue()
 
         DBTaskResult.objects.ready().update(
-            status=TaskResultStatus.SUCCEEDED,
+            status=TaskResultStatus.SUCCESSFUL,
             finished_at=timezone.now() - timedelta(days=1),
         )
 
         three_day_result = test_tasks.noop_task.enqueue()
         DBTaskResult.objects.ready().update(
-            status=TaskResultStatus.SUCCEEDED,
+            status=TaskResultStatus.SUCCESSFUL,
             finished_at=timezone.now() - timedelta(days=3),
         )
 
@@ -1430,7 +1430,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         succeeded_result = test_tasks.noop_task.enqueue()
 
         DBTaskResult.objects.ready().update(
-            status=TaskResultStatus.SUCCEEDED,
+            status=TaskResultStatus.SUCCESSFUL,
             finished_at=timezone.now() - timedelta(days=3),
         )
 
@@ -1467,7 +1467,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         test_tasks.noop_task.enqueue()
 
         DBTaskResult.objects.all().update(
-            status=TaskResultStatus.SUCCEEDED, finished_at=timezone.now()
+            status=TaskResultStatus.SUCCESSFUL, finished_at=timezone.now()
         )
 
         self.assertEqual(DBTaskResult.objects.count(), 1)
@@ -1582,7 +1582,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         result.refresh()
 
-        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+        self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
 
     @skipIf(sys.platform == "win32", "Terminate is always forceful on Windows")
     def test_interrupt_no_tasks(self) -> None:
@@ -1626,7 +1626,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
                 result.refresh()
 
-                self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+                self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
 
     @skipIf(sys.platform == "win32", "Cannot emulate CTRL-C on Windows")
     def test_repeat_ctrl_c(self) -> None:
@@ -1727,7 +1727,7 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
 
         for result in results:
             result.refresh()
-            self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
+            self.assertEqual(result.status, TaskResultStatus.SUCCESSFUL)
 
         all_output = ""
 
