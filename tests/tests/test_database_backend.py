@@ -1033,6 +1033,18 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
                 metadata_update_query = update_queries[1]
                 self.assertIn("flush 1", metadata_update_query)
 
+    def test_task_import_string(self) -> None:
+        db_task_result = DBTaskResult.objects.create(
+            args_kwargs={"args": [], "kwargs": {}},
+            task_path="tests.tasks.some_test",
+            backend_name="default",
+        )
+        self.run_worker()
+        db_task_result.refresh_from_db()
+
+        self.assertEqual(db_task_result.status, TaskResultStatus.FAILED)
+        self.assertIn("ImportError", db_task_result.traceback)
+
 
 @override_settings(
     TASKS={

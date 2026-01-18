@@ -185,7 +185,7 @@ class Worker:
             try:
                 sender = type(db_task_result.task.get_backend())
                 task_result = db_task_result.task_result
-            except (ModuleNotFoundError, SuspiciousOperation):
+            except (ImportError, SuspiciousOperation):
                 logger.exception("Task id=%s failed unexpectedly", db_task_result.id)
             else:
                 task_finished.send(
