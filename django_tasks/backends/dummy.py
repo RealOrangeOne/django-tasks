@@ -19,6 +19,7 @@ class DummyBackend(BaseTaskBackend):
     supports_defer = True
     supports_async_task = True
     supports_priority = True
+    supports_metadata = True
     results: list[TaskResult]
 
     def __init__(self, alias: str, params: dict) -> None:

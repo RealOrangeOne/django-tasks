@@ -35,6 +35,7 @@ class DatabaseBackend(BaseTaskBackend):
     supports_get_result = True
     supports_defer = True
     supports_priority = True
+    supports_metadata = True
 
     def __init__(self, alias: str, params: dict) -> None:
         from .models import DBTaskResult
