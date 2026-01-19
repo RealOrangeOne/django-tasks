@@ -203,6 +203,7 @@ class RQBackend(BaseTaskBackend):
     supports_async_task = True
     supports_get_result = True
     supports_defer = True
+    supports_metadata = True
 
     def __init__(self, alias: str, params: dict) -> None:
         super().__init__(alias, params)
