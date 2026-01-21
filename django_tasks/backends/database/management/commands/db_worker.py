@@ -6,6 +6,7 @@ import signal
 import sys
 import time
 from argparse import ArgumentParser, ArgumentTypeError, BooleanOptionalAction
+from threading import Thread
 from types import FrameType
 
 from django.conf import settings
@@ -19,7 +20,7 @@ from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, task_backends
 from django_tasks.backends.database.backend import DatabaseBackend
 from django_tasks.backends.database.models import DBTaskResult
 from django_tasks.backends.database.utils import exclusive_transaction
-from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, TaskContext
+from django_tasks.base import DEFAULT_TASK_QUEUE_NAME, DEFAULT_THREADS, TaskContext
 from django_tasks.exceptions import InvalidTaskBackendError
 from django_tasks.signals import task_finished, task_started
 from django_tasks.utils import get_random_id
@@ -39,6 +40,7 @@ class Worker:
         startup_delay: bool,
         max_tasks: int | None,
         worker_id: str,
+        max_threads: int = DEFAULT_THREADS,
     ):
         self.queue_names = queue_names
         self.process_all_queues = "*" in queue_names
@@ -47,6 +49,7 @@ class Worker:
         self.backend_name = backend_name
         self.startup_delay = startup_delay
         self.max_tasks = max_tasks
+        self.max_threads = max_threads
 
         self.running = True
         self.running_task = False
@@ -84,6 +87,16 @@ class Worker:
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         if hasattr(signal, "SIGQUIT"):
             signal.signal(signal.SIGQUIT, signal.SIG_DFL)
+
+    def run_parallel(self) -> None:
+        threads = []
+        for _ in range(self.max_threads):
+            t = Thread(target=self.run, daemon=True)
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
 
     def run(self) -> None:
         logger.info(
@@ -288,6 +301,13 @@ class Command(BaseCommand):
             help="Worker id. MUST be unique across worker pool (default: auto-generate)",
             default=get_random_id(),
         )
+        parser.add_argument(
+            "--max-threads",
+            nargs="?",
+            default=DEFAULT_THREADS,
+            type=valid_max_tasks,
+            help=f"The maximum number of threads to use for processing tasks (default: {DEFAULT_THREADS})",
+        )
 
     def configure_logging(self, verbosity: int) -> None:
         if verbosity == 0:
@@ -339,7 +359,7 @@ class Command(BaseCommand):
                 # Only the child process should configure its signals
                 worker.configure_signals()
 
-            run_with_reloader(worker.run)
+            run_with_reloader(worker.run_parallel)
         else:
             worker.configure_signals()
-            worker.run()
+            worker.run_parallel()
