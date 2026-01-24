@@ -19,7 +19,7 @@ class DatabaseSelectionTestCase(TestCase):
             },
         }
     )
-    def test_enqueue_to_different_databases(self):
+    def test_enqueue_to_different_databases(self) -> None:
         result_default = test_tasks.calculate_meaning_of_life.enqueue()
 
         result_secondary = test_tasks.calculate_meaning_of_life.using(
@@ -54,7 +54,7 @@ class DatabaseSelectionTestCase(TestCase):
             },
         }
     )
-    def test_get_result_from_correct_database(self):
+    def test_get_result_from_correct_database(self) -> None:
         from django_tasks import task_backends
 
         backend = task_backends["secondary"]

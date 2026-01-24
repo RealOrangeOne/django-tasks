@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from django import VERSION
 from django.apps import apps
@@ -19,6 +19,8 @@ from django_tasks.signals import task_enqueued
 from django_tasks.utils import normalize_json
 
 if TYPE_CHECKING:
+    from django.db.models.query import QuerySet
+
     from .models import DBTaskResult
 
 T = TypeVar("T")
@@ -52,6 +54,12 @@ class DatabaseBackend(BaseTaskBackend):
             # Fall back to the default defined on the model
             self.id_function = DBTaskResult._meta.pk.default
 
+    @property
+    def _base_queryset(self) -> "QuerySet[DBTaskResult]":
+        from .models import DBTaskResult
+
+        return cast("QuerySet[DBTaskResult]", DBTaskResult.objects.using(self.database))
+
     def _get_id(self) -> Any:
         result_id = self.id_function()
 
@@ -68,16 +76,17 @@ class DatabaseBackend(BaseTaskBackend):
         args: P.args,  # type:ignore[valid-type]
         kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> "DBTaskResult":
-        from .models import DBTaskResult
-
-        return DBTaskResult.objects.using(self.database).create(
-            id=self._get_id(),
-            args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
-            priority=task.priority,
-            task_path=task.module_path,
-            queue_name=task.queue_name,
-            run_after=task.run_after,  # type: ignore[misc]
-            backend_name=self.alias,
+        return cast(
+            "DBTaskResult",
+            self._base_queryset.create(
+                id=self._get_id(),
+                args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
+                priority=task.priority,
+                task_path=task.module_path,
+                queue_name=task.queue_name,
+                run_after=task.run_after,  # type: ignore[misc]
+                backend_name=self.alias,
+            ),
         )
 
     async def _atask_to_db_task(
@@ -86,16 +95,17 @@ class DatabaseBackend(BaseTaskBackend):
         args: P.args,  # type:ignore[valid-type]
         kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> "DBTaskResult":
-        from .models import DBTaskResult
-
-        return await DBTaskResult.objects.using(self.database).acreate(
-            id=self._get_id(),
-            args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
-            priority=task.priority,
-            task_path=task.module_path,
-            queue_name=task.queue_name,
-            run_after=task.run_after,  # type: ignore[misc]
-            backend_name=self.alias,
+        return cast(
+            "DBTaskResult",
+            await self._base_queryset.acreate(
+                id=self._get_id(),
+                args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
+                priority=task.priority,
+                task_path=task.module_path,
+                queue_name=task.queue_name,
+                run_after=task.run_after,  # type: ignore[misc]
+                backend_name=self.alias,
+            ),
         )
 
     def enqueue(
@@ -140,9 +150,7 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         try:
-            return (
-                DBTaskResult.objects.using(self.database).get(id=result_id).task_result
-            )
+            return self._base_queryset.get(id=result_id).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise TaskResultDoesNotExist(result_id) from e
 
@@ -150,9 +158,10 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         try:
-            return (
-                await DBTaskResult.objects.using(self.database).aget(id=result_id)
-            ).task_result
+            db_result = cast(
+                "DBTaskResult", await self._base_queryset.aget(id=result_id)
+            )
+            return cast(TaskResult[Any], db_result.task_result)
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise TaskResultDoesNotExist(result_id) from e
 
@@ -168,17 +177,11 @@ class DatabaseBackend(BaseTaskBackend):
             )
 
     def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
-        from .models import DBTaskResult
-
-        DBTaskResult.objects.using(self.database).filter(id=result_id).update(
+        self._base_queryset.filter(id=result_id).update(
             metadata=normalize_json(metadata)
         )
 
     async def asave_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
-        from .models import DBTaskResult
-
-        await (
-            DBTaskResult.objects.using(self.database)
-            .filter(id=result_id)
-            .aupdate(metadata=normalize_json(metadata))
+        await self._base_queryset.filter(id=result_id).aupdate(
+            metadata=normalize_json(metadata)
         )
