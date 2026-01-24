@@ -108,7 +108,11 @@ class Command(BaseCommand):
             else None
         )
 
-        results = DBTaskResult.objects.finished().filter(backend_name=backend.alias)
+        results = (
+            DBTaskResult.objects.using(backend.database)
+            .finished()
+            .filter(backend_name=backend.alias)
+        )
 
         queue_names = queue_name.split(",")
         if "*" not in queue_names:
