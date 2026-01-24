@@ -140,7 +140,9 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         try:
-            return DBTaskResult.objects.using(self.database).get(id=result_id).task_result
+            return (
+                DBTaskResult.objects.using(self.database).get(id=result_id).task_result
+            )
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise TaskResultDoesNotExist(result_id) from e
 
@@ -175,6 +177,8 @@ class DatabaseBackend(BaseTaskBackend):
     async def asave_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
         from .models import DBTaskResult
 
-        await DBTaskResult.objects.using(self.database).filter(id=result_id).aupdate(
-            metadata=normalize_json(metadata)
+        await (
+            DBTaskResult.objects.using(self.database)
+            .filter(id=result_id)
+            .aupdate(metadata=normalize_json(metadata))
         )

@@ -186,6 +186,23 @@ The `id_function` must return a UUID (either `uuid.UUID` or string representatio
 
 Note: This functionality only exists for the database backend.
 
+### Specifying a database
+
+By default, tasks are stored in the `default` database. To use a different database, set the `database` option:
+
+```python
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+        "OPTIONS": {
+            "database": "task_queue"
+        }
+    }
+}
+```
+
+This is useful for separating task queue tables from your main application data, or using different databases for different backends.
+
 ### Retrieving task result
 
 When enqueueing a task, you get a `TaskResult`, however it may be useful to retrieve said result from somewhere else (another request, another task etc). This can be done with `get_result` (or `aget_result`):
