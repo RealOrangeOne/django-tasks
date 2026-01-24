@@ -41,6 +41,8 @@ class DatabaseBackend(BaseTaskBackend):
 
         super().__init__(alias, params)
 
+        self.database = self.options.get("database", "default")
+
         if id_function := self.options.get("id_function"):
             if callable(id_function):
                 self.id_function = id_function
@@ -68,7 +70,7 @@ class DatabaseBackend(BaseTaskBackend):
     ) -> "DBTaskResult":
         from .models import DBTaskResult
 
-        return DBTaskResult.objects.create(
+        return DBTaskResult.objects.using(self.database).create(
             id=self._get_id(),
             args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
             priority=task.priority,
@@ -86,7 +88,7 @@ class DatabaseBackend(BaseTaskBackend):
     ) -> "DBTaskResult":
         from .models import DBTaskResult
 
-        return await DBTaskResult.objects.acreate(
+        return await DBTaskResult.objects.using(self.database).acreate(
             id=self._get_id(),
             args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
             priority=task.priority,
@@ -138,7 +140,7 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         try:
-            return DBTaskResult.objects.get(id=result_id).task_result
+            return DBTaskResult.objects.using(self.database).get(id=result_id).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise TaskResultDoesNotExist(result_id) from e
 
@@ -146,7 +148,9 @@ class DatabaseBackend(BaseTaskBackend):
         from .models import DBTaskResult
 
         try:
-            return (await DBTaskResult.objects.aget(id=result_id)).task_result
+            return (
+                await DBTaskResult.objects.using(self.database).aget(id=result_id)
+            ).task_result
         except (DBTaskResult.DoesNotExist, ValidationError) as e:
             raise TaskResultDoesNotExist(result_id) from e
 
@@ -164,13 +168,13 @@ class DatabaseBackend(BaseTaskBackend):
     def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
         from .models import DBTaskResult
 
-        DBTaskResult.objects.filter(id=result_id).update(
+        DBTaskResult.objects.using(self.database).filter(id=result_id).update(
             metadata=normalize_json(metadata)
         )
 
     async def asave_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
         from .models import DBTaskResult
 
-        await DBTaskResult.objects.filter(id=result_id).aupdate(
+        await DBTaskResult.objects.using(self.database).filter(id=result_id).aupdate(
             metadata=normalize_json(metadata)
         )
