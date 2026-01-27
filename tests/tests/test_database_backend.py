@@ -547,6 +547,7 @@ class DatabaseBackendTestCase(TransactionTestCase):
         "default": {
             "BACKEND": "django_tasks.backends.database.DatabaseBackend",
             "QUEUES": ["default", "queue-1"],
+            "OPTIONS": {"database": "default"},
         },
         "dummy": {"BACKEND": "django_tasks.backends.dummy.DummyBackend"},
     }
@@ -1751,3 +1752,86 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
         for result in results:
             # Running and succeeded
             self.assertEqual(all_output.count(result.id), 2)
+
+
+@override_settings(
+    TASKS={
+        "default": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+            "OPTIONS": {"database": "default"},
+        },
+        "secondary": {
+            "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+            "OPTIONS": {"database": "secondary"},
+        },
+    }
+)
+class DatabaseSelectionTestCase(TransactionTestCase):
+    databases = {"default", "secondary"}
+
+    def test_enqueue_to_different_databases(self) -> None:
+        result_default = test_tasks.calculate_meaning_of_life.enqueue()
+
+        result_secondary = test_tasks.calculate_meaning_of_life.using(
+            backend="secondary"
+        ).enqueue()
+
+        self.assertTrue(
+            DBTaskResult.objects.using("default").filter(id=result_default.id).exists()
+        )
+        self.assertFalse(
+            DBTaskResult.objects.using("secondary")
+            .filter(id=result_default.id)
+            .exists()
+        )
+
+        self.assertTrue(
+            DBTaskResult.objects.using("secondary")
+            .filter(id=result_secondary.id)
+            .exists()
+        )
+        self.assertFalse(
+            DBTaskResult.objects.using("default")
+            .filter(id=result_secondary.id)
+            .exists()
+        )
+
+    def test_get_result_from_correct_database(self) -> None:
+        backend = task_backends["secondary"]
+        default_backend = task_backends["default"]
+
+        db_result = DBTaskResult.objects.using("secondary").create(
+            task_path="tests.tasks.calculate_meaning_of_life",
+            args_kwargs={"args": [], "kwargs": {}},
+            run_after=test_tasks.calculate_meaning_of_life.run_after,
+            backend_name="secondary",
+        )
+
+        retrieved_result = backend.get_result(db_result.id)
+        self.assertEqual(retrieved_result.id, str(db_result.id))
+
+        with self.assertRaises(DBTaskResult.DoesNotExist):
+            DBTaskResult.objects.using("default").get(id=db_result.id)
+
+        with self.assertRaises(TaskResultDoesNotExist):
+            default_backend.get_result(db_result.id)
+
+    def test_worker_uses_correct_database(self) -> None:
+        result = test_tasks.calculate_meaning_of_life.using(
+            backend="secondary"
+        ).enqueue()
+
+        self.assertEqual(DBTaskResult.objects.ready().using("secondary").count(), 1)
+        self.assertEqual(DBTaskResult.objects.ready().using("default").count(), 0)
+
+        call_command(
+            "db_worker",
+            verbosity=0,
+            batch=True,
+            interval=0,
+            startup_delay=False,
+            backend_name="secondary",
+        )
+
+        result.refresh()
+        self.assertEqual(result.status, TaskResultStatus.SUCCEEDED)
