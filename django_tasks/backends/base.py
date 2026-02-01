@@ -41,6 +41,9 @@ class BaseTaskBackend(metaclass=ABCMeta):
     supports_priority = False
     """Does the backend support tasks being executed in a given priority order?"""
 
+    supports_metadata = False
+    """Does the backend support storing metadata against a task result?"""
+
     def __init__(self, alias: str, params: dict) -> None:
         from django_tasks import DEFAULT_TASK_QUEUE_NAME
 
@@ -138,9 +141,9 @@ class BaseTaskBackend(metaclass=ABCMeta):
     def check(self, **kwargs: Any) -> Iterable[checks.CheckMessage]:
         return []
 
-    @abstractmethod
     def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
         """Save metadata"""
+        raise NotImplementedError("This backend does not support saving metadata")
 
     async def asave_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
         """Save metadata"""
