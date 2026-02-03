@@ -11,7 +11,7 @@ from django.utils.inspect import get_func_args
 from typing_extensions import ParamSpec
 
 from django_tasks.base import (
-    TASK_DEFAULT_PRIORITY,
+    DEFAULT_TASK_PRIORITY,
     TASK_MAX_PRIORITY,
     TASK_MIN_PRIORITY,
     Task,
@@ -70,7 +70,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
                 "Task takes context but does not have a first argument of 'context'."
             )
 
-        if not self.supports_priority and task.priority != TASK_DEFAULT_PRIORITY:
+        if not self.supports_priority and task.priority != DEFAULT_TASK_PRIORITY:
             raise InvalidTaskError(
                 "Backend does not support setting priority of tasks."
             )

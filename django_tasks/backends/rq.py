@@ -19,7 +19,7 @@ from typing_extensions import ParamSpec
 
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.base import (
-    TASK_DEFAULT_PRIORITY,
+    DEFAULT_TASK_PRIORITY,
     TASK_MAX_PRIORITY,
     Task,
     TaskContext,
@@ -104,7 +104,7 @@ class Job(BaseJob):
 
         task_result: TaskResult = TaskResult(
             task=task.using(
-                priority=TASK_DEFAULT_PRIORITY,
+                priority=DEFAULT_TASK_PRIORITY,
                 queue_name=self.origin,
                 run_after=run_after,
                 backend=backend_name,

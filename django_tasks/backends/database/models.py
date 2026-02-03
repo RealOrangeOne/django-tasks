@@ -15,8 +15,8 @@ from django.utils.translation import gettext_lazy as _
 from typing_extensions import ParamSpec
 
 from django_tasks.base import (
+    DEFAULT_TASK_PRIORITY,
     DEFAULT_TASK_QUEUE_NAME,
-    TASK_DEFAULT_PRIORITY,
     TASK_MAX_PRIORITY,
     TASK_MIN_PRIORITY,
     Task,
@@ -108,7 +108,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
 
     args_kwargs = models.JSONField(_("args kwargs"))
 
-    priority = models.IntegerField(_("priority"), default=TASK_DEFAULT_PRIORITY)
+    priority = models.IntegerField(_("priority"), default=DEFAULT_TASK_PRIORITY)
 
     task_path = models.TextField(_("task path"))
     worker_ids = models.JSONField(_("worker id"), default=list)
