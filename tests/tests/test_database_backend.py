@@ -584,7 +584,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 3)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 3)
         self.assertEqual(DBTaskResult.objects.failed().count(), 1)
 
     def test_no_tasks(self) -> None:
@@ -797,7 +797,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
 
         self.assertEqual(DBTaskResult.objects.count(), 1)
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 0)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 0)
 
         DBTaskResult.objects.filter(id=result.id).update(run_after=timezone.now())
 
@@ -807,7 +807,7 @@ class DatabaseBackendWorkerTestCase(TransactionTestCase):
             self.run_worker()
 
         self.assertEqual(DBTaskResult.objects.ready().count(), 0)
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 1)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 1)
 
     def test_run_after_priority(self) -> None:
         old_task = test_tasks.noop_task.using(
@@ -1336,12 +1336,12 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
             status=TaskResultStatus.SUCCESSFUL, finished_at=timezone.now()
         )
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 2)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 2)
 
         with self.assertNumQueries(3):
             self.prune_task_results(queue_name="queue-1", min_age_days=0)
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 1)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 1)
 
         result.refresh()
 
@@ -1356,12 +1356,12 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
             status=TaskResultStatus.SUCCESSFUL, finished_at=timezone.now()
         )
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 2)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 2)
 
         with self.assertNumQueries(3):
             self.prune_task_results(queue_name="*", min_age_days=0)
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 0)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 0)
 
     def test_min_age(self) -> None:
         one_day_result = test_tasks.noop_task.enqueue()
@@ -1377,17 +1377,17 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
             finished_at=timezone.now() - timedelta(days=3),
         )
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 2)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 2)
 
         with self.assertNumQueries(3):
             self.prune_task_results()
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 2)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 2)
 
         with self.assertNumQueries(3):
             self.prune_task_results(min_age_days=3)
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 1)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 1)
 
         one_day_result.refresh()
 
@@ -1397,10 +1397,10 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         with self.assertNumQueries(3):
             self.prune_task_results(min_age_days=1)
 
-        self.assertEqual(DBTaskResult.objects.succeeded().count(), 0)
+        self.assertEqual(DBTaskResult.objects.successful().count(), 0)
 
     def test_failed_min_age(self) -> None:
-        succeeded_result = test_tasks.noop_task.enqueue()
+        successful_result = test_tasks.noop_task.enqueue()
 
         DBTaskResult.objects.ready().update(
             status=TaskResultStatus.SUCCESSFUL,
@@ -1428,7 +1428,7 @@ class DatabaseBackendPruneTaskResultsTestCase(TransactionTestCase):
         failed_result.refresh()
 
         with self.assertRaises(TaskResultDoesNotExist):
-            succeeded_result.refresh()
+            successful_result.refresh()
 
         with self.assertNumQueries(3):
             self.prune_task_results(min_age_days=3, failed_min_age_days=1)
@@ -1710,5 +1710,5 @@ class DatabaseWorkerProcessTestCase(TransactionTestCase):
             self.assertIn("gracefully", stdout_text)
 
         for result in results:
-            # Running and succeeded
+            # Running and successful
             self.assertEqual(all_output.count(result.id), 2)

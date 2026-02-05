@@ -61,9 +61,6 @@ class TaskResultStatus(TextChoices):
     SUCCESSFUL = ("SUCCESSFUL", pgettext_lazy("Task", "Successful"))
     """The Task has finished running successfully."""
 
-    # Backwards-compatible alias kept to support existing migrations and callers.
-    SUCCEEDED = SUCCESSFUL
-
 
 T = TypeVar("T")
 P = ParamSpec("P")

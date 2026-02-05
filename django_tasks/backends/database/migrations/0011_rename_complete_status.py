@@ -4,8 +4,6 @@ from django.db import migrations
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
 
-from django_tasks import TaskResultStatus
-
 
 def separate_results_field(
     apps: StateApps, schema_editor: BaseDatabaseSchemaEditor
@@ -14,7 +12,7 @@ def separate_results_field(
 
     DBTaskResult.objects.using(schema_editor.connection.alias).filter(
         status="COMPLETE"
-    ).update(status=TaskResultStatus.SUCCEEDED)
+    ).update(status="SUCCEEDED")
 
 
 def merge_results_field(
@@ -23,7 +21,7 @@ def merge_results_field(
     DBTaskResult = apps.get_model("django_tasks_database", "DBTaskResult")
 
     DBTaskResult.objects.using(schema_editor.connection.alias).filter(
-        status=TaskResultStatus.SUCCEEDED
+        status="SUCCEEDED"
     ).update(status="COMPLETE")
 
 

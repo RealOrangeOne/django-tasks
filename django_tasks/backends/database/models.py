@@ -72,7 +72,7 @@ class DBTaskResultQuerySet(models.QuerySet):
             models.Q(run_after=get_date_max()) | models.Q(run_after__lte=timezone.now())
         )
 
-    def succeeded(self) -> "DBTaskResultQuerySet":
+    def successful(self) -> "DBTaskResultQuerySet":
         return self.filter(status=TaskResultStatus.SUCCESSFUL)
 
     def failed(self) -> "DBTaskResultQuerySet":
@@ -82,7 +82,7 @@ class DBTaskResultQuerySet(models.QuerySet):
         return self.filter(status=TaskResultStatus.RUNNING)
 
     def finished(self) -> "DBTaskResultQuerySet":
-        return self.failed() | self.succeeded()
+        return self.failed() | self.successful()
 
     @retry()
     def get_locked(self) -> Optional["DBTaskResult"]:
@@ -233,7 +233,7 @@ class DBTaskResult(GenericBase[P, T], models.Model):
         self.save(update_fields=["status", "started_at", "worker_ids"])
 
     @retry()
-    def set_succeeded(self, return_value: Any, metadata: dict) -> None:
+    def set_successful(self, return_value: Any, metadata: dict) -> None:
         self.status = TaskResultStatus.SUCCESSFUL
         self.finished_at = timezone.now()
         self.return_value = return_value

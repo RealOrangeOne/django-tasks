@@ -252,7 +252,7 @@ Attached to a task result is "metadata". This metadata can be used as a space to
 
 During a task, metadata can be accessed from `context.metadata`, and `result.metadata` from retrieved results.
 
-Metadata is saved when a task is finished, regardless of whether it succeeded or failed. Additionally, metadata can be saved manually using `context.save_metadata`.
+Metadata is saved when a task is finished, regardless of whether it was successful or failed. Additionally, metadata can be saved manually using `context.save_metadata`.
 
 ### Backend introspecting
 
