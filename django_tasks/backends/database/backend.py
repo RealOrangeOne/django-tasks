@@ -35,6 +35,7 @@ class DatabaseBackend(BaseTaskBackend):
     supports_get_result = True
     supports_defer = True
     supports_priority = True
+    supports_metadata = True
 
     def __init__(self, alias: str, params: dict) -> None:
         from .models import DBTaskResult
@@ -50,6 +51,16 @@ class DatabaseBackend(BaseTaskBackend):
             # Fall back to the default defined on the model
             self.id_function = DBTaskResult._meta.pk.default
 
+    def _get_id(self) -> Any:
+        result_id = self.id_function()
+
+        if VERSION < (6, 0) and isinstance(result_id, Expression):
+            raise ImproperlyConfigured(
+                "id_function cannot be a database expression until Django 6.0"
+            )
+
+        return result_id
+
     def _task_to_db_task(
         self,
         task: Task[P, T],
@@ -58,15 +69,26 @@ class DatabaseBackend(BaseTaskBackend):
     ) -> "DBTaskResult":
         from .models import DBTaskResult
 
-        result_id = self.id_function()
-
-        if VERSION < (6, 0) and isinstance(result_id, Expression):
-            raise ImproperlyConfigured(
-                "id_function cannot be a database expression until Django 6.0"
-            )
-
         return DBTaskResult.objects.create(
-            id=result_id,
+            id=self._get_id(),
+            args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
+            priority=task.priority,
+            task_path=task.module_path,
+            queue_name=task.queue_name,
+            run_after=task.run_after,  # type: ignore[misc]
+            backend_name=self.alias,
+        )
+
+    async def _atask_to_db_task(
+        self,
+        task: Task[P, T],
+        args: P.args,  # type:ignore[valid-type]
+        kwargs: P.kwargs,  # type:ignore[valid-type]
+    ) -> "DBTaskResult":
+        from .models import DBTaskResult
+
+        return await DBTaskResult.objects.acreate(
+            id=self._get_id(),
             args_kwargs=normalize_json({"args": args, "kwargs": kwargs}),
             priority=task.priority,
             task_path=task.module_path,
@@ -86,6 +108,30 @@ class DatabaseBackend(BaseTaskBackend):
         db_result = self._task_to_db_task(task, args, kwargs)
 
         task_enqueued.send(type(self), task_result=db_result.task_result)
+
+        return db_result.task_result
+
+    async def _asend_task_enqueued_signal(self, task_result: TaskResult) -> None:
+        if VERSION < (5, 0):
+            from asgiref.sync import sync_to_async
+
+            await sync_to_async(task_enqueued.send, thread_sensitive=True)(
+                type(self), task_result=task_result
+            )
+        else:
+            await task_enqueued.asend(type(self), task_result=task_result)
+
+    async def aenqueue(
+        self,
+        task: Task[P, T],
+        args: P.args,  # type:ignore[valid-type]
+        kwargs: P.kwargs,  #  type:ignore[valid-type]
+    ) -> TaskResult[T]:
+        self.validate_task(task)
+
+        db_result = await self._atask_to_db_task(task, args, kwargs)
+
+        await self._asend_task_enqueued_signal(db_result.task_result)
 
         return db_result.task_result
 

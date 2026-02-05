@@ -90,11 +90,11 @@ The task context has the following attributes:
 
 - `task_result`: The running task result
 - `attempt`: The current attempt number for the task
-- `metadata`: A `dict` which can be used to write arbitrary [metadata](#metadata). Keys starting `_django_tasks` should be reserved for backend implementations.
+- `metadata`: A `dict` which can be used to write arbitrary [metadata](#metadata). If a backend doesn't support metadata, this dictionary will always be empty. Keys starting `_django_tasks` should be reserved for backend implementations.
 
 And the following methods:
 
-- `save_metadata` (and `asave_metadata`): Save any modifications to `metadata` to the queue.
+- `save_metadata` (and `asave_metadata`): Save any modifications to `metadata` to the queue. If the backend does not support metadata, this method will raise an exception.
 
 This API will be extended with additional features in future.
 
@@ -252,7 +252,7 @@ Attached to a task result is "metadata". This metadata can be used as a space to
 
 During a task, metadata can be accessed from `context.metadata`, and `result.metadata` from retrieved results.
 
-Metadata is saved when a task is finished, regardless of whether it was successful or failed. Additionally, metadata can be saved manually using `context.save_metadata`.
+Metadata is saved when a task is finished, regardless of whether it was successful or failed. Additionally, metadata can be saved manually using `context.save_metadata`. If a backend doesn't support metadata, this method will raise an exception.
 
 ### Backend introspecting
 
@@ -262,6 +262,7 @@ Because `django-tasks` enables support for multiple different backends, those ba
 - `supports_async_task`: Can coroutines be enqueued?
 - `supports_get_result`: Can results be retrieved after the fact (from **any** thread / process)?
 - `supports_priority`: Can tasks be executed in a given priority order?
+- `supports_metadata`: Can metadata be stored against a task result?
 
 ```python
 from django_tasks import default_task_backend

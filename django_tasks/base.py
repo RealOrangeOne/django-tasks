@@ -33,7 +33,7 @@ DEFAULT_TASK_BACKEND_ALIAS = "default"
 DEFAULT_TASK_QUEUE_NAME = "default"
 TASK_MIN_PRIORITY = -100
 TASK_MAX_PRIORITY = 100
-TASK_DEFAULT_PRIORITY = 0
+DEFAULT_TASK_PRIORITY = 0
 
 TASK_REFRESH_ATTRS = {
     "errors",
@@ -71,7 +71,7 @@ class Task(Generic[P, T]):
     func: Callable[P, T]
     """The Task function"""
 
-    priority: int = TASK_DEFAULT_PRIORITY
+    priority: int = DEFAULT_TASK_PRIORITY
     """The Task's priority"""
 
     backend: str = DEFAULT_TASK_BACKEND_ALIAS
@@ -191,7 +191,7 @@ def task(function: Callable[P, T], **kwargs: Any) -> Task[P, T]: ...
 @overload
 def task(
     *,
-    priority: int = TASK_DEFAULT_PRIORITY,
+    priority: int = DEFAULT_TASK_PRIORITY,
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: Literal[False] = False,
@@ -204,7 +204,7 @@ def task(
 @overload
 def task(
     *,
-    priority: int = TASK_DEFAULT_PRIORITY,
+    priority: int = DEFAULT_TASK_PRIORITY,
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: Literal[True],
@@ -216,7 +216,7 @@ def task(
 def task(
     function: Callable[P, T] | None = None,
     *,
-    priority: int = TASK_DEFAULT_PRIORITY,
+    priority: int = DEFAULT_TASK_PRIORITY,
     queue_name: str = DEFAULT_TASK_QUEUE_NAME,
     backend: str = DEFAULT_TASK_BACKEND_ALIAS,
     takes_context: bool = False,
