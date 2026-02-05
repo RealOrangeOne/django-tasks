@@ -90,7 +90,7 @@ The task context has the following attributes:
 
 - `task_result`: The running task result
 - `attempt`: The current attempt number for the task
-- `metadata`: A `dict` which can be used to write arbitrary [metadata](#metadata). If a backend doesn't support metadata, this dictionary will always be empty. Keys starting `_django_tasks` should be reserved for backend implementations. 
+- `metadata`: A `dict` which can be used to write arbitrary [metadata](#metadata). If a backend doesn't support metadata, this dictionary will always be empty. Keys starting `_django_tasks` should be reserved for backend implementations.
 
 And the following methods:
 
@@ -209,10 +209,10 @@ default_task_backend.get_result(result_id)
 
 ### Return values
 
-If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unsuccessful task (ie not `SUCCEEDED`) will raise a `ValueError`.
+If your task returns something, it can be retrieved from the `.return_value` attribute on a `TaskResult`. Accessing this property on an unsuccessful task (ie not `SUCCESSFUL`) will raise a `ValueError`.
 
 ```python
-assert result.status == TaskResultStatus.SUCCEEDED
+assert result.status == TaskResultStatus.SUCCESSFUL
 assert result.return_value == 42
 ```
 
@@ -221,7 +221,7 @@ If a result has been updated in the background, you can call `refresh` on it to 
 ```python
 assert result.status == TaskResultStatus.READY
 result.refresh()
-assert result.status == TaskResultStatus.SUCCEEDED
+assert result.status == TaskResultStatus.SUCCESSFUL
 ```
 
 #### Errors
@@ -252,7 +252,7 @@ Attached to a task result is "metadata". This metadata can be used as a space to
 
 During a task, metadata can be accessed from `context.metadata`, and `result.metadata` from retrieved results.
 
-Metadata is saved when a task is finished, regardless of whether it succeeded or failed. Additionally, metadata can be saved manually using `context.save_metadata`. If a backend doesn't support metadata, this method will raise an exception.
+Metadata is saved when a task is finished, regardless of whether it was successful or failed. Additionally, metadata can be saved manually using `context.save_metadata`. If a backend doesn't support metadata, this method will raise an exception.
 
 ### Backend introspecting
 
@@ -279,7 +279,7 @@ A few [Signals](https://docs.djangoproject.com/en/stable/topics/signals/) are pr
 Whilst signals are available, they may not be the most maintainable approach.
 
 - `django_tasks.signals.task_enqueued`: Called when a task is enqueued. The sender is the backend class. Also called with the enqueued `task_result`.
-- `django_tasks.signals.task_finished`: Called when a task finishes (`SUCCEEDED` or `FAILED`). The sender is the backend class. Also called with the finished `task_result`.
+- `django_tasks.signals.task_finished`: Called when a task finishes (`SUCCESSFUL` or `FAILED`). The sender is the backend class. Also called with the finished `task_result`.
 - `django_tasks.signals.task_started`: Called immediately before a task starts executing. The sender is the backend class. Also called with the started `task_result`.
 
 ## RQ

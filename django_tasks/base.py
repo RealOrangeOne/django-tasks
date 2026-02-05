@@ -58,7 +58,7 @@ class TaskResultStatus(TextChoices):
     FAILED = ("FAILED", pgettext_lazy("Task", "Failed"))
     """The Task raised an exception during execution, or was unable to start."""
 
-    SUCCEEDED = ("SUCCEEDED", pgettext_lazy("Task", "Succeeded"))
+    SUCCESSFUL = ("SUCCESSFUL", pgettext_lazy("Task", "Successful"))
     """The Task has finished running successfully."""
 
 
@@ -324,7 +324,7 @@ class TaskResult(Generic[T]):
         If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
         """
-        if self.status == TaskResultStatus.SUCCEEDED:
+        if self.status == TaskResultStatus.SUCCESSFUL:
             return cast(T, self._return_value)
         elif self.status == TaskResultStatus.FAILED:
             raise ValueError("Task failed")
@@ -334,7 +334,7 @@ class TaskResult(Generic[T]):
     @property
     def is_finished(self) -> bool:
         """Has the task finished?"""
-        return self.status in {TaskResultStatus.FAILED, TaskResultStatus.SUCCEEDED}
+        return self.status in {TaskResultStatus.FAILED, TaskResultStatus.SUCCESSFUL}
 
     @property
     def attempts(self) -> int:

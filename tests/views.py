@@ -10,7 +10,7 @@ from . import tasks
 
 
 def get_result_value(result: TaskResult) -> Any:
-    if result.status == TaskResultStatus.SUCCEEDED:
+    if result.status == TaskResultStatus.SUCCESSFUL:
         return result.return_value
     elif result.status == TaskResultStatus.FAILED:
         return result.errors[0].traceback
