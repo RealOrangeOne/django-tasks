@@ -8,8 +8,7 @@ from django.utils.version import PY311, PY312
 
 from django_tasks import default_task_backend, task, task_backends
 from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.backends.immediate import ImmediateBackend
-from django_tasks.base import Task, TaskResultStatus
+from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError
 from django_tasks.utils import get_module_path
 from tests import tasks as test_tasks
@@ -30,16 +29,8 @@ class CustomBackend(BaseTaskBackend):
         logger.info(f"{self.prefix}Task enqueued.")
 
 
-class CustomBackendNoAbstract(BaseTaskBackend):
+class CustomBackendNoEnqueue(BaseTaskBackend):
     pass
-
-
-class CustomBackendNoMetadata(ImmediateBackend):
-    supports_metadata = False
-
-    def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
-        # NB: ImmediateBackend overrides save_metadata, so bypass it
-        return super(ImmediateBackend, self).save_metadata(result_id, metadata)
 
 
 class CustomTaskBackend(BaseTaskBackend):
@@ -56,11 +47,8 @@ class CustomTaskBackend(BaseTaskBackend):
             "BACKEND": get_module_path(CustomBackend),
             "OPTIONS": {"prefix": "PREFIX: "},
         },
-        "no_abstract": {
-            "BACKEND": get_module_path(CustomBackendNoAbstract),
-        },
-        "no_metadata": {
-            "BACKEND": get_module_path(CustomBackendNoMetadata),
+        "no_enqueue": {
+            "BACKEND": get_module_path(CustomBackendNoEnqueue),
         },
     }
 )
@@ -88,27 +76,17 @@ class CustomBackendTestCase(SimpleTestCase):
         self.assertEqual(len(captured_logs.output), 1)
         self.assertIn("PREFIX: Task enqueued", captured_logs.output[0])
 
-    def test_no_abstract_methods(self) -> None:
+    def test_no_enqueue(self) -> None:
         if PY312:
-            error_message = "Can't instantiate abstract class CustomBackendNoAbstract without an implementation for abstract method 'enqueue'"
+            error_message = "Can't instantiate abstract class CustomBackendNoEnqueue without an implementation for abstract method 'enqueue'"
         else:
-            error_message = "Can't instantiate abstract class CustomBackendNoAbstract with abstract method enqueue"
+            error_message = "Can't instantiate abstract class CustomBackendNoEnqueue with abstract method enqueue"
 
         with self.assertRaisesMessage(
             TypeError,
             error_message,
         ):
-            test_tasks.noop_task.using(backend="no_abstract")
-
-    def test_no_metadata(self) -> None:
-        self.assertFalse(default_task_backend.supports_metadata)
-        with self.assertLogs("django_tasks"):
-            result = test_tasks.save_metadata.using(backend="no_metadata").enqueue()
-        self.assertEqual(result.status, TaskResultStatus.FAILED)
-        self.assertEqual(result.errors[0].exception_class, NotImplementedError)
-        self.assertIn(
-            "This backend does not support saving metadata", result.errors[0].traceback
-        )
+            test_tasks.noop_task.using(backend="no_enqueue")
 
 
 @override_settings(

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from django.utils import timezone
 from typing_extensions import ParamSpec
@@ -25,7 +25,6 @@ P = ParamSpec("P")
 class ImmediateBackend(BaseTaskBackend):
     supports_async_task = True
     supports_priority = True
-    supports_metadata = True
 
     def __init__(self, alias: str, params: dict):
         super().__init__(alias, params)
@@ -107,15 +106,8 @@ class ImmediateBackend(BaseTaskBackend):
             backend=self.alias,
             errors=[],
             worker_ids=[],
-            metadata={},
         )
 
         self._execute_task(task_result)
 
         return task_result
-
-    def save_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
-        pass
-
-    async def asave_metadata(self, result_id: str, metadata: dict[str, Any]) -> None:
-        pass

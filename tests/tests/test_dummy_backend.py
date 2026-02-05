@@ -49,7 +49,6 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [1])
                 self.assertEqual(result.kwargs, {"two": 3})
                 self.assertEqual(result.attempts, 0)
-                self.assertEqual(result.metadata, {})
 
                 self.assertIn(result, default_task_backend.results)  # type:ignore[attr-defined]
 
@@ -69,7 +68,6 @@ class DummyBackendTestCase(SimpleTestCase):
                 self.assertEqual(result.args, [])
                 self.assertEqual(result.kwargs, {})
                 self.assertEqual(result.attempts, 0)
-                self.assertEqual(result.metadata, {})
 
                 self.assertIn(result, default_task_backend.results)  # type:ignore[attr-defined]
 
