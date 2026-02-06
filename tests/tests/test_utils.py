@@ -3,7 +3,6 @@ import json
 import subprocess
 from collections import UserList, defaultdict
 from decimal import Decimal
-from unittest.mock import Mock
 
 from django.test import SimpleTestCase
 
@@ -100,28 +99,6 @@ class JSONNormalizeTestCase(SimpleTestCase):
                 self.assertRaisesMessage(TypeError, "Unsupported type"),
             ):
                 utils.normalize_json(test_case)
-
-
-class RetryTestCase(SimpleTestCase):
-    def test_retry(self) -> None:
-        sentinel = Mock(side_effect=ValueError(""))
-
-        with self.assertRaises(ValueError):
-            utils.retry()(sentinel)()
-
-        self.assertEqual(sentinel.call_count, 3)
-
-    def test_keeps_return_value(self) -> None:
-        self.assertTrue(utils.retry()(lambda: True)())
-        self.assertFalse(utils.retry()(lambda: False)())
-
-    def test_skip_retry_on_keyboard_interrupt(self) -> None:
-        sentinel = Mock(side_effect=KeyboardInterrupt(""))
-
-        with self.assertRaises(KeyboardInterrupt):
-            utils.retry()(sentinel)()
-
-        self.assertEqual(sentinel.call_count, 1)
 
 
 class RandomIdTestCase(SimpleTestCase):

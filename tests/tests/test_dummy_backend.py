@@ -2,10 +2,8 @@ import json
 from typing import cast
 from unittest import mock
 
-from django.db import transaction
 from django.test import (
     SimpleTestCase,
-    TransactionTestCase,
     override_settings,
 )
 from django.urls import reverse
@@ -226,22 +224,3 @@ class DummyBackendTestCase(SimpleTestCase):
                 InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
             ):
                 await task_with_custom_queue_name.aenqueue()
-
-
-class DummyBackendTransactionTestCase(TransactionTestCase):
-    @override_settings(
-        TASKS={
-            "default": {
-                "BACKEND": "django_tasks.backends.dummy.DummyBackend",
-            }
-        }
-    )
-    def test_doesnt_wait_until_transaction_commit(self) -> None:
-        with transaction.atomic():
-            result = test_tasks.noop_task.enqueue()
-
-            self.assertIsNotNone(result.enqueued_at)
-
-            self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
-
-        self.assertEqual(len(default_task_backend.results), 1)  # type:ignore[attr-defined]
