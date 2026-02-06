@@ -4,6 +4,8 @@ Found a bug? Want to fix an open issue? Got an idea for an improvement? Please c
 
 **All** contributions are welcome, from absolutely anyone. Just open a PR, Issue or Discussion (as relevant) - no need to ask beforehand. If you're going to work on an issue, it's a good idea to say so on the issue, to make sure work isn't duplicated.
 
+Because this repository is a backport of the `django.tasks` package, notable improvements should be raised upstream before being included here. This repository will still serve as a place for discussions.
+
 ## Development set up
 
 Fork, then clone the repo:
