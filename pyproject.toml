@@ -10,7 +10,7 @@ description = "A backport of Django's built in Tasks framework"
 authors = [
     {name = "Jake Howard"},
 ]
-version = "0.11.0"
+version = "0.12.0"
 readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
