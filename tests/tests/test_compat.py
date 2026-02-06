@@ -3,7 +3,7 @@ from unittest import skipUnless
 from django import VERSION
 from django.test import SimpleTestCase, override_settings
 
-from django_tasks import compat, task, task_backends
+from django_tasks import task, task_backends
 from django_tasks.backends.immediate import ImmediateBackend
 from django_tasks.base import Task, TaskResult
 
@@ -61,11 +61,3 @@ class DjangoCompatTestCase(SimpleTestCase):
             result = test_task_func_task.enqueue()
             self.assertIsInstance(result, TaskResult)
             self.assertIsNone(result.return_value)
-
-    def test_compat_has_django_task(self) -> None:
-        self.assertIn(Task, compat.TASK_CLASSES)
-
-        if HAS_DJANGO_TASKS:
-            from django.tasks.base import Task as DjangoTask
-
-            self.assertIn(DjangoTask, compat.TASK_CLASSES)

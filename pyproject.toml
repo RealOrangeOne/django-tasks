@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "django-tasks"
-description = "An implementation and backport of background workers and tasks in Django"
+description = "A backport of Django's built in Tasks framework"
 authors = [
     {name = "Jake Howard"},
 ]
@@ -15,7 +15,7 @@ readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -49,27 +49,11 @@ Source = "https://github.com/RealOrangeOne/django-tasks"
 Issues = "https://github.com/RealOrangeOne/django-tasks/issues"
 Changelog = "https://github.com/RealOrangeOne/django-tasks/releases"
 
-[project.optional-dependencies]
-rq = [
-    "django-rq",
-    "rq>=2.5",
-    "rq_scheduler",
-]
-
 [dependency-groups]
 dev = [
     "ruff",
     "coverage",
     "django-stubs[compatible-mypy]",
-    "dj-database-url",
-    "django-tasks[rq]",
-    "fakeredis",
-]
-mysql = [
-    "mysqlclient"
-]
-postgres = [
-    "psycopg[binary]",
 ]
 
 [tool.ruff.lint]

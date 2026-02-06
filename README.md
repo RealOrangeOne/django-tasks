@@ -6,9 +6,7 @@
 ![PyPI - Status](https://img.shields.io/pypi/status/django-tasks.svg)
 ![PyPI - License](https://img.shields.io/pypi/l/django-tasks.svg)
 
-An implementation and backport of background workers and tasks in Django. This is the out of tree implementation of `django.tasks`.
-
-**Note**: Whilst much of `django-tasks` is available in `django` itself as of 6.0, some features of `django-tasks` do not have the same production-grade guarantees. The package is still marked as "beta" to reflect this.
+An backport of `django.tasks` - Django's built-in [Tasks framework](https://docs.djangoproject.com/en/stable/topics/tasks/).
 
 ## Installation
 
@@ -41,10 +39,8 @@ A few backends are included by default:
 
 - `django_tasks.backends.dummy.DummyBackend`: Don't execute the tasks, just store them. This is especially useful for testing.
 - `django_tasks.backends.immediate.ImmediateBackend`: Execute the task immediately in the current thread
-- `django_tasks.backends.database.DatabaseBackend`: Store tasks in the database (via Django's ORM), and retrieve and execute them using the `db_worker` management command
-- `django_tasks.backends.rq.RQBackend`: A backend which enqueues tasks using [RQ](https://python-rq.org/) via [`django-rq`](https://github.com/rq/django-rq) (requires installing `django-tasks[rq]`).
 
-Note: `DatabaseBackend` additionally requires `django_tasks.backends.database` adding to `INSTALLED_APPS`.
+Prior to `0.12.0`, [`django-tasks-db`](https://github.com/RealOrangeOne/django-tasks-db) and [`django-tasks-rq`](https://github.com/RealOrangeOne/django-tasks-rq) were also included to provide database and RQ based backends.
 
 ## Usage
 
@@ -126,65 +122,6 @@ TASKS = {
 Enqueueing tasks to an unknown queue name raises `InvalidTaskError`.
 
 To disable queue name validation, set `QUEUES` to `[]`.
-
-### The database backend worker
-
-First, you'll need to add `django_tasks.backends.database`  to `INSTALLED_APPS`:
-
-```python
-INSTALLED_APPS = [
-    # ...
-    "django_tasks",
-    "django_tasks.backends.database",
-]
-```
-
-Then, run migrations:
-
-```shell
-./manage.py migrate
-```
-
-Next, configure the database backend:
-
-```python
-TASKS = {
-    "default": {
-        "BACKEND": "django_tasks.backends.database.DatabaseBackend"
-    }
-}
-```
-
-Finally, you can run the `db_worker` command to run tasks as they're created. Check the `--help` for more options.
-
-```shell
-./manage.py db_worker
-```
-
-In `DEBUG`, the worker will automatically reload when code is changed (or by using `--reload`). This is not recommended in production environments as tasks may not be stopped cleanly.
-
-### Pruning old tasks
-
-After a while, tasks may start to build up in your database. This can be managed using the `prune_db_task_results` management command, which deletes completed tasks according to the given retention policy. Check the `--help` for the available options.
-
-### Customizing the task id
-
-By default, the database worker uses `uuid.uuid4` to generate a task id. This can be customized using the `id_function` option:
-
-```python
-TASKS = {
-    "default": {
-        "BACKEND": "django_tasks.backends.database.DatabaseBackend",
-        "OPTIONS": {
-            "id_function": "uuid.uuid7"
-        }
-    }
-}
-```
-
-The `id_function` must return a UUID (either `uuid.UUID` or string representation). Additionally, the PostgreSQL-specific [`RandomUUID`](https://docs.djangoproject.com/en/stable/ref/contrib/postgres/functions/#django.contrib.postgres.functions.RandomUUID) or other database expressions are supported on Django 6.0+.
-
-Note: This functionality only exists for the database backend.
 
 ### Retrieving task result
 
@@ -281,37 +218,6 @@ Whilst signals are available, they may not be the most maintainable approach.
 - `django_tasks.signals.task_enqueued`: Called when a task is enqueued. The sender is the backend class. Also called with the enqueued `task_result`.
 - `django_tasks.signals.task_finished`: Called when a task finishes (`SUCCESSFUL` or `FAILED`). The sender is the backend class. Also called with the finished `task_result`.
 - `django_tasks.signals.task_started`: Called immediately before a task starts executing. The sender is the backend class. Also called with the started `task_result`.
-
-## RQ
-
-The RQ-based backend acts as an interface between `django_tasks` and `RQ`, allowing tasks to be defined and enqueued using `django_tasks`, but stored in Redis and executed using RQ's workers.
-
-Once RQ is configured as necessary, the relevant `django_tasks` configuration can be added:
-
-```python
-TASKS = {
-    "default": {
-        "BACKEND": "django_tasks.backends.rq.RQBackend",
-        "QUEUES": ["default"]
-    }
-}
-```
-
-Any queues defined in `QUEUES` must also be defined in `django-rq`'s `RQ_QUEUES` setting.
-
-### Job class
-
-To use `rq` with `django-tasks`, a custom `Job` class must be used. This can be passed to the worker using `--job-class`:
-
-```shell
-./manage.py rqworker --job-class django_tasks.backends.rq.Job
-```
-
-### Priorities
-
-`rq` has no native concept of priorities - instead relying on workers to define which queues they should pop tasks from in order. Therefore, `task.priority` has little effect on execution priority.
-
-If a task has a priority of `100`, it is enqueued at the top of the queue, and will be the next task executed by a worker. All other priorities will enqueue the task to the back of the queue. The queue value is not stored, and will always be `0`.
 
 ## Contributing
 
