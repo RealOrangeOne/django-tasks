@@ -6,7 +6,7 @@
 ![PyPI - Status](https://img.shields.io/pypi/status/django-tasks.svg)
 ![PyPI - License](https://img.shields.io/pypi/l/django-tasks.svg)
 
-An backport of `django.tasks` - Django's built-in [Tasks framework](https://docs.djangoproject.com/en/stable/topics/tasks/).
+A backport of `django.tasks` - Django's built-in [Tasks framework](https://docs.djangoproject.com/en/stable/topics/tasks/).
 
 ## Installation
 
