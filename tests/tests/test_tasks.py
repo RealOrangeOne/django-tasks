@@ -7,6 +7,9 @@ from django.utils.module_loading import import_string
 
 from django_tasks import (
     DEFAULT_TASK_QUEUE_NAME,
+    TASK_MAX_PRIORITY,
+    TASK_MIN_PRIORITY,
+    Task,
     TaskResultStatus,
     default_task_backend,
     task,
@@ -14,7 +17,6 @@ from django_tasks import (
 )
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.backends.immediate import ImmediateBackend
-from django_tasks.base import TASK_MAX_PRIORITY, TASK_MIN_PRIORITY, Task
 from django_tasks.exceptions import (
     InvalidTaskBackendError,
     InvalidTaskError,

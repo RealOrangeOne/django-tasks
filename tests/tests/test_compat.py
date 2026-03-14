@@ -3,9 +3,8 @@ from unittest import skipUnless
 from django import VERSION
 from django.test import SimpleTestCase, override_settings
 
-from django_tasks import task, task_backends
+from django_tasks import Task, TaskResult, task, task_backends
 from django_tasks.backends.immediate import ImmediateBackend
-from django_tasks.base import Task, TaskResult
 
 HAS_DJANGO_TASKS = VERSION >= (6, 0)
 

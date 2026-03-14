@@ -12,6 +12,7 @@ task_started = Signal()
 
 
 logger = logging.getLogger("django_tasks")
+logging.getLogger("django.tasks").parent = logger
 
 
 @receiver(setting_changed)

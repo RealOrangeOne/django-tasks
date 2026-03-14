@@ -6,9 +6,13 @@ from unittest import mock
 from django.test import SimpleTestCase, override_settings
 from django.utils.version import PY311, PY312
 
-from django_tasks import default_task_backend, task, task_backends
-from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.base import Task
+from django_tasks import (
+    BaseTaskBackend,
+    Task,
+    default_task_backend,
+    task,
+    task_backends,
+)
 from django_tasks.exceptions import InvalidTaskError
 from django_tasks.utils import get_module_path
 from tests import tasks as test_tasks

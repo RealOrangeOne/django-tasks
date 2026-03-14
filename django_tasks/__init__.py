@@ -1,17 +1,31 @@
-try:
-    from django.tasks import (
-        DEFAULT_TASK_BACKEND_ALIAS,
-        DEFAULT_TASK_QUEUE_NAME,
-        BaseTaskBackend,
-        TaskContext,
-        TaskResult,
-        TaskResultStatus,
-        default_task_backend,
-        task,
-        task_backends,
-    )
-except ImportError:
-    # ruff: noqa: E402
+# ruff: noqa: E402
+from typing import TYPE_CHECKING
+
+_USE_DJANGO_TASKS = False
+if not TYPE_CHECKING:
+    try:
+        from django.tasks import (  # noqa: F401
+            DEFAULT_TASK_BACKEND_ALIAS,
+            DEFAULT_TASK_QUEUE_NAME,
+            TaskContext,
+            TaskResult,
+            TaskResultStatus,
+            default_task_backend,
+            task,
+            task_backends,
+        )
+        from django.tasks.backends.base import BaseTaskBackend  # noqa: F401
+        from django.tasks.base import (  # noqa: F401
+            TASK_MAX_PRIORITY,
+            TASK_MIN_PRIORITY,
+            Task,
+        )
+
+        _USE_DJANGO_TASKS = True
+    except ImportError:
+        pass
+
+if not _USE_DJANGO_TASKS:
     import django_stubs_ext
 
     django_stubs_ext.monkeypatch()
@@ -26,6 +40,9 @@ except ImportError:
     from .base import (
         DEFAULT_TASK_BACKEND_ALIAS,
         DEFAULT_TASK_QUEUE_NAME,
+        TASK_MAX_PRIORITY,
+        TASK_MIN_PRIORITY,
+        Task,
         TaskContext,
         TaskResult,
         TaskResultStatus,
@@ -40,6 +57,9 @@ except ImportError:
         "default_task_backend",
         "DEFAULT_TASK_BACKEND_ALIAS",
         "DEFAULT_TASK_QUEUE_NAME",
+        "TASK_MAX_PRIORITY",
+        "TASK_MIN_PRIORITY",
+        "Task",
         "TaskResultStatus",
         "TaskResult",
         "TaskContext",

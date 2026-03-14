@@ -8,9 +8,13 @@ from django.test import (
 )
 from django.urls import reverse
 
-from django_tasks import TaskResultStatus, default_task_backend, task_backends
+from django_tasks import (
+    Task,
+    TaskResultStatus,
+    default_task_backend,
+    task_backends,
+)
 from django_tasks.backends.dummy import DummyBackend
-from django_tasks.base import Task
 from django_tasks.exceptions import InvalidTaskError, TaskResultDoesNotExist
 from tests import tasks as test_tasks
 

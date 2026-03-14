@@ -1,73 +1,85 @@
-from copy import deepcopy
-from typing import TypeVar
+# ruff: noqa: E402
+from typing import TYPE_CHECKING
 
-from django.utils import timezone
-from typing_extensions import ParamSpec
+_USE_DJANGO_TASKS = False
+if not TYPE_CHECKING:
+    try:
+        from django.tasks.backends.dummy import DummyBackend  # noqa: F401
 
-from django_tasks.base import Task, TaskResult, TaskResultStatus
-from django_tasks.exceptions import TaskResultDoesNotExist
-from django_tasks.signals import task_enqueued
-from django_tasks.utils import get_random_id
+        _USE_DJANGO_TASKS = True
+    except ImportError:
+        pass
 
-from .base import BaseTaskBackend
+if not _USE_DJANGO_TASKS:
+    from copy import deepcopy
+    from typing import TypeVar
 
-T = TypeVar("T")
-P = ParamSpec("P")
+    from django.utils import timezone
+    from typing_extensions import ParamSpec
 
+    from django_tasks.base import Task, TaskResult, TaskResultStatus
+    from django_tasks.exceptions import TaskResultDoesNotExist
+    from django_tasks.signals import task_enqueued
+    from django_tasks.utils import get_random_id
 
-class DummyBackend(BaseTaskBackend):
-    supports_defer = True
-    supports_async_task = True
-    supports_priority = True
-    results: list[TaskResult]
+    from .base import BaseTaskBackend
 
-    def __init__(self, alias: str, params: dict) -> None:
-        super().__init__(alias, params)
+    T = TypeVar("T")
+    P = ParamSpec("P")
 
-        self.results = []
+    class DummyBackend(BaseTaskBackend):
+        supports_defer = True
+        supports_async_task = True
+        supports_priority = True
+        results: list[TaskResult]
 
-    def enqueue(
-        self,
-        task: Task[P, T],
-        args: P.args,  # type:ignore[valid-type]
-        kwargs: P.kwargs,  # type:ignore[valid-type]
-    ) -> TaskResult[T]:
-        self.validate_task(task)
+        def __init__(self, alias: str, params: dict) -> None:
+            super().__init__(alias, params)
 
-        result: TaskResult[T] = TaskResult(
-            task=task,
-            id=get_random_id(),
-            status=TaskResultStatus.READY,
-            enqueued_at=timezone.now(),
-            started_at=None,
-            last_attempted_at=None,
-            finished_at=None,
-            args=args,
-            kwargs=kwargs,
-            backend=self.alias,
-            errors=[],
-            worker_ids=[],
-        )
+            self.results = []
 
-        self.results.append(result)
+        def enqueue(
+            self,
+            task: Task[P, T],
+            args: P.args,  # type:ignore[valid-type]
+            kwargs: P.kwargs,  # type:ignore[valid-type]
+        ) -> TaskResult[T]:
+            self.validate_task(task)
 
-        task_enqueued.send(type(self), task_result=result)
+            result: TaskResult[T] = TaskResult(
+                task=task,
+                id=get_random_id(),
+                status=TaskResultStatus.READY,
+                enqueued_at=timezone.now(),
+                started_at=None,
+                last_attempted_at=None,
+                finished_at=None,
+                args=args,
+                kwargs=kwargs,
+                backend=self.alias,
+                errors=[],
+                worker_ids=[],
+            )
 
-        # Copy the task to prevent mutation issues
-        return deepcopy(result)
+            self.results.append(result)
 
-    # We don't set `supports_get_result` as the results are scoped to the current thread
-    def get_result(self, result_id: str) -> TaskResult:
-        try:
-            return next(result for result in self.results if result.id == result_id)
-        except StopIteration:
-            raise TaskResultDoesNotExist(result_id) from None
+            task_enqueued.send(type(self), task_result=result)
 
-    async def aget_result(self, result_id: str) -> TaskResult:
-        try:
-            return next(result for result in self.results if result.id == result_id)
-        except StopIteration:
-            raise TaskResultDoesNotExist(result_id) from None
+            # Copy the task to prevent mutation issues
+            return deepcopy(result)
 
-    def clear(self) -> None:
-        self.results.clear()
+        # We don't set `supports_get_result` as the results are scoped to the current thread
+        def get_result(self, result_id: str) -> TaskResult:
+            try:
+                return next(result for result in self.results if result.id == result_id)
+            except StopIteration:
+                raise TaskResultDoesNotExist(result_id) from None
+
+        async def aget_result(self, result_id: str) -> TaskResult:
+            try:
+                return next(result for result in self.results if result.id == result_id)
+            except StopIteration:
+                raise TaskResultDoesNotExist(result_id) from None
+
+        def clear(self) -> None:
+            self.results.clear()
