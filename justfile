@@ -15,4 +15,6 @@ format:
 lint:
     python -m ruff check django_tasks tests
     python -m ruff format django_tasks tests --check
+
+typecheck:
     python -m mypy django_tasks tests

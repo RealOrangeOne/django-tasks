@@ -45,6 +45,9 @@ jobs:
           pip install Django~=${{ matrix.django-version }}
       - name: Lint
         run: just lint
+      - name: Typecheck
+        if: ${{ matrix.django-version < '6.0' }}
+        run: just typecheck
       - name: Run tests
         if: ${{ !cancelled() }}
         run: just test -v2

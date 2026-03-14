@@ -2,6 +2,7 @@ try:
     from django.tasks import (
         DEFAULT_TASK_BACKEND_ALIAS,
         DEFAULT_TASK_QUEUE_NAME,
+        BaseTaskBackend,
         TaskContext,
         TaskResult,
         TaskResultStatus,
