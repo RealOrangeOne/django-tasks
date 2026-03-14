@@ -1,13 +1,13 @@
 try:
     from django.tasks import (
-        task_backends,
-        default_task_backend,
         DEFAULT_TASK_BACKEND_ALIAS,
         DEFAULT_TASK_QUEUE_NAME,
-        TaskResultStatus,
-        TaskResult,
         TaskContext,
+        TaskResult,
+        TaskResultStatus,
+        default_task_backend,
         task,
+        task_backends,
     )
 except ImportError:
     # ruff: noqa: E402
