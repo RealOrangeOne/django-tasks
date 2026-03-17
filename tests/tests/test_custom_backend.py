@@ -60,7 +60,7 @@ class CustomBackendTestCase(SimpleTestCase):
     @mock.patch.multiple(CustomBackend, supports_async_task=False)
     def test_enqueue_async_task_on_non_async_backend(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError, "Backend does not support async tasks"
+            InvalidTaskError, "Backend does not support async Tasks"
         ):
             default_task_backend.validate_task(test_tasks.noop_task_async)
 
