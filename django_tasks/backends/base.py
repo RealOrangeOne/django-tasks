@@ -56,7 +56,7 @@ class BaseTaskBackend(metaclass=ABCMeta):
             raise InvalidTaskError("Task function must be defined at a module level.")
 
         if not self.supports_async_task and iscoroutinefunction(task.func):
-            raise InvalidTaskError("Backend does not support async tasks.")
+            raise InvalidTaskError("Backend does not support async Tasks.")
 
         task_func_args = get_func_args(task.func)
 
