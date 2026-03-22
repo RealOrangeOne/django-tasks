@@ -11,7 +11,7 @@ from django.urls import reverse
 from django_tasks import TaskResultStatus, default_task_backend, task_backends
 from django_tasks.backends.dummy import DummyBackend
 from django_tasks.base import Task
-from django_tasks.exceptions import InvalidTaskError, TaskResultDoesNotExist
+from django_tasks.exceptions import InvalidTask, TaskResultDoesNotExist
 from tests import tasks as test_tasks
 
 
@@ -164,7 +164,7 @@ class DummyBackendTestCase(SimpleTestCase):
     def test_validate_disallowed_async_task(self) -> None:
         with mock.patch.multiple(default_task_backend, supports_async_task=False):
             with self.assertRaisesMessage(
-                InvalidTaskError, "Backend does not support async Tasks"
+                InvalidTask, "Backend does not support async Tasks"
             ):
                 default_task_backend.validate_task(test_tasks.noop_task_async)
 
@@ -201,7 +201,7 @@ class DummyBackendTestCase(SimpleTestCase):
             }
         ):
             with self.assertRaisesMessage(
-                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+                InvalidTask, "Queue 'unknown_queue' is not valid for backend"
             ):
                 task_with_custom_queue_name.enqueue()
 
@@ -219,6 +219,6 @@ class DummyBackendTestCase(SimpleTestCase):
             }
         ):
             with self.assertRaisesMessage(
-                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+                InvalidTask, "Queue 'unknown_queue' is not valid for backend"
             ):
                 await task_with_custom_queue_name.aenqueue()

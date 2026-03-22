@@ -5,13 +5,13 @@ class TaskException(Exception):  # noqa: N818
     """Base class for task-related exceptions. Do not raise directly."""
 
 
-class InvalidTaskError(TaskException):
+class InvalidTask(TaskException):
     """
     The provided Task is invalid.
     """
 
 
-class InvalidTaskBackendError(ImproperlyConfigured):
+class InvalidTaskBackend(ImproperlyConfigured):
     pass
 
 

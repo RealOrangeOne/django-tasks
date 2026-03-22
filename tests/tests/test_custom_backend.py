@@ -9,7 +9,7 @@ from django.utils.version import PY311, PY312
 from django_tasks import default_task_backend, task, task_backends
 from django_tasks.backends.base import BaseTaskBackend
 from django_tasks.base import Task
-from django_tasks.exceptions import InvalidTaskError
+from django_tasks.exceptions import InvalidTask
 from django_tasks.utils import get_module_path
 from tests import tasks as test_tasks
 
@@ -60,13 +60,13 @@ class CustomBackendTestCase(SimpleTestCase):
     @mock.patch.multiple(CustomBackend, supports_async_task=False)
     def test_enqueue_async_task_on_non_async_backend(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError, "Backend does not support async Tasks"
+            InvalidTask, "Backend does not support async Tasks"
         ):
             default_task_backend.validate_task(test_tasks.noop_task_async)
 
     def test_backend_does_not_support_priority(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError, "Backend does not support setting priority of tasks."
+            InvalidTask, "Backend does not support setting priority of tasks."
         ):
             test_tasks.noop_task.using(priority=10)
 
