@@ -18,7 +18,7 @@ from .base import (
     TaskResultStatus,
     task,
 )
-from .exceptions import InvalidTaskBackendError
+from .exceptions import InvalidTaskBackend
 
 __version__ = importlib.metadata.version(__name__)
 
@@ -36,7 +36,7 @@ __all__ = [
 
 class TaskBackendHandler(BaseConnectionHandler[BaseTaskBackend]):
     settings_name = "TASKS"
-    exception_class = InvalidTaskBackendError
+    exception_class = InvalidTaskBackend
 
     def configure_settings(self, settings: dict | None) -> dict:
         try:
@@ -65,9 +65,7 @@ class TaskBackendHandler(BaseConnectionHandler[BaseTaskBackend]):
         try:
             backend_cls = import_string(backend)
         except ImportError as e:
-            raise InvalidTaskBackendError(
-                f"Could not find backend '{backend}': {e}"
-            ) from e
+            raise InvalidTaskBackend(f"Could not find backend '{backend}': {e}") from e
 
         return backend_cls(alias=alias, params=params)  # type:ignore[no-any-return]
 

@@ -16,8 +16,8 @@ from django_tasks.backends.dummy import DummyBackend
 from django_tasks.backends.immediate import ImmediateBackend
 from django_tasks.base import TASK_MAX_PRIORITY, TASK_MIN_PRIORITY, Task
 from django_tasks.exceptions import (
-    InvalidTaskBackendError,
-    InvalidTaskError,
+    InvalidTask,
+    InvalidTaskBackend,
     TaskResultDoesNotExist,
     TaskResultMismatch,
 )
@@ -105,7 +105,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(test_tasks.noop_task.backend, "default")
 
         with self.assertRaisesMessage(
-            InvalidTaskBackendError, "The connection 'unknown' doesn't exist."
+            InvalidTaskBackend, "The connection 'unknown' doesn't exist."
         ):
             test_tasks.noop_task.using(backend="unknown")
 
@@ -113,7 +113,7 @@ class TaskTestCase(SimpleTestCase):
         self.assertEqual(test_tasks.noop_task.backend, "default")
 
         with self.assertRaisesMessage(
-            InvalidTaskBackendError,
+            InvalidTaskBackend,
             "Could not find backend 'does.not.exist': No module named 'does'",
         ):
             test_tasks.noop_task.using(backend="missing")
@@ -151,25 +151,25 @@ class TaskTestCase(SimpleTestCase):
 
     def test_naive_datetime(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError, "run_after must be an aware datetime"
+            InvalidTask, "run_after must be an aware datetime"
         ):
             test_tasks.noop_task.using(run_after=datetime.now())
 
     def test_invalid_priority(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError,
+            InvalidTask,
             f"priority must be a whole number between {TASK_MIN_PRIORITY} and {TASK_MAX_PRIORITY}",
         ):
             test_tasks.noop_task.using(priority=-101)
 
         with self.assertRaisesMessage(
-            InvalidTaskError,
+            InvalidTask,
             f"priority must be a whole number between {TASK_MIN_PRIORITY} and {TASK_MAX_PRIORITY}",
         ):
             test_tasks.noop_task.using(priority=101)
 
         with self.assertRaisesMessage(
-            InvalidTaskError,
+            InvalidTask,
             f"priority must be a whole number between {TASK_MIN_PRIORITY} and {TASK_MAX_PRIORITY}",
         ):
             test_tasks.noop_task.using(priority=3.1)  # type:ignore[arg-type]
@@ -180,7 +180,7 @@ class TaskTestCase(SimpleTestCase):
 
     def test_unknown_queue_name(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError, "Queue 'queue-2' is not valid for backend"
+            InvalidTask, "Queue 'queue-2' is not valid for backend"
         ):
             test_tasks.noop_task.using(queue_name="queue-2")
         # Validation is bypassed when the backend QUEUES is an empty list.
@@ -238,7 +238,7 @@ class TaskTestCase(SimpleTestCase):
         for invalid_function in [any, self.test_invalid_function]:
             with self.subTest(invalid_function):
                 with self.assertRaisesMessage(
-                    InvalidTaskError,
+                    InvalidTask,
                     "Task function must be defined at a module level",
                 ):
                     task()(invalid_function)  # type:ignore[arg-type]
@@ -271,7 +271,7 @@ class TaskTestCase(SimpleTestCase):
 
     @override_settings(TASKS={})
     def test_no_backends(self) -> None:
-        with self.assertRaises(InvalidTaskBackendError):
+        with self.assertRaises(InvalidTaskBackend):
             test_tasks.noop_task.enqueue()
 
     def test_task_error_invalid_exception(self) -> None:
@@ -308,7 +308,7 @@ class TaskTestCase(SimpleTestCase):
 
     def test_takes_context_without_taking_context(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError,
+            InvalidTask,
             "Task takes context but does not have a first argument of 'context'",
         ):
             task(takes_context=True)(test_tasks.calculate_meaning_of_life.func)  # type: ignore[arg-type]

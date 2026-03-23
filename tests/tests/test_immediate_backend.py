@@ -8,7 +8,7 @@ from django.utils import timezone
 from django_tasks import TaskResultStatus, default_task_backend, task_backends
 from django_tasks.backends.immediate import ImmediateBackend
 from django_tasks.base import Task
-from django_tasks.exceptions import InvalidTaskError
+from django_tasks.exceptions import InvalidTask
 from tests import tasks as test_tasks
 
 
@@ -199,7 +199,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
 
     def test_cannot_pass_run_after(self) -> None:
         with self.assertRaisesMessage(
-            InvalidTaskError,
+            InvalidTask,
             "Backend does not support run_after",
         ):
             default_task_backend.validate_task(
@@ -287,7 +287,7 @@ class ImmediateBackendTestCase(SimpleTestCase):
             }
         ):
             with self.assertRaisesMessage(
-                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+                InvalidTask, "Queue 'unknown_queue' is not valid for backend"
             ):
                 task_with_custom_queue_name.enqueue()
 
@@ -305,6 +305,6 @@ class ImmediateBackendTestCase(SimpleTestCase):
             }
         ):
             with self.assertRaisesMessage(
-                InvalidTaskError, "Queue 'unknown_queue' is not valid for backend"
+                InvalidTask, "Queue 'unknown_queue' is not valid for backend"
             ):
                 await task_with_custom_queue_name.aenqueue()

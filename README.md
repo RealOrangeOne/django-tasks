@@ -114,7 +114,7 @@ TASKS = {
 }
 ```
 
-Enqueueing tasks to an unknown queue name raises `InvalidTaskError`.
+Enqueueing tasks to an unknown queue name raises `InvalidTask`.
 
 To disable queue name validation, set `QUEUES` to `[]`.
 
