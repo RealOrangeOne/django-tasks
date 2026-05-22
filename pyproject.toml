@@ -27,7 +27,6 @@ classifiers = [
     "Framework :: Django",
     "Framework :: Django",
     "Framework :: Django :: 5.2",
-    "Framework :: Django :: 6.0",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Natural Language :: English",
@@ -36,7 +35,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "Django>=5.2",
+    "Django>=5.2,<6.0",
     "typing_extensions",
     "django-stubs-ext",
 ]
