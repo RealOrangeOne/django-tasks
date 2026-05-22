@@ -8,6 +8,8 @@
 
 A backport of `django.tasks` - Django's built-in [Tasks framework](https://docs.djangoproject.com/en/stable/topics/tasks/).
 
+`django-tasks` is suitable for Django versions earlier than 6.0. Users of 6.0+ should use `django.tasks` directly instead.
+
 ## Installation
 
 ```
