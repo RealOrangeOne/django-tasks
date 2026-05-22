@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, fields, replace
 from datetime import datetime
 from inspect import isclass, iscoroutinefunction
 from typing import (
@@ -89,6 +89,23 @@ class Task(Generic[P, T]):
 
     def __post_init__(self) -> None:
         self.get_backend().validate_task(self)
+
+    @classmethod
+    def _reconstruct(cls, kwargs: dict) -> Self:
+        func_path = kwargs["func"]
+        try:
+            func = import_string(func_path)
+            kwargs["func"] = func.func
+        except (ImportError, AttributeError) as e:
+            msg = f"Expected {func_path!r} to point to a Task instance."
+            raise ValueError(msg) from e
+        return cls(**kwargs)
+
+    def __reduce__(self) -> tuple:
+        kwargs = {f.name: getattr(self, f.name) for f in fields(self)}
+        kwargs["func"] = self.module_path
+
+        return (self.__class__._reconstruct, (kwargs,))
 
     @property
     def name(self) -> str:
