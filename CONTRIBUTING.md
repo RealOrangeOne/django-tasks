@@ -2,7 +2,9 @@
 
 Found a bug? Want to fix an open issue? Got an idea for an improvement? Please contribute!
 
-**All** contributions are welcome, from absolutely anyone. Just open a PR, Issue or Discussion (as relevant) - no need to ask beforehand. If you're going to work on an issue, it's a good idea to say so on the issue, to make sure work isn't duplicated.
+All contributions are welcome, from absolutely anyone. Just open a PR, Issue or Discussion (as relevant) - no need to ask beforehand. If you're going to work on an issue, it's a good idea to say so on the issue, to make sure work isn't duplicated.
+
+If you use LLM / "AI" tools for your contributions, please read and follow our [Generative AI / LLM Policy](https://github.com/RealOrangeOne/RealOrangeOne/blob/master/AI_POLICY.md).
 
 Because this repository is a backport of the `django.tasks` package, notable improvements should be raised upstream before being included here. This repository will still serve as a place for discussions.
 
